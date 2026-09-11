@@ -2,17 +2,6 @@
 
 ## Módulo de Subdirección Académica
 
-### Base de Datos e implementacion
-* **Asignación:** Equipo 7
-* **Integrantes:** 
-  * Milton Florencio Arzate
-  * Iñaki Iturriaga Rabanal
-  * Samuel Alcantara Fernandez
-  * Brayan Antonio Segundo de Jesus
-  * Emiliano Arista Rodriguez
-  * Jesus Alberto Arroyo Lugo
-
-
 ### Panel de Administración
 * **Asignación:** Equipo 2
 * **Integrantes:** 
@@ -77,3 +66,13 @@
   * Roberto Carlos Acuña Tabaco
   * Jesús Fernando López González
 * **Lógica:** Autenticación exclusiva para alumnos usando sus credenciales institucionales o CURP y folio para alumnos de nuevo ingreso.
+
+  ### Base de Datos e implementacion
+* **Asignación:** Equipo 7
+* **Integrantes:** 
+  * Iñaki Iturriaga Rabanal
+  * Samuel Alcantara Fernandez
+  * Brayan Antonio Segundo de Jesus
+  * Emiliano Arista Rodriguez
+  * Milton Florencio Arzate
+  * Jesus Alberto Arroyo Lugo
