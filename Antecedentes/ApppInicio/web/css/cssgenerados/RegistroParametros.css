@@ -1,0 +1,249 @@
+/*
+Licencia AC
+Copyright 2017 Ángel Careaga <ing.angelcareaga@gmail.com>.
+
+Document   : RegistroParametros.css
+Created on : 24/02/2017, 02:17:17 PM
+Package    : CSS
+*/
+#tblDepSIA tbody{
+    visibility: hidden; 
+}
+
+.ajuste::-ms-clear{
+    display: none;
+}
+
+.espacioBtn{
+    position: relative;
+    margin-right: 5px;
+}
+
+.areaDesc{
+    width: 100%;
+}
+
+#displayFecha{
+    display:none;
+}
+#displayNum{
+    display:none;
+}
+
+#altAlfa{
+    height: auto;
+}
+
+#altDesc{
+    height: auto;
+}
+td{
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+th{
+    max-width: 100px;
+    text-align: center;
+    border-color: #337ab7; 
+    
+   
+}
+#botonesE{
+    position: relative;
+    color: #fff;
+}
+
+#tblDepSIA_filter{
+    display: none;
+}
+
+#ocultarLinea, #ocultarLineaC
+{
+    -moz-color: #FFFFFF;
+    color: #FFFFFF;
+}
+
+#panel-principal , #bodyInicio
+{
+    min-height: 400px;
+    text-align: center;
+}
+#col-md-6{
+    text-align: center;
+    margin: auto;
+}
+#panel panel-default{
+    text-align: center;
+    margin: 0px auto;
+}
+#panel-body{
+   text-align: center;
+   margin: 0px auto;
+}
+
+
+/***************** BOTONES ESTILO ***********************
+
+/**** CANCELAR *****/
+
+.btn-cancelar { 
+    color: #ffffff; 
+    background-color: #C9302C; 
+    border-color: #C9302C; 
+} 
+
+.btn-cancelar:hover, 
+.btn-cancelar:focus, 
+.btn-cancelar:active, 
+.btn-cancelar.active, 
+.open .dropdown-toggle.btn-cancelar { 
+    color: #ffffff!important; 
+    background-color: #d9534f; 
+    border-color: #C9302C; 
+} 
+
+.btn-cancelar:active, 
+.btn-cancelar.active, 
+.open .dropdown-toggle.btn-cancelar { 
+    color: #ffffff!important; 
+    background-image: none; 
+} 
+
+.btn-cancelar.disabled, 
+.btn-cancelar[disabled], 
+fieldset[disabled] .btn-cancelar, 
+.btn-cancelar.disabled:hover, 
+.btn-cancelar[disabled]:hover, 
+fieldset[disabled] .btn-cancelar:hover, 
+.btn-cancelar.disabled:focus, 
+.btn-cancelar[disabled]:focus, 
+fieldset[disabled] .btn-cancelar:focus, 
+.btn-cancelar.disabled:active, 
+.btn-cancelar[disabled]:active, 
+fieldset[disabled] .btn-cancelar:active, 
+.btn-cancelar.disabled.active, 
+.btn-cancelar[disabled].active, 
+fieldset[disabled] .btn-cancelar.active { 
+    background-color: #C9302C; 
+    border-color: #C9302C; 
+} 
+
+.btn-cancelar .badge { 
+    color: #C9302C; 
+    background-color: #ffffff; 
+}
+
+
+/**** GUARDAR *****/
+
+
+.btn-guardar { 
+    color: #ffffff; 
+    background-color: #337ab7; 
+    border-color: #337ab7; 
+} 
+
+.btn-guardar:hover, 
+.btn-guardar:focus, 
+.btn-guardar:active, 
+.btn-guardar.active, 
+.open .dropdown-toggle.btn-guardar { 
+    color: #ffffff!important; 
+    background-color: #5098D5; 
+    border-color: #337ab7; 
+} 
+
+.btn-guardar:active, 
+.btn-guardar.active, 
+.open .dropdown-toggle.btn-guardar { 
+    color: #ffffff!important; 
+    background-image: none; 
+} 
+
+.btn-guardar.disabled, 
+.btn-guardar[disabled], 
+fieldset[disabled] .btn-guardar, 
+.btn-guardar.disabled:hover, 
+.btn-guardar[disabled]:hover, 
+fieldset[disabled] .btn-guardar:hover, 
+.btn-guardar.disabled:focus, 
+.btn-guardar[disabled]:focus, 
+fieldset[disabled] .btn-guardar:focus, 
+.btn-guardar.disabled:active, 
+.btn-guardar[disabled]:active, 
+fieldset[disabled] .btn-guardar:active, 
+.btn-guardar.disabled.active, 
+.btn-guardar[disabled].active, 
+fieldset[disabled] .btn-guardar.active { 
+    background-color: #337ab7; 
+    border-color: #337ab7; 
+} 
+
+.btn-guardar .badge { 
+    color: #337ab7; 
+    background-color: #ffffff; 
+}
+
+/*****************************************/
+
+table.tablesorter {
+    font-size: 8pt;
+    text-align: left;
+ 
+}
+.txt-home{
+    display: block;
+    margin-top: 60px;
+    text-align: justify;
+}
+#row{
+    text-align: center;
+    margin: auto;
+    
+}
+body{
+    background: white;
+}
+
+ul.tabs{
+    width: 100%;
+    background: #337ab7;
+    list-style: none;
+    display: flex;
+}
+ul.tabs li{
+    width: 20%;
+}
+ul.tabs li a{
+    color: #FFFFFF;
+    text-decoration: none;
+    font-size: 16px;
+    text-align: center;
+    display: block;
+    padding: 20px 0px;
+}
+
+ul.tabs li a .tab-text{
+    margin-left: 8px;
+}
+.activetabs{
+    background: #5098D5;
+}
+@media screen and (max-width: 550px){
+    ul.tabs li{
+        width: none;
+        flex-basis: 0;
+        flex-grow: 1;
+    }
+}
+
+@media screen and (max-width: 300px){
+    ul.tabs li a{
+       padding: 15px 0px;
+    }
+    
+    ul.tabs li a .tab-text{
+       display: none;
+    }
+}
