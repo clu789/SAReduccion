@@ -12,7 +12,6 @@
   * Emiliano Arista Rodriguez
   * Jesus Alberto Arroyo Lugo
 
-* **Lógica:** Cargar las solicitudes desde la base de datos, ejecutar la lógica de aprobación o rechazo (parcial o total) y guardar los comentarios asociados al registro.
 
 ### Panel de Administración
 * **Asignación:** Equipo 2
