@@ -1,204 +1,813 @@
-# Servicio Administrativo de Reducción del monto de inscripción
+# Servicio Administrativo de Reducción del Monto de Inscripción
 
-Aplicacion web del Instituto Tecnologico de Toluca para que los alumnos consulten informacion academica y realicen tramites escolares.
+Aplicación web del Instituto Tecnológico de Toluca destinada a gestionar el proceso de solicitud y consulta relacionado con el apoyo para inscripción y reinscripción de hijos y/o cónyuge de trabajadores del TecNM y sistemas homologados.
 
-## 1. Resumen del proyecto
+El proyecto surge como una evolución tecnológica del sistema anterior, reemplazando la arquitectura basada en Java EE, JSP, Servlets, Apache Ant y Payara Server por una arquitectura basada en Spring Boot y una API REST.
 
-El proyecto esta construido con Java EE, JSP, Servlets, JavaScript y una base de datos Oracle. La aplicacion se compila con Apache Ant y se empaqueta como un archivo WAR para desplegarse en un servidor de aplicaciones compatible con Java EE, como Payara Server 5.
+---
 
-La aplicacion utiliza una arquitectura por capas:
+# 1. Descripción del proyecto
 
-```text
-Presentacion -> Control -> Modelo de datos -> Acceso a datos -> Base de datos
-```
+El sistema permitirá gestionar digitalmente el proceso administrativo relacionado con las solicitudes de apoyo para inscripción y reinscripción.
 
-## 2. Tecnologias del proyecto
+De acuerdo con la convocatoria, el proceso contempla la captura en línea de la solicitud y la presentación posterior de documentación. Para alumnos de reinscripción y residencia profesional se contempla, entre otros documentos, el kardex vigente del estudiante y documentación relacionada con el trabajador.
 
-| Orden | Tecnologia | Descripcion | Que hace | Para que se utiliza |
-|---:|---|---|---|---|
-| 1 | Java 8 | Lenguaje principal del proyecto. | Ejecuta la logica de negocio del lado del servidor. | Crear Servlets, DAO, beans, filtros y utilidades. |
-| 2 | Java EE / Servlet API | Plataforma para desarrollar aplicaciones web Java. | Procesa peticiones HTTP y genera respuestas. | Implementar Servlets, sesiones, filtros y redirecciones. |
-| 3 | JSP | Tecnologia para generar paginas HTML dinamicas. | Combina HTML con datos enviados por el servidor. | Mostrar login, portal, calificaciones, horarios, mensajes y formularios. |
-| 4 | JSTL | Biblioteca de etiquetas para JSP. | Permite usar condiciones y decisiones dentro de las vistas. | Mostrar u ocultar contenido segun los datos recibidos. |
-| 5 | HTML | Lenguaje de estructura de las paginas web. | Define formularios, botones, tablas y contenido. | Construir la interfaz que recibe el usuario en el navegador. |
-| 6 | CSS | Lenguaje de estilos. | Controla colores, tamanos, posiciones y apariencia. | Dar formato a las vistas JSP y al portal. |
-| 7 | JavaScript | Lenguaje que se ejecuta en el navegador. | Valida formularios y responde a eventos del usuario. | Actualizar la interfaz y realizar peticiones sin recargar toda la pagina. |
-| 8 | jQuery y AJAX | Biblioteca JavaScript y mecanismo de comunicacion asincrona. | Envia y recibe datos mediante HTTP. | Validar CAPTCHA, iniciar sesion, cargar datos y actualizar modales o tablas. |
-| 9 | JSON / Gson | Formato de intercambio y biblioteca de conversion. | Convierte objetos Java a JSON y JSON a objetos. | Comunicar respuestas entre Servlets y JavaScript. |
-| 10 | JDBC para Oracle | API de Java para conectarse a bases de datos. | Abre conexiones y ejecuta consultas o procedimientos. | Permitir que los DAO consulten la base de datos institucional. |
-| 11 | Oracle Database | Sistema gestor de base de datos. | Almacena y procesa la informacion academica. | Consultar alumnos, calificaciones, horarios, adeudos y tramites. |
-| 12 | Procedimientos almacenados Oracle | Logica almacenada dentro de Oracle. | Recibe parametros y devuelve datos o resultados. | Centralizar operaciones de los diferentes modulos del portal. |
-| 13 | JasperReports | Biblioteca de generacion de reportes. | Construye documentos a partir de plantillas JRXML. | Generar reportes, vouchers y documentos escolares. |
-| 14 | iText | Biblioteca para crear y manipular archivos PDF. | Genera o procesa documentos PDF. | Entregar vouchers, constancias y otros documentos descargables. |
-| 15 | Bootstrap | Biblioteca de estilos y componentes visuales. | Proporciona menus, formularios, modales y diseño responsivo. | Construir una interfaz adaptable a diferentes pantallas. |
-| 16 | Font Awesome | Biblioteca de iconos. | Agrega iconos a botones y menus. | Representar mensajes, usuarios, alertas y acciones. |
+El sistema deberá permitir, de acuerdo con el alcance definido para el proyecto:
 
-> **Nota sobre Oracle 8:** el proyecto contiene el controlador `ojdbc14.jar`, pero los archivos del proyecto no permiten confirmar que el servidor de base de datos sea Oracle 8. Conviene registrar la version real de Oracle en la documentacion del ambiente de despliegue.
+* Captura de solicitudes.
+* Consulta de información del alumno.
+* Consulta del estado de una solicitud.
+* Registro y validación de información.
+* Gestión de documentos requeridos.
+* Consulta de información administrativa.
+* Generación de documentos o comprobantes cuando sea necesario.
+* Comunicación entre frontend y backend mediante una API REST.
 
-## 3. Herramientas de desarrollo y ejecucion
+---
 
-| Orden | Herramienta | Descripcion | Que hace | Para que se utiliza |
-|---:|---|---|---|---|
-| 1 | JDK 8u202 | Kit de desarrollo de Java version 8. | Compila y ejecuta el codigo Java. | Construir y ejecutar el proyecto con Java 8. |
-| 2 | Java 1.8.0_202 | Version instalada del entorno Java. | Proporciona el compilador y la maquina virtual. | Mantener compatibilidad con el codigo y las bibliotecas existentes. |
-| 3 | Apache Ant | Herramienta de automatizacion de compilacion. | Compila fuentes, copia recursos y genera el WAR. | Ejecutar tareas como `clean`, `compile`, `dist` y `deploy`. |
-| 4 | NetBeans | IDE utilizado por la estructura del proyecto. | Edita codigo y administra proyectos Java web. | Abrir, compilar, depurar y desplegar la aplicacion. |
-| 5 | Payara Server 5 | Servidor de aplicaciones Java EE. | Ejecuta Servlets, JSP y sesiones. | Desplegar y publicar el archivo WAR. |
-| 6 | GlassFish / descriptores Java EE | Plataforma y configuracion compatible con el proyecto. | Define el contexto y el comportamiento web. | Configurar el despliegue mediante `glassfish-web.xml` y `web.xml`. |
-| 7 | Navegador web | Cliente de la aplicacion. | Solicita paginas y recursos al servidor. | Usar el portal como alumno. |
-| 8 | Oracle SQL Developer u otra herramienta Oracle | Herramienta externa de administracion de Oracle. | Permite revisar esquemas, tablas y procedimientos. | Administrar o verificar la base de datos, si el equipo la utiliza. |
+# 2. Objetivos tecnológicos
 
-> **Payara y GlassFish:** Payara es un servidor derivado de GlassFish. En este repositorio se observa el descriptor `glassfish-web.xml`; por eso la descripcion mas precisa es: **servidor Java EE compatible con GlassFish, utilizado en el ambiente como Payara Server 5**.
+La nueva implementación tiene como objetivos:
 
-## 4. Archivos, bibliotecas y productos del proyecto
+1. Sustituir la arquitectura Java EE utilizada anteriormente.
+2. Eliminar la dependencia de Payara Server como servidor de aplicaciones.
+3. Utilizar Spring Boot como plataforma principal del backend.
+4. Exponer las operaciones del sistema mediante una API REST.
+5. Mantener compatibilidad con Java 8.
+6. Mantener Oracle como sistema gestor de base de datos mientras la aplicación dependa de la infraestructura institucional existente.
+7. Separar las responsabilidades del backend mediante una arquitectura por capas.
+8. Utilizar tecnologías frontend independientes del servidor de aplicaciones.
+9. Facilitar la ejecución del entorno de desarrollo mediante Docker.
+10. Utilizar herramientas modernas de construcción, control de versiones y pruebas.
 
-Estos elementos no son tecnologias independientes. Son archivos o componentes que permiten construir y ejecutar la aplicacion.
+---
 
-| Elemento | Tipo | Descripcion | Funcion |
-|---|---|---|---|
-| `ITTConexion.jar` | Biblioteca propia del ITT | Biblioteca institucional para administrar conexiones a la base de datos. | Crear conexiones Oracle y reportar errores de conexion. |
-| `ITTUtilidades.jar` | Biblioteca propia del ITT | Utilidades compartidas por las aplicaciones institucionales. | Reutilizar funciones comunes, como registro de errores y apoyo al sistema. |
-| `ojdbc14.jar` | Biblioteca de Oracle | Controlador JDBC de Oracle. | Permitir que Java se comunique con Oracle Database. |
-| `gson-2.2.2.jar` | Biblioteca externa | Implementacion de Gson. | Convertir objetos Java a JSON y viceversa. |
-| `jasperreports-6.5.1.jar` | Biblioteca externa | Motor de reportes. | Generar reportes desde plantillas JRXML. |
-| `*.jrxml` | Plantilla de reporte | Archivos de diseno para JasperReports. | Definir la estructura visual de vouchers y reportes. |
-| `web.xml` | Descriptor web | Configura Servlets, filtros y rutas URL. | Relacionar cada URL con su clase Java. |
-| `glassfish-web.xml` | Descriptor del servidor | Define configuracion especifica del servidor. | Establecer el contexto `/ITTPortalAlumno`. |
-| `build.xml` | Archivo de compilacion | Script principal de Apache Ant. | Invocar las tareas de compilacion y empaquetado. |
-| `ITTPortalAlumno.war` | Paquete de despliegue | Archivo distribuible de una aplicacion web Java. | Instalar la aplicacion en Payara o GlassFish. |
+# 3. Arquitectura general
 
-### Componentes propios del codigo institucional
-
-Ademas de las bibliotecas JAR, el proyecto contiene codigo organizado por responsabilidades:
-
-| Carpeta | Nombre recomendado | Responsabilidad |
-|---|---|---|
-| `src/java/servlet` | Controladores web | Recibir peticiones y preparar respuestas. |
-| `src/java/dao` | Objetos de acceso a datos | Consultar Oracle y ejecutar procedimientos almacenados. |
-| `src/java/bean` | Modelos o beans de datos | Transportar informacion entre las capas. |
-| `src/java/filters` | Filtros web | Validar sesiones y peticiones antes de llegar a un Servlet. |
-| `src/java/utils` | Utilidades compartidas | Centralizar constantes, respuestas y funciones comunes. |
-| `web/views` | Vistas JSP | Presentar la informacion al usuario. |
-| `web/js` | Scripts del cliente | Validar formularios y realizar AJAX. |
-| `web/css` | Hojas de estilo | Definir la apariencia del portal. |
-
-> Si por “Archivo” te refieres a `Archivo_DAO.java`, su nombre correcto seria **DAO de gestion de archivos**. Es una clase del codigo institucional, no una tecnologia independiente. Si te refieres a un archivo general, conviene documentarlo por su nombre y extension concretos.
-
-## 5. Flujo general de funcionamiento
-
-```mermaid
-flowchart TD
-    A[Alumno en navegador] --> B[index.html o vista JSP]
-    B --> C[HTML + CSS + Bootstrap]
-    B --> D[JavaScript + jQuery]
-    D -->|Formulario o AJAX HTTP| E[URL definida en web.xml]
-    E --> F[SessionFilter para rutas protegidas]
-    F -->|Sesion valida| G[Servlet controlador]
-    F -->|Sesion invalida| H[Login o respuesta JSON]
-    G --> I[Bean o modelo de datos]
-    G --> J[DAO]
-    J --> K[ITTConexion.jar + ojdbc14.jar]
-    K --> L[Oracle Database]
-    L --> M[Procedimiento almacenado o resultado]
-    M --> J
-    J --> G
-    G -->|forward| N[JSP con datos]
-    G -->|Gson| O[Respuesta JSON para AJAX]
-    G -->|iText/JasperReports| P[PDF o voucher]
-    N --> A
-    O --> D
-    P --> A
-```
-
-## 6. Orden de uso de las partes
-
-### En el navegador
+La aplicación utilizará una arquitectura cliente-servidor.
 
 ```text
-1. El alumno abre una pagina.
-2. El servidor entrega HTML o JSP procesado.
-3. El navegador carga CSS, JavaScript, imagenes y bibliotecas.
-4. El usuario llena un formulario o selecciona una opcion.
-5. JavaScript valida los datos y envia una peticion HTTP o AJAX.
+┌──────────────────────────────────────┐
+│              FRONTEND                │
+│                                      │
+│ HTML + CSS + JavaScript              │
+│ Bootstrap + Font Awesome             │
+└──────────────────┬───────────────────┘
+                   │
+                   │ HTTP / JSON
+                   ▼
+┌──────────────────────────────────────┐
+│             BACKEND                  │
+│                                      │
+│ Spring Boot                          │
+│                                      │
+│ REST Controllers                     │
+│        ↓                             │
+│ Services                             │
+│        ↓                             │
+│ Repository / DAO                     │
+└──────────────────┬───────────────────┘
+                   │
+                   │ JDBC
+                   ▼
+┌──────────────────────────────────────┐
+│          ORACLE DATABASE             │
+│                                      │
+│ Tablas / consultas / procedimientos  │
+└──────────────────────────────────────┘
 ```
 
-### En el servidor
+El frontend realizará peticiones HTTP al backend y recibirá información principalmente en formato JSON.
+
+El backend será responsable de la lógica de negocio, validación, seguridad, acceso a datos y generación de respuestas.
+
+---
+
+# 4. Backend
+
+## Spring Boot
+
+Spring Boot será la plataforma principal para el desarrollo del backend.
+
+Se utilizará para:
+
+* Crear la aplicación web.
+* Administrar los componentes de la aplicación.
+* Crear la API REST.
+* Configurar el acceso a la base de datos.
+* Administrar dependencias.
+* Proporcionar el servidor web embebido.
+* Gestionar configuración y componentes de Spring.
+
+La aplicación podrá ejecutarse como un archivo JAR utilizando el servidor web embebido.
 
 ```text
-6. web.xml identifica el Servlet correspondiente a la URL.
-7. SessionFilter valida la sesion cuando la ruta esta protegida.
-8. El Servlet recibe los parametros de la peticion.
-9. El Servlet crea o utiliza un bean y llama al DAO.
-10. El DAO solicita una conexion mediante ITTConexion.jar.
-11. JDBC ejecuta una consulta o procedimiento almacenado en Oracle.
-12. El DAO convierte el resultado en beans.
-13. El Servlet envia la respuesta como JSP, JSON, texto, imagen o PDF.
-14. El navegador muestra la respuesta al alumno.
+java -jar aplicacion.jar
 ```
 
-## 7. Ejemplo: inicio de sesion
+---
+
+# 5. Versión de Java
+
+## JDK 8
+
+El proyecto utilizará:
 
 ```text
-login_view.jsp
-    |
-    v
-loginVal.js
-    |
-    +--> validacaptcha.do
-    |        |
-    |        v
-    |    ValCaptcha_Login_Srv
-    |
-    +--> login.do
-             |
-             v
-       Login_Login_Srv
-             |
-             v
-       User_Login_DAO
-             |
-             v
-       ITTConexion.jar + ojdbc14.jar
-             |
-             v
-       Oracle Database
-             |
-             v
-       HttpSession con el usuario autenticado
-             |
-             v
-       Portal_Portal_Srv
-             |
-             v
-       Alumno_Portal_DAO
-             |
-             v
-       portal_view.jsp
+Java 8
 ```
 
-## 8. Resumen corto
+La decisión se debe a la compatibilidad con el entorno tecnológico existente.
+
+La versión seleccionada de Spring Boot será:
 
 ```text
-JDK 8 + Java
-        |
-        v
-Apache Ant compila el proyecto
-        |
-        v
-Se genera ITTPortalAlumno.war
-        |
-        v
-Payara Server 5 ejecuta la aplicacion
-        |
-        v
-JSP/HTML + CSS + JavaScript muestran la interfaz
-        |
-        v
-Servlets procesan las peticiones
-        |
-        v
-DAO + ITTConexion.jar acceden a Oracle
-        |
-        v
-La respuesta vuelve como JSP, JSON o PDF
+Spring Boot 2.7.18
+```
+
+Spring Boot 2.7.18 requiere Java 8 y permite utilizar servidores Servlet embebidos como Tomcat 9.
+
+Esta decisión deberá revisarse si posteriormente el proyecto puede migrar a una versión más reciente de Java.
+
+---
+
+# 6. API REST
+
+La comunicación entre frontend y backend se realizará mediante una API REST.
+
+Ejemplo conceptual:
+
+```text
+POST /api/solicitudes
+GET  /api/solicitudes/{id}
+PUT  /api/solicitudes/{id}
+DELETE /api/solicitudes/{id}
+```
+
+Las respuestas utilizarán JSON cuando corresponda.
+
+Ejemplo:
+
+```json
+{
+    "id": 25,
+    "estado": "EN_REVISION",
+    "fechaSolicitud": "2026-01-08"
+}
+```
+
+Los antiguos Servlets del sistema serán sustituidos por controladores de Spring.
+
+Conceptualmente:
+
+```text
+Servlet
+   ↓
+REST Controller
+```
+
+No se implementarán Servlets manualmente como mecanismo principal de control de las peticiones.
+
+---
+
+# 7. Arquitectura interna del backend
+
+El backend utilizará separación de responsabilidades.
+
+```text
+REST Controller
+       ↓
+Service
+       ↓
+Repository / DAO
+       ↓
+Database
+```
+
+## Controller
+
+Responsable de:
+
+* Recibir peticiones HTTP.
+* Validar parámetros básicos.
+* Invocar servicios.
+* Construir respuestas HTTP.
+
+## Service
+
+Responsable de:
+
+* Implementar reglas de negocio.
+* Coordinar operaciones.
+* Validar procesos.
+* Coordinar diferentes repositorios.
+
+## Repository / DAO
+
+Responsable de:
+
+* Acceder a la base de datos.
+* Ejecutar consultas.
+* Ejecutar procedimientos almacenados cuando sean necesarios.
+* Convertir resultados de base de datos a objetos Java.
+
+---
+
+# 8. Acceso a datos
+
+El sistema utilizará Oracle Database como sistema gestor de base de datos mientras se mantenga la integración con la infraestructura institucional existente.
+
+La implementación anterior utilizaba JDBC, Oracle y procedimientos almacenados. Por lo tanto, antes de realizar una migración completa a JPA/Hibernate se deberá identificar qué operaciones actuales dependen directamente de Oracle.
+
+La tecnología de acceso a datos podrá utilizar:
+
+```text
+Spring JDBC
+```
+
+cuando se requiera trabajar directamente con consultas o procedimientos almacenados.
+
+Si se desarrollan nuevas entidades y operaciones que no dependan de procedimientos existentes, podrá evaluarse:
+
+```text
+Spring Data JPA
+```
+
+La elección entre JDBC y JPA deberá realizarse por módulo y no asumirse automáticamente para todo el sistema.
+
+---
+
+# 9. Base de datos
+
+## Oracle Database
+
+Oracle será la base de datos principal del proyecto debido a la dependencia existente con el sistema institucional.
+
+La versión exacta de Oracle deberá determinarse con base en el ambiente donde será ejecutada la aplicación.
+
+No se asumirá que Oracle 12c XE es la versión de producción hasta verificar el ambiente institucional.
+
+---
+
+# 10. Frontend
+
+El frontend será inicialmente desarrollado utilizando tecnologías web estándar:
+
+```text
+HTML
+CSS
+JavaScript
+Bootstrap
+Font Awesome
+```
+
+No se utilizará inicialmente un framework frontend como:
+
+* React
+* Angular
+* Vue
+
+La decisión podrá revisarse posteriormente si el tamaño o complejidad de la interfaz lo justifica.
+
+---
+
+# 11. HTML
+
+HTML será utilizado para definir la estructura de las páginas:
+
+* Formularios.
+* Tablas.
+* Botones.
+* Menús.
+* Secciones.
+* Contenedores.
+* Elementos de navegación.
+
+---
+
+# 12. CSS
+
+CSS será utilizado para:
+
+* Personalizar la apariencia.
+* Ajustar tamaños.
+* Espaciado.
+* Tipografía.
+* Componentes específicos del sistema.
+
+Bootstrap será utilizado como base para el diseño visual y responsivo.
+
+---
+
+# 13. JavaScript
+
+JavaScript será utilizado para la lógica ejecutada en el navegador.
+
+Entre sus responsabilidades estarán:
+
+* Validación de formularios.
+* Manejo de eventos.
+* Actualización de elementos de la interfaz.
+* Comunicación con la API REST.
+* Procesamiento de respuestas JSON.
+* Control de modales y componentes dinámicos.
+
+La comunicación con el backend utilizará principalmente:
+
+```javascript
+fetch()
+```
+
+Por lo tanto, jQuery no será una dependencia obligatoria del nuevo sistema.
+
+---
+
+# 14. Bootstrap
+
+Bootstrap será utilizado para facilitar la creación de una interfaz:
+
+* Responsiva.
+* Consistente.
+* Adaptable a diferentes tamaños de pantalla.
+
+Se utilizará para componentes como:
+
+* Formularios.
+* Botones.
+* Tablas.
+* Modales.
+* Alertas.
+* Navegación.
+
+---
+
+# 15. Font Awesome
+
+Font Awesome será utilizado para proporcionar iconos a los elementos de la interfaz.
+
+Ejemplos:
+
+* Usuarios.
+* Solicitudes.
+* Documentos.
+* Alertas.
+* Acciones.
+* Navegación.
+
+---
+
+# 16. JSON
+
+JSON será el formato principal para intercambiar información entre frontend y backend.
+
+Flujo general:
+
+```text
+JavaScript
+    ↓
+HTTP Request
+    ↓
+Spring Boot REST Controller
+    ↓
+Service
+    ↓
+Database
+    ↓
+Service
+    ↓
+REST Controller
+    ↓
+JSON
+    ↓
+JavaScript
+```
+
+La utilización de JSON permite separar la interfaz de usuario de la lógica del servidor.
+
+---
+
+# 17. Seguridad
+
+El sistema deberá contemplar mecanismos de seguridad para proteger:
+
+* Autenticación.
+* Sesiones o tokens.
+* Información personal.
+* Solicitudes.
+* Documentos.
+* Endpoints protegidos.
+
+Se evaluará la utilización de:
+
+```text
+Spring Security
+```
+
+La implementación específica dependerá del mecanismo de autenticación disponible en el entorno institucional.
+
+---
+
+# 18. Validación
+
+Las entradas recibidas por la API deberán validarse antes de ejecutar operaciones.
+
+Se evaluará el uso de:
+
+```text
+Spring Validation
+```
+
+Las validaciones deberán aplicarse tanto a:
+
+* Datos recibidos desde el frontend.
+* Parámetros de las peticiones.
+* Información enviada a la base de datos.
+
+La validación del frontend no sustituye la validación del backend.
+
+---
+
+# 19. Generación de documentos
+
+El sistema anterior utiliza JasperReports e iText para generar y procesar documentos PDF.
+
+Estas tecnologías podrán conservarse si el nuevo alcance requiere:
+
+* Vouchers.
+* Comprobantes.
+* Reportes.
+* Constancias.
+* Documentos descargables.
+
+La generación de documentos deberá integrarse como parte del backend.
+
+Flujo:
+
+```text
+Solicitud
+   ↓
+Spring Boot
+   ↓
+Datos
+   ↓
+JasperReports / PDF
+   ↓
+Documento
+   ↓
+Usuario
+```
+
+---
+
+# 20. Maven
+
+Maven será utilizado como sistema de construcción y administración de dependencias.
+
+Responsabilidades:
+
+* Descargar dependencias.
+* Compilar el proyecto.
+* Ejecutar pruebas.
+* Empaquetar la aplicación.
+* Ejecutar plugins.
+* Generar el archivo JAR.
+
+El proyecto utilizará Maven en lugar de Apache Ant.
+
+Ejemplo:
+
+```bash
+mvn clean
+mvn test
+mvn package
+```
+
+---
+
+# 21. Servidor web
+
+No se utilizará Payara Server como servidor principal.
+
+Spring Boot utilizará un servidor Servlet embebido, normalmente Tomcat.
+
+Arquitectura:
+
+```text
+Spring Boot
+     ↓
+Tomcat embebido
+     ↓
+HTTP
+```
+
+Esto elimina la necesidad de instalar y configurar Payara para ejecutar el backend.
+
+---
+
+# 22. Docker
+
+Docker será utilizado principalmente para facilitar la creación de ambientes reproducibles de desarrollo.
+
+El objetivo no es sustituir Spring Boot, sino facilitar la ejecución de los servicios que necesite el proyecto.
+
+Dependiendo del ambiente disponible, Docker podrá utilizarse para:
+
+* Base de datos de desarrollo.
+* Servicios auxiliares.
+* Backend.
+* Entorno completo de desarrollo.
+
+La base de datos institucional de producción no deberá introducirse automáticamente en Docker.
+
+---
+
+# 23. Docker Compose
+
+Docker Compose podrá utilizarse para levantar múltiples servicios de desarrollo.
+
+Ejemplo conceptual:
+
+```text
+Docker Compose
+       │
+       ├── Database
+       │
+       └── Backend
+```
+
+En un ambiente donde Spring Boot se ejecute directamente en la computadora del desarrollador:
+
+```text
+Computadora
+│
+├── Spring Boot
+│
+└── Docker
+      └── Oracle / Base de datos de desarrollo
+```
+
+Esto permite que cada integrante pueda iniciar el ambiente de desarrollo sin realizar manualmente toda la configuración.
+
+---
+
+# 24. Git
+
+Git será utilizado para el control de versiones.
+
+El repositorio deberá permitir:
+
+* Controlar cambios.
+* Trabajar mediante ramas.
+* Revisar modificaciones.
+* Recuperar versiones anteriores.
+* Integrar cambios de diferentes integrantes.
+
+Se recomienda utilizar ramas para funcionalidades independientes.
+
+---
+
+# 25. Pruebas de API
+
+Se utilizará una herramienta como:
+
+```text
+Postman
+```
+
+o una alternativa equivalente para probar los endpoints REST.
+
+Ejemplo:
+
+```text
+POST /api/solicitudes
+GET  /api/solicitudes/25
+PUT  /api/solicitudes/25
+```
+
+Las pruebas deberán verificar:
+
+* Código HTTP.
+* Estructura JSON.
+* Validaciones.
+* Errores.
+* Autenticación.
+* Comportamiento esperado.
+
+---
+
+# 26. Tecnologías principales
+
+| Área                 | Tecnología                     | Propósito                       |
+| -------------------- | ------------------------------ | ------------------------------- |
+| Lenguaje             | Java 8                         | Lenguaje principal              |
+| Framework backend    | Spring Boot 2.7.18             | Desarrollo del backend          |
+| API                  | REST                           | Comunicación cliente-servidor   |
+| Servidor             | Tomcat embebido                | Servidor HTTP                   |
+| Build                | Maven                          | Compilación y dependencias      |
+| Base de datos        | Oracle                         | Persistencia de información     |
+| Acceso a datos       | Spring JDBC / JPA según módulo | Comunicación con Oracle         |
+| Frontend             | HTML                           | Estructura                      |
+| Estilos              | CSS                            | Personalización visual          |
+| UI                   | Bootstrap                      | Componentes y diseño responsivo |
+| Scripts              | JavaScript                     | Lógica del navegador            |
+| Iconos               | Font Awesome                   | Iconografía                     |
+| Comunicación         | JSON                           | Intercambio de datos            |
+| Seguridad            | Spring Security                | Autenticación y autorización    |
+| Validación           | Spring Validation              | Validación de datos             |
+| Reportes             | JasperReports                  | Generación de reportes          |
+| PDF                  | Biblioteca PDF según necesidad | Generación de documentos        |
+| Control de versiones | Git                            | Control del código              |
+| Contenedores         | Docker                         | Ambientes reproducibles         |
+| Orquestación local   | Docker Compose                 | Ejecución de servicios          |
+| Pruebas API          | Postman                        | Pruebas de endpoints            |
+
+---
+
+# 27. Tecnologías descartadas de la arquitectura anterior
+
+Las siguientes tecnologías formaban parte de la implementación anterior, pero no serán componentes principales de la nueva arquitectura:
+
+```text
+Java EE
+JSP
+Servlets manuales
+Apache Ant
+Payara Server
+GlassFish
+web.xml como mecanismo principal de configuración
+jQuery
+WAR como formato principal de despliegue
+```
+
+Esto no significa que todas desaparezcan de manera absoluta del ecosistema Java, sino que dejan de ser componentes principales de la arquitectura propuesta.
+
+---
+
+# 28. Equivalencia entre arquitectura anterior y nueva
+
+| Arquitectura anterior | Nueva arquitectura      |
+| --------------------- | ----------------------- |
+| Java EE               | Spring Boot             |
+| Servlet               | REST Controller         |
+| JSP                   | HTML + JavaScript       |
+| AJAX/jQuery           | Fetch API               |
+| DAO                   | Repository / DAO        |
+| Bean                  | Entity / DTO            |
+| web.xml               | Configuración de Spring |
+| Payara                | Tomcat embebido         |
+| WAR                   | JAR ejecutable          |
+| Apache Ant            | Maven                   |
+| JDBC Oracle           | Spring JDBC / JPA       |
+| Gson                  | Jackson / JSON          |
+| Bootstrap             | Bootstrap               |
+| Font Awesome          | Font Awesome            |
+| JasperReports         | JasperReports           |
+
+---
+
+# 29. Flujo general de funcionamiento
+
+```text
+Usuario
+   ↓
+Navegador
+   ↓
+HTML + CSS + JavaScript
+   ↓
+Fetch API
+   ↓
+HTTP / JSON
+   ↓
+Spring Boot
+   ↓
+REST Controller
+   ↓
+Service
+   ↓
+Repository / DAO
+   ↓
+Oracle
+   ↓
+Repository / DAO
+   ↓
+Service
+   ↓
+REST Controller
+   ↓
+JSON / PDF
+   ↓
+Navegador
+   ↓
+Usuario
+```
+
+---
+
+# 30. Flujo de una solicitud
+
+Ejemplo conceptual:
+
+```text
+1. El alumno abre el sistema.
+2. El frontend muestra el formulario.
+3. El alumno captura la información.
+4. JavaScript valida los datos básicos.
+5. JavaScript envía una petición HTTP.
+6. Spring Boot recibe la petición.
+7. El Controller recibe los datos.
+8. El Service aplica las reglas de negocio.
+9. El Repository/DAO consulta o modifica Oracle.
+10. Oracle devuelve el resultado.
+11. El Service procesa el resultado.
+12. El Controller genera una respuesta.
+13. La API devuelve JSON.
+14. JavaScript actualiza la interfaz.
+```
+
+---
+
+# 31. Principios de desarrollo
+
+El proyecto deberá seguir los siguientes principios:
+
+* Separación de responsabilidades.
+* Bajo acoplamiento entre componentes.
+* Validación en backend.
+* Uso de DTO para intercambio de datos cuando sea necesario.
+* Manejo centralizado de errores.
+* Configuración externa de credenciales.
+* No almacenar contraseñas o credenciales directamente en el código.
+* Uso de variables de entorno para información sensible.
+* Control de versiones mediante Git.
+* Pruebas de los endpoints principales.
+* Documentación de la API.
+
+---
+
+# 32. Decisiones pendientes
+
+Antes de comenzar el desarrollo deberán definirse:
+
+1. Versión exacta de Oracle disponible.
+2. Forma de autenticación.
+3. Si se utilizarán procedimientos almacenados existentes.
+4. Módulos que utilizarán JDBC.
+5. Módulos que podrán utilizar JPA.
+6. Requerimientos exactos de generación de PDF.
+7. Ubicación y almacenamiento de documentos.
+8. Si el frontend será servido por Spring Boot o desplegado de forma independiente.
+9. Configuración de Docker para desarrollo.
+10. Configuración de conexión con la base institucional.
+
+Estas decisiones deberán realizarse antes de implementar los módulos que dependan de ellas.
+
+---
+
+# 33. Resumen de la arquitectura propuesta
+
+```text
+                    USUARIO
+                       │
+                       ▼
+              ┌─────────────────┐
+              │    FRONTEND     │
+              │                 │
+              │ HTML            │
+              │ CSS             │
+              │ JavaScript      │
+              │ Bootstrap       │
+              │ Font Awesome    │
+              └────────┬────────┘
+                       │
+                    HTTP/JSON
+                       │
+                       ▼
+              ┌─────────────────┐
+              │   SPRING BOOT   │
+              │                 │
+              │ REST Controller │
+              │       ↓         │
+              │    Service      │
+              │       ↓         │
+              │ Repository/DAO  │
+              └────────┬────────┘
+                       │
+                      JDBC
+                       │
+                       ▼
+              ┌─────────────────┐
+              │     ORACLE      │
+              │                 │
+              │ Datos           │
+              │ Consultas       │
+              │ Procedimientos  │
+              └─────────────────┘
+
+       Herramientas de soporte:
+
+       Git
+       Maven
+       Docker
+       Docker Compose
+       Postman
 ```
