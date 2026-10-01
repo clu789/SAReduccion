@@ -245,7 +245,7 @@ const LoginEstudiante = {
               rol: 'ASPIRANTE',
             };
 
-        const data = await Http.post('/auth/login', payload);
+        // const data = await Http.post('/auth/login', payload);
         // Redirigir a panel de estatus tras login exitoso
         window.location.href = 'panel-estatus.html';
       } catch (err) {
@@ -305,7 +305,13 @@ const PanelEstatus = {
     Spinner.show();
     try {
       // GET /api/solicitudes/mi-solicitud  →  solicitud activa del usuario en sesión
-      const solicitud = await Http.get('/solicitudes/mi-solicitud');
+      // const solicitud = await Http.get('/solicitudes/mi-solicitud');
+      const solicitud = {
+        estatus: 'PENDIENTE',
+        historial: [
+          { fecha: '2026-10-01', estatusNombre: 'PENDIENTE', estatus: 'PENDIENTE', comentario: 'Solicitud enviada' }
+        ]
+      };
       this.renderTimeline(solicitud);
       this.renderBadge(solicitud.estatus);
     } catch (err) {
@@ -377,7 +383,16 @@ const FormularioSolicitud = {
   async cargarFormulario() {
     Spinner.show();
     try {
-      const formulario = await Http.get('/formularios/activo');
+      // const formulario = await Http.get('/formularios/activo');
+      const formulario = {
+        preguntas: [
+          { idPregunta: 1, tipo: 'TEXT', pregunta: 'Nombre completo del trabajador del TecNM' },
+          { idPregunta: 2, tipo: 'TEXT', pregunta: 'Clave del trabajador' },
+          { idPregunta: 3, tipo: 'SELECT', pregunta: 'Parentesco con el trabajador', opciones: ['Hijo(a)', 'Cónyuge'] },
+          { idPregunta: 4, tipo: 'SELECT', pregunta: 'Tipo de solicitud', opciones: ['Inscripción', 'Reinscripción'] },
+          { idPregunta: 5, tipo: 'NUMBER', pregunta: 'Semestre a inscribir' }
+        ]
+      };
       this.renderPreguntas(formulario.preguntas || []);
     } catch (err) {
       Alerta.mostrar('alerta-formulario', 'error', 'No se pudo cargar el formulario. Intente más tarde.');
@@ -493,7 +508,8 @@ const FormularioSolicitud = {
 
     Spinner.show();
     try {
-      const resultado = await Http.post('/solicitudes', { respuestas });
+      // const resultado = await Http.post('/solicitudes', { respuestas });
+      const resultado = { idSolicitud: 'TEST-2026' };
       Alerta.mostrar('alerta-formulario', 'exito', `Solicitud enviada correctamente. Folio: ${resultado.idSolicitud}`);
       // Redirigir a panel de estatus
       setTimeout(() => { window.location.href = 'panel-estatus.html'; }, 2000);
