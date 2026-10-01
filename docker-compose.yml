@@ -1,0 +1,81 @@
+# ============================================================
+# docker-compose.yml
+# Entorno de desarrollo – SAReducción ITT
+#
+# Servicios:
+#   oracle-db  →  Base de datos Oracle XE 21c (desarrollo)
+#   backend    →  Spring Boot 2.7.18 / Java 8  (opcional)
+#
+# Uso rápido:
+#   Solo base de datos:      docker compose up oracle-db
+#   Todo el stack:           docker compose up
+#   Detener y limpiar:       docker compose down -v
+# ============================================================
+
+services:
+
+  # ────────────────────────────────────────────────────────────
+  # ORACLE XE 21c  (imagen ligera para desarrollo)
+  # Imagen: gvenzl/oracle-xe  →  gratuita, sin registro
+  # ────────────────────────────────────────────────────────────
+  oracle-db:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: sareduccion-oracle
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD:      ${ORACLE_PASSWORD}
+      ORACLE_DATABASE:      ${ORACLE_DATABASE}
+      APP_USER:             ${ORACLE_APP_USER}
+      APP_USER_PASSWORD:    ${ORACLE_APP_PASSWORD}
+    ports:
+      - "${ORACLE_PORT}:1521"      # JDBC  → localhost:1521
+    volumes:
+      # Persistencia de datos entre reinicios
+      - oracle_data:/opt/oracle/oradata
+      # Scripts SQL de inicialización (se ejecutan una sola vez)
+      - ./docker/init-db:/container-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'SELECT 1 FROM DUAL;' | sqlplus -s ${ORACLE_APP_USER}/${ORACLE_APP_PASSWORD}@localhost:1521/${ORACLE_DATABASE}"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s    # Oracle XE tarda en arrancar
+
+  # ────────────────────────────────────────────────────────────
+  # SPRING BOOT  (backend de la aplicación)
+  # Solo se levanta si hay un Dockerfile en la raíz del proyecto.
+  # Descomenta cuando el backend esté listo para correr en Docker.
+  # ────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sareduccion-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE:   ${SPRING_PROFILES_ACTIVE}
+      # Conexión a Oracle dentro de la red Docker
+      DB_URL:      jdbc:oracle:thin:@oracle-db:1521/${ORACLE_DATABASE}
+      DB_USER:     ${ORACLE_APP_USER}
+      DB_PASSWORD: ${ORACLE_APP_PASSWORD}
+    ports:
+      - "${APP_PORT}:8080"         # API REST → localhost:8080
+    depends_on:
+      oracle-db:
+        condition: service_healthy  # Espera a que Oracle esté listo
+    profiles:
+      - full-stack                  # Se activa con: docker compose --profile full-stack up
+
+# ────────────────────────────────────────────────────────────
+# VOLÚMENES
+# ────────────────────────────────────────────────────────────
+volumes:
+  oracle_data:
+    name: sareduccion_oracle_data
+
+# ────────────────────────────────────────────────────────────
+# RED
+# ────────────────────────────────────────────────────────────
+networks:
+  default:
+    name: sareduccion-net

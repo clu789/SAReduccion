@@ -1,0 +1,228 @@
+/* ============================================================
+   ESTILOS ESPECÍFICOS - Módulo Solicitante
+   Sistema de Reducción de Monto de Inscripción
+   ============================================================ */
+
+/* ── Login de Estudiante ── */
+.login-wrapper {
+  min-height: 100vh;
+  background: linear-gradient(145deg, #1a3a6b 0%, #2a5298 50%, #1a3a6b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-wrapper::before {
+  content: '';
+  position: absolute;
+  width: 500px; height: 500px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.04);
+  top: -150px; right: -150px;
+}
+
+.login-wrapper::after {
+  content: '';
+  position: absolute;
+  width: 350px; height: 350px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.04);
+  bottom: -100px; left: -100px;
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.3);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-card .login-logo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-card .login-logo img { max-height: 72px; }
+
+.login-card h1 {
+  text-align: center;
+  font-size: 1.15rem;
+  color: var(--itt-azul);
+  margin-bottom: 6px;
+}
+
+.login-card .login-subtitulo {
+  text-align: center;
+  font-size: .8rem;
+  color: var(--itt-texto-claro);
+  margin-bottom: 28px;
+}
+
+.tabs-tipo-usuario {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--itt-gris-borde);
+  margin-bottom: 24px;
+}
+
+.tab-tipo {
+  flex: 1;
+  padding: 9px 12px;
+  text-align: center;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #f0f0f0;
+  color: var(--itt-texto-claro);
+  border: none;
+  transition: background .2s, color .2s;
+}
+
+.tab-tipo.activo {
+  background: var(--itt-azul-medio);
+  color: #fff;
+}
+
+/* ── Panel de Estatus ── */
+.estatus-timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.estatus-timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--itt-gris-borde);
+}
+
+.estatus-item {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.estatus-item::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  top: 4px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--itt-gris-borde);
+  background: #fff;
+  z-index: 1;
+}
+
+.estatus-item.completado::before {
+  background: var(--itt-verde);
+  border-color: var(--itt-verde);
+}
+
+.estatus-item.activo::before {
+  background: var(--itt-azul-medio);
+  border-color: var(--itt-azul-medio);
+  box-shadow: 0 0 0 4px rgba(42,82,152,.2);
+}
+
+.estatus-item.rechazado::before {
+  background: var(--itt-rojo);
+  border-color: var(--itt-rojo);
+}
+
+.estatus-item-fecha {
+  font-size: .75rem;
+  color: var(--itt-texto-claro);
+  margin-bottom: 2px;
+}
+
+.estatus-item-titulo {
+  font-weight: 700;
+  font-size: .9rem;
+  color: var(--itt-texto);
+  margin-bottom: 4px;
+}
+
+.estatus-item-comentario {
+  background: #fff8e1;
+  border-left: 3px solid #f0b429;
+  padding: 8px 12px;
+  border-radius: 0 4px 4px 0;
+  font-size: .82rem;
+  color: #5a4000;
+  margin-top: 6px;
+}
+
+/* ── Formulario de Solicitud ── */
+.seccion-formulario {
+  background: #f8fafc;
+  border: 1px solid var(--itt-gris-borde);
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.seccion-formulario .seccion-titulo {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--itt-azul);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--itt-azul-claro);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Cuadro de información del alumno (readonly) */
+.info-alumno-card {
+  background: linear-gradient(135deg, #e8f0fc 0%, #dce8ff 100%);
+  border: 1px solid #b3c6f0;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.info-alumno-card .info-avatar {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--itt-azul-medio);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.info-alumno-card .info-datos { flex: 1; }
+.info-alumno-card .info-nombre {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--itt-azul);
+  margin-bottom: 4px;
+}
+
+.info-alumno-card .info-meta {
+  font-size: .82rem;
+  color: var(--itt-texto-claro);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.info-alumno-card .info-meta span {
+  display: flex; align-items: center; gap: 4px;
+}

@@ -1,0 +1,1 @@
+$("#pageLoader").css("display","block"); 

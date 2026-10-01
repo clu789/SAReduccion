@@ -1,0 +1,38 @@
+# ============================================================
+# .gitignore
+# SAReducción – Instituto Tecnológico de Toluca
+# ============================================================
+
+# ── Credenciales y configuración local ──────────────────────
+.env
+*.env.local
+
+# ── Maven ───────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+
+# ── IDE ─────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+.eclipse/
+*.project
+*.classpath
+*.settings/
+nbproject/
+
+# ── Docker ──────────────────────────────────────────────────
+# No ignorar docker-compose.yml (es parte del proyecto)
+# Sí ignorar overrides locales
+docker-compose.override.yml
+
+# ── OS ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── Logs ────────────────────────────────────────────────────
+*.log
+logs/

@@ -1,0 +1,120 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 7/09/2016, 09:23:32 AM
+    Author     : Cesar
+*/
+@media (min-width: 1200px) {
+  .container {
+    width: 1000px;
+  }
+}
+
+body {  
+    background-color: #EAEAEA;    
+}
+
+.portal-footer{
+    padding: 15px 0;
+    color: #999;
+    text-align: center;
+
+    border-top: 1px solid #e5e5e5;
+}
+
+.portal-footer p:last-child {    
+    margin-bottom: 0;         
+}
+
+
+table.tablesorter {	
+    font-size: 8pt;	
+    text-align: center;
+}
+table.tablesorter thead tr th{
+    border: 1px solid #FFF;
+    font-size: 8pt;
+    padding: 3.5px;
+    text-align: center;
+
+}
+table.tablesorter tbody td {
+    padding: 4px;
+
+}
+
+table tr.selected {
+    background-color: #A9D0F5;
+    color: blue;
+    vertical-align: middle;
+    padding: 1.5em;
+}
+table tr.selected:hover {
+    background-color: lightgray;
+    color: black;
+    vertical-align: middle;
+    padding: 1.5em;
+}
+
+.login-footer{
+  padding: 15px 0;
+  color: #999;
+  text-align: center;
+  
+  /*background-color: #f9f9f9;*/
+  border-top: 1px solid #e5e5e5;
+}
+
+.login-footer p:last-child {    
+    margin-bottom: 0;         
+}
+
+.input-xs {
+  height: 22px;
+  padding: 2px 5px;
+  font-size: 12px;
+  line-height: 1.5; 
+  border-radius: 3px;
+}
+
+.iconoError {
+    color:#B73C39;
+}
+.iconoCorrecto {
+    color:#4CAF50;
+}
+.iconoInfo {
+    color:#EC971F;
+}
+
+.filtroCheck input{
+    display: none;  /* Esconder el estilo original de checkbox */  
+}
+.filtroCheck .iconCheck {
+        /*Cuadro de Checkbox y posicionamiento Icono/Texto.*/
+    text-align: center;
+    display: inline-block;
+    background: #ffffff;
+    border: 1.3px solid;
+    border-color: #cac3a8 #f9f0c2 #f9f0c2 #cac3a8;
+    text-align: center;
+    font-size: .8em;
+    color: #3b3b3b;
+    margin: 0 .1em;
+    height: 1.5em;
+    width: 1.5em;
+    padding: 0.15em;
+    line-height: 1.1em;
+}
+
+.filtroCheck .iconCheck .fa { 
+ visibility: hidden; /* Unchecked */
+}
+.filtroCheck input:checked + .iconCheck .fa {
+ 
+  visibility: visible; /* Checked */
+}
+

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acceso Administrativo | SAReducción ITT</title>
+  <meta name="description" content="Acceso exclusivo para el personal administrativo de la Subdirección Académica del Instituto Tecnológico de Toluca." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="css/itt-base.css" />
+  <link rel="stylesheet" href="css/administrativo.css" />
+</head>
+<body id="pagina-login-admin">
+
+  <!-- ═══ SPINNER ═══ -->
+  <div id="spinner-overlay" class="spinner-overlay">
+    <div class="spinner-ring"></div>
+  </div>
+
+  <!-- ═══ LOGIN ADMIN WRAPPER ═══ -->
+  <div class="login-admin-wrapper">
+    <div class="login-admin-card">
+
+      <!-- Badge de área -->
+      <div style="text-align:center;margin-bottom:16px;">
+        <span class="badge-admin">
+          <i class="fa fa-shield"></i> Panel Administrativo
+        </span>
+      </div>
+
+      <!-- Logo ITT -->
+      <div style="text-align:center;margin-bottom:16px;">
+        <img src="img/logo.png" alt="Instituto Tecnológico de Toluca" style="max-height:70px;" />
+      </div>
+
+      <h1 style="text-align:center;font-size:1.1rem;margin-bottom:4px;color:var(--itt-azul);">SAReducción</h1>
+      <p style="text-align:center;font-size:.8rem;color:var(--itt-texto-claro);margin-bottom:24px;">
+        Subdirección Académica<br />
+        <strong>Instituto Tecnológico de Toluca</strong>
+      </p>
+
+      <!-- Alertas -->
+      <div id="alerta-login-admin"></div>
+
+      <!-- Formulario -->
+      <form id="form-login-admin" novalidate>
+        <div class="form-group">
+          <label for="usuario-admin">Usuario Administrativo <span class="requerido">*</span></label>
+          <div style="position:relative;">
+            <i class="fa fa-user" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
+            <input
+              type="text"
+              id="usuario-admin"
+              name="usuario-admin"
+              class="form-control-itt"
+              style="padding-left:34px;"
+              placeholder="ID de administrador"
+              autocomplete="username"
+              required
+            />
+          </div>
+          <span class="mensaje-error" id="usuario-admin-error"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="password-admin">Contraseña <span class="requerido">*</span></label>
+          <div style="position:relative;">
+            <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
+            <input
+              type="password"
+              id="password-admin"
+              name="password-admin"
+              class="form-control-itt"
+              style="padding-left:34px;"
+              placeholder="Contraseña"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <span class="mensaje-error" id="password-admin-error"></span>
+        </div>
+
+        <button type="submit" id="btn-login-admin" class="btn-itt btn-primario w-100" style="margin-top:12px;justify-content:center;">
+          <i class="fa fa-sign-in"></i> Acceder al Panel
+        </button>
+      </form>
+
+      <p style="text-align:center;margin-top:18px;font-size:.76rem;color:var(--itt-texto-claro);">
+        Acceso restringido a personal autorizado de la<br /><strong>Subdirección Académica</strong>.
+      </p>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
