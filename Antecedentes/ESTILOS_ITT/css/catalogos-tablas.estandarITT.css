@@ -1,0 +1,76 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 7/11/2016, 10:03:38 AM
+    Author     : lalo
+*/
+
+.tabla_margen{
+    border-collapse: separate; 
+    border: none;
+}
+
+.colSearch{
+    width:100%;
+}
+
+table.table-bordered.dataTable th.successTd,
+table.table-bordered.dataTable td.successTd {
+    border-style: none;
+    background-color: transparent;
+    vertical-align:middle;
+    cursor: default;
+}
+
+table.table-bordered.dataTable th.bordeTd,
+table.table-bordered.dataTable td.bordeTd{
+    border-width:1px 1px;
+}
+
+table.dataTable tbody tr.selected td.successTd {
+    background-color: transparent; 
+    background-color: white;
+}
+
+table.table-bordered.dataTable td.checkTd{
+    cursor: default;
+    vertical-align:middle;
+}
+
+.iconSuccess{
+    color: green;
+}
+
+.iconError{
+    color: darkred;
+}
+
+#messageLibTables{
+    display: none;
+    position: fixed;
+    top: 2%;
+    right: 2%;
+    z-index: 3000; 
+    width: 350px;
+    height: auto;
+    font-size: 1.18em;
+}
+
+#messageLibInfo{
+    display: none;
+    position: fixed;
+    top: 2%;
+    right: 2%;
+    z-index: 3000; 
+    width: 350px;
+    height: auto;
+    font-size: 1.18em;
+}
+
+/*.alert-warning{
+    background-color: #F7F7A0;
+    color: #B45F04;
+}*/

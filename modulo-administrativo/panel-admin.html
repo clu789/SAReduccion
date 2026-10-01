@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Administrativo | SAReducción ITT</title>
+  <meta name="description" content="Panel de gestión de solicitudes de reducción de monto de inscripción para la Subdirección Académica del Instituto Tecnológico de Toluca." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="css/itt-base.css" />
+  <link rel="stylesheet" href="css/administrativo.css" />
+</head>
+<body id="pagina-panel-admin">
+
+  <!-- ═══ SPINNER ═══ -->
+  <div id="spinner-overlay" class="spinner-overlay">
+    <div class="spinner-ring"></div>
+  </div>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="itt-header">
+    <div class="itt-header-top">
+      <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" style="max-height:54px;" />
+    </div>
+    <nav class="itt-navbar" aria-label="Navegación administrativa">
+      <ul class="itt-navbar-links">
+        <li><a href="panel-admin.html" class="activo"><i class="fa fa-tachometer"></i> Bandeja de Solicitudes</a></li>
+      </ul>
+      <div class="itt-navbar-user">
+        <span class="badge-admin" style="font-size:.72rem;padding:4px 10px;">
+          <i class="fa fa-shield"></i> Administrador
+        </span>
+        <i class="fa fa-user-circle"></i>
+        <span id="nombre-admin-nav">Subdirector</span>
+        <button class="btn-cerrar-sesion" onclick="window.location.href='login.html'">
+          <i class="fa fa-sign-out"></i> Salir
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
+  <main class="itt-main">
+    <h2><i class="fa fa-inbox" style="color:var(--itt-azul-claro);"></i> Bandeja de Solicitudes</h2>
+
+    <!-- ── Estadísticas ── -->
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-icono"><i class="fa fa-folder-open"></i></div>
+        <div class="stat-info">
+          <div class="stat-valor" id="stat-total">—</div>
+          <div class="stat-etiqueta">Total</div>
+        </div>
+      </div>
+      <div class="stat-card pendiente">
+        <div class="stat-icono"><i class="fa fa-clock-o"></i></div>
+        <div class="stat-info">
+          <div class="stat-valor" id="stat-pendiente">—</div>
+          <div class="stat-etiqueta">Pendientes</div>
+        </div>
+      </div>
+      <div class="stat-card correccion">
+        <div class="stat-icono"><i class="fa fa-pencil"></i></div>
+        <div class="stat-info">
+          <div class="stat-valor" id="stat-correccion">—</div>
+          <div class="stat-etiqueta">En corrección</div>
+        </div>
+      </div>
+      <div class="stat-card aprobado">
+        <div class="stat-icono"><i class="fa fa-check-circle"></i></div>
+        <div class="stat-info">
+          <div class="stat-valor" id="stat-aprobado">—</div>
+          <div class="stat-etiqueta">Aprobadas</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Alertas bandeja ── -->
+    <div id="alerta-bandeja"></div>
+
+    <!-- ── Filtros ── -->
+    <div class="bandeja-filtros">
+      <span style="font-weight:600;font-size:.85rem;color:var(--itt-texto-claro);">Filtrar:</span>
+      <button class="filtro-chip todos activo"   data-estatus="todos"       id="filtro-todos">Todas</button>
+      <button class="filtro-chip pendiente"       data-estatus="PENDIENTE"  id="filtro-pendiente">Pendientes</button>
+      <button class="filtro-chip correccion"      data-estatus="CORRECCION" id="filtro-correccion">En corrección</button>
+      <button class="filtro-chip aprobado"        data-estatus="APROBADO"   id="filtro-aprobado">Aprobadas</button>
+
+      <!-- Búsqueda rápida -->
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <div style="position:relative;">
+          <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
+          <input
+            type="text"
+            id="buscador"
+            class="form-control-itt"
+            style="padding-left:32px;width:200px;height:34px;"
+            placeholder="Buscar folio o nombre..."
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tabla de solicitudes ── -->
+    <div class="card-itt">
+      <div class="card-itt-header">
+        <i class="fa fa-list"></i> Solicitudes
+      </div>
+      <div class="card-itt-body" style="padding:0;">
+        <div style="overflow-x:auto;">
+          <table class="tabla-itt" id="tabla-solicitudes">
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Solicitante</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+                <th>Estatus</th>
+                <th style="width:70px;">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Renderizado por PanelAdmin.renderTabla() -->
+              <tr>
+                <td colspan="6" class="text-center" style="padding:32px;color:var(--itt-texto-claro);">
+                  <i class="fa fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:8px;"></i>
+                  Cargando solicitudes...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══ MODAL: DETALLE DE SOLICITUD ═══ -->
+  <div id="modal-detalle" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-detalle-titulo">
+    <div class="modal-box" style="max-width:680px;">
+      <div class="modal-header">
+        <h3 id="modal-detalle-titulo"><i class="fa fa-file-text-o"></i> Detalle de Solicitud</h3>
+        <button class="modal-cerrar" onclick="Modal.cerrar('modal-detalle')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+
+        <!-- Badge de estatus -->
+        <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+          <span style="font-weight:700;color:var(--itt-texto-claro);font-size:.8rem;">ESTATUS:</span>
+          <span id="det-badge-estatus" class="badge-estatus badge-pendiente">—</span>
+        </div>
+
+        <!-- Datos generales -->
+        <div class="detalle-grid">
+          <div class="detalle-campo">
+            <label>Folio</label>
+            <div class="valor" id="det-folio">—</div>
+          </div>
+          <div class="detalle-campo">
+            <label>Solicitante</label>
+            <div class="valor" id="det-nombre">—</div>
+          </div>
+          <div class="detalle-campo">
+            <label>Tipo</label>
+            <div class="valor" id="det-tipo">—</div>
+          </div>
+          <div class="detalle-campo">
+            <label>Fecha de solicitud</label>
+            <div class="valor" id="det-fecha">—</div>
+          </div>
+        </div>
+
+        <!-- Respuestas del formulario -->
+        <div class="card-itt" style="margin-bottom:16px;">
+          <div class="card-itt-header" style="font-size:.85rem;">
+            <i class="fa fa-list-alt"></i> Respuestas del Formulario
+          </div>
+          <div class="card-itt-body">
+            <div id="lista-respuestas" class="detalle-grid">
+              <p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historial de cambios -->
+        <div class="card-itt" style="margin-bottom:16px;">
+          <div class="card-itt-header" style="font-size:.85rem;">
+            <i class="fa fa-history"></i> Historial de Cambios
+          </div>
+          <div class="card-itt-body" style="padding:12px 16px;">
+            <ul id="historial-lista" class="historial-lista">
+              <li style="color:var(--itt-texto-claro);font-style:italic;padding:8px 0;">Sin historial registrado.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Área de decisión -->
+        <div class="decision-box" id="area-decision">
+          <div class="decision-titulo">
+            <i class="fa fa-gavel"></i> Tomar Decisión
+          </div>
+
+          <!-- Alerta de la decisión -->
+          <div id="alerta-decision"></div>
+
+          <!-- Comentario para corrección -->
+          <div class="form-group" id="grupo-comentario">
+            <label for="comentario-correccion">
+              Comentario para el solicitante
+              <span style="font-weight:400;color:var(--itt-texto-claro);">(requerido al solicitar corrección)</span>
+            </label>
+            <textarea
+              id="comentario-correccion"
+              name="comentario_correccion"
+              class="form-control-itt"
+              rows="3"
+              placeholder="Indique al solicitante qué debe corregir..."
+            ></textarea>
+          </div>
+
+          <div class="decision-acciones">
+            <button type="button" id="btn-aprobar" class="btn-aprobar" onclick="PanelAdmin.aprobar()">
+              <i class="fa fa-check"></i> Aprobar Solicitud
+            </button>
+            <button type="button" id="btn-rechazar" class="btn-rechazar" onclick="PanelAdmin.solicitarCorreccion()">
+              <i class="fa fa-pencil"></i> Solicitar Corrección
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-itt btn-secundario" onclick="Modal.cerrar('modal-detalle')">
+          <i class="fa fa-times"></i> Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="itt-footer">
+    <p>© <span id="year"></span> Instituto Tecnológico de Toluca – Tecnológico Nacional de México</p>
+    <p>Subdirección Académica · Sistema de Reducción de Monto de Inscripción</p>
+  </footer>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+/* ============================================================
+   ESTILOS ESPECÍFICOS - Módulo Administrativo
+   Sistema de Reducción de Monto de Inscripción
+   ============================================================ */
+
+/* ── Login de Administrador ── */
+.login-admin-wrapper {
+  min-height: 100vh;
+  background: linear-gradient(145deg, #0f2040 0%, #1a3a6b 40%, #b73c39 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-admin-wrapper::before {
+  content: '';
+  position: absolute;
+  width: 450px; height: 450px;
+  border-radius: 50%;
+  background: rgba(183,60,57,.15);
+  top: -120px; right: -100px;
+}
+
+.login-admin-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.4);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-admin-card .badge-admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--itt-azul) 0%, var(--itt-azul-medio) 100%);
+  color: #fff;
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* ── Dashboard / Stats Cards ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--itt-blanco);
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: var(--sombra-card);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-left: 4px solid var(--itt-gris-borde);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.14);
+}
+
+.stat-card.pendiente  { border-color: #ffc107; }
+.stat-card.correccion { border-color: var(--itt-naranja); }
+.stat-card.aprobado   { border-color: var(--itt-verde); }
+.stat-card.total      { border-color: var(--itt-azul-claro); }
+
+.stat-icono {
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.stat-card.pendiente  .stat-icono { background: #fff8e1; color: #e6a800; }
+.stat-card.correccion .stat-icono { background: #fff0e0; color: var(--itt-naranja); }
+.stat-card.aprobado   .stat-icono { background: #eaf7ee; color: var(--itt-verde); }
+.stat-card.total      .stat-icono { background: #e8f4fd; color: var(--itt-azul-medio); }
+
+.stat-info .stat-valor {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--itt-azul);
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+.stat-info .stat-etiqueta {
+  font-size: .78rem;
+  color: var(--itt-texto-claro);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+/* ── Panel de Bandeja ── */
+.bandeja-filtros {
+  background: var(--itt-blanco);
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--sombra-card);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.filtro-chip {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all var(--transition);
+}
+
+.filtro-chip.todos        { background: var(--itt-azul-medio); color: #fff; }
+.filtro-chip.pendiente    { background: #fff8e1; color: #856404; border-color: #ffc107; }
+.filtro-chip.correccion   { background: #fff0e0; color: #8a3e00; border-color: var(--itt-naranja); }
+.filtro-chip.aprobado     { background: #d4edda; color: #155724; border-color: var(--itt-verde); }
+
+.filtro-chip:hover,
+.filtro-chip.activo {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0,0,0,.12);
+}
+
+/* ── Detalle de Solicitud (admin) ── */
+.detalle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 600px) { .detalle-grid { grid-template-columns: 1fr; } }
+
+.detalle-campo label {
+  display: block;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--itt-texto-claro);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 3px;
+}
+
+.detalle-campo .valor {
+  font-size: .9rem;
+  color: var(--itt-texto);
+  font-weight: 500;
+}
+
+/* ── Área de Decisión (aprobar / rechazar) ── */
+.decision-box {
+  background: #f8fafc;
+  border: 1px solid var(--itt-gris-borde);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.decision-box .decision-titulo {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--itt-azul);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.decision-acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-aprobar {
+  background: linear-gradient(135deg, #43a860 0%, var(--itt-verde) 100%);
+  color: #fff;
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--radio-btn);
+  font-weight: 700;
+  font-size: .9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: filter var(--transition), transform var(--transition);
+}
+.btn-aprobar:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+.btn-rechazar {
+  background: linear-gradient(135deg, #c94040 0%, var(--itt-rojo) 100%);
+  color: #fff;
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--radio-btn);
+  font-weight: 700;
+  font-size: .9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: filter var(--transition), transform var(--transition);
+}
+.btn-rechazar:hover { filter: brightness(1.08); transform: translateY(-1px); }
+
+/* ── Historial de cambios ── */
+.historial-lista { list-style: none; padding: 0; margin: 0; }
+
+.historial-item {
+  display: flex;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.historial-item:last-child { border-bottom: none; }
+
+.historial-icono {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .95rem;
+  flex-shrink: 0;
+}
+
+.historial-icono.pendiente  { background: #fff8e1; color: #e6a800; }
+.historial-icono.aprobado   { background: #eaf7ee; color: var(--itt-verde); }
+.historial-icono.rechazado  { background: #fdecea; color: var(--itt-rojo); }
+.historial-icono.correccion { background: #fff0e0; color: var(--itt-naranja); }
+
+.historial-info .hist-titulo {
+  font-weight: 700;
+  font-size: .88rem;
+  margin-bottom: 2px;
+}
+
+.historial-info .hist-meta {
+  font-size: .76rem;
+  color: var(--itt-texto-claro);
+}
+
+.historial-info .hist-comentario {
+  margin-top: 6px;
+  font-size: .82rem;
+  color: #5a4000;
+  background: #fff8e1;
+  border-left: 3px solid #f0b429;
+  padding: 6px 10px;
+  border-radius: 0 4px 4px 0;
+}

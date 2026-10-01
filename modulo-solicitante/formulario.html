@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Formulario de Solicitud | SAReducción ITT</title>
+  <meta name="description" content="Formulario para capturar la solicitud de reducción de monto de inscripción en el Instituto Tecnológico de Toluca." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="css/itt-base.css" />
+  <link rel="stylesheet" href="css/solicitante.css" />
+</head>
+<body id="pagina-formulario">
+
+  <!-- ═══ SPINNER ═══ -->
+  <div id="spinner-overlay" class="spinner-overlay">
+    <div class="spinner-ring"></div>
+  </div>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="itt-header">
+    <div class="itt-header-top">
+      <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" style="max-height:54px;" />
+    </div>
+    <nav class="itt-navbar" aria-label="Navegación principal">
+      <ul class="itt-navbar-links">
+        <li><a href="panel-estatus.html"><i class="fa fa-tachometer"></i> Mi Solicitud</a></li>
+        <li><a href="formulario.html" class="activo"><i class="fa fa-file-text"></i> Nueva Solicitud</a></li>
+      </ul>
+      <div class="itt-navbar-user">
+        <i class="fa fa-user-circle"></i>
+        <span id="nombre-usuario-nav">Usuario</span>
+        <button class="btn-cerrar-sesion" onclick="window.location.href='login.html'">
+          <i class="fa fa-sign-out"></i> Salir
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
+  <main class="itt-main">
+    <h2><i class="fa fa-file-text-o" style="color:var(--itt-azul-claro);"></i> Formulario de Solicitud</h2>
+
+    <!-- Alertas globales del formulario -->
+    <div id="alerta-formulario"></div>
+
+    <!-- Tarjeta de datos del alumno (readonly) -->
+    <div class="info-alumno-card">
+      <div class="info-avatar"><i class="fa fa-user"></i></div>
+      <div class="info-datos">
+        <div class="info-nombre" id="info-nombre">Nombre del Solicitante</div>
+        <div class="info-meta">
+          <span><i class="fa fa-id-card"></i> <span id="info-control">Número de Control</span></span>
+          <span><i class="fa fa-graduation-cap"></i> <span id="info-semestre">—</span> semestre</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Stepper ── -->
+    <div class="stepper" id="stepper" aria-label="Pasos del formulario">
+      <div class="step activo">
+        <div class="step-numero">1</div>
+        <div class="step-label">Datos del Trabajador</div>
+      </div>
+      <div class="step-linea"></div>
+      <div class="step">
+        <div class="step-numero">2</div>
+        <div class="step-label">Información Adicional</div>
+      </div>
+      <div class="step-linea"></div>
+      <div class="step">
+        <div class="step-numero">3</div>
+        <div class="step-label">Confirmación</div>
+      </div>
+    </div>
+
+    <!-- ── Formulario con pasos ── -->
+    <form id="form-solicitud" novalidate>
+
+      <!-- ── PASO 1: Datos del trabajador ── -->
+      <div id="paso-1" class="paso-contenido">
+        <div class="card-itt">
+          <div class="card-itt-header">
+            <i class="fa fa-briefcase"></i> Paso 1 – Datos del Trabajador
+          </div>
+          <div class="card-itt-body">
+            <div class="alerta alerta-info">
+              <i class="fa fa-info-circle"></i>
+              <span>Complete los datos del trabajador del TecNM o sistema homologado que respalda su solicitud.</span>
+            </div>
+            <!-- Las preguntas dinámicas del paso 1 se inyectan aquí por JS -->
+            <div id="contenedor-preguntas">
+              <!-- Estructura estática de ejemplo mientras la API no esté disponible -->
+              <div class="seccion-formulario">
+                <div class="seccion-titulo"><i class="fa fa-user"></i> Datos del Trabajador</div>
+                <div class="form-group">
+                  <label for="nombre-trabajador">Nombre completo del trabajador <span class="requerido">*</span></label>
+                  <input type="text" id="nombre-trabajador" name="nombre_trabajador" class="form-control-itt" placeholder="Nombre completo" required />
+                  <span class="mensaje-error" id="nombre-trabajador-error"></span>
+                </div>
+                <div class="form-group">
+                  <label for="clave-trabajador">Clave del trabajador <span class="requerido">*</span></label>
+                  <input type="text" id="clave-trabajador" name="clave_trabajador" class="form-control-itt" placeholder="Clave institucional" required />
+                  <span class="mensaje-error" id="clave-trabajador-error"></span>
+                </div>
+                <div class="form-group">
+                  <label for="parentesco">Parentesco con el trabajador <span class="requerido">*</span></label>
+                  <select id="parentesco" name="parentesco" class="form-control-itt" required>
+                    <option value="">-- Seleccione --</option>
+                    <option value="HIJO">Hijo(a)</option>
+                    <option value="CONYUGUE">Cónyuge</option>
+                  </select>
+                  <span class="mensaje-error" id="parentesco-error"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PASO 2: Información adicional ── -->
+      <div id="paso-2" class="paso-contenido hidden">
+        <div class="card-itt">
+          <div class="card-itt-header">
+            <i class="fa fa-info-circle"></i> Paso 2 – Información Adicional
+          </div>
+          <div class="card-itt-body">
+            <div class="seccion-formulario">
+              <div class="seccion-titulo"><i class="fa fa-folder-open"></i> Documentación</div>
+              <div class="form-group">
+                <label for="tipo-solicitud">Tipo de solicitud <span class="requerido">*</span></label>
+                <select id="tipo-solicitud" name="tipo_solicitud" class="form-control-itt" required>
+                  <option value="">-- Seleccione --</option>
+                  <option value="INSCRIPCION">Inscripción (Nuevo ingreso)</option>
+                  <option value="REINSCRIPCION">Reinscripción</option>
+                  <option value="RESIDENCIA">Residencia Profesional</option>
+                </select>
+                <span class="mensaje-error" id="tipo-solicitud-error"></span>
+              </div>
+              <div class="form-group">
+                <label for="observaciones">Observaciones adicionales</label>
+                <textarea id="observaciones" name="observaciones" class="form-control-itt" rows="3" placeholder="Información adicional relevante (opcional)"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PASO 3: Confirmación ── -->
+      <div id="paso-3" class="paso-contenido hidden">
+        <div class="card-itt">
+          <div class="card-itt-header">
+            <i class="fa fa-check-circle"></i> Paso 3 – Confirmar y Enviar
+          </div>
+          <div class="card-itt-body">
+            <div class="alerta alerta-advertencia">
+              <i class="fa fa-exclamation-triangle"></i>
+              <span>Verifique que toda la información ingresada sea correcta antes de enviar. Una vez enviada, la solicitud quedará en estado <strong>PENDIENTE</strong> de revisión.</span>
+            </div>
+            <div id="resumen-solicitud" style="margin-top:16px;">
+              <!-- Resumen dinámico generado por JS -->
+              <p style="color:var(--itt-texto-claro);font-style:italic;">El resumen se mostrará al llegar a este paso.</p>
+            </div>
+            <div style="margin-top:16px;">
+              <label class="d-flex align-center gap-10" style="font-weight:500;cursor:pointer;">
+                <input type="checkbox" id="confirmacion-datos" name="confirmacion_datos" required />
+                Confirmo que los datos ingresados son correctos y completos.
+              </label>
+            </div>
+            <div id="alerta-confirmacion" style="margin-top:12px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Botones de navegación ── -->
+      <div class="d-flex justify-between" style="margin-top:16px;flex-wrap:wrap;gap:10px;">
+        <button type="button" id="btn-anterior" class="btn-itt btn-secundario" style="display:none;">
+          <i class="fa fa-arrow-left"></i> Anterior
+        </button>
+        <div style="margin-left:auto;display:flex;gap:10px;">
+          <button type="button" id="btn-siguiente" class="btn-itt btn-primario">
+            Siguiente <i class="fa fa-arrow-right"></i>
+          </button>
+          <button type="button" id="btn-enviar" class="btn-itt btn-agregar" style="display:none;">
+            <i class="fa fa-paper-plane"></i> Enviar Solicitud
+          </button>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="itt-footer">
+    <p>© <span id="year"></span> Instituto Tecnológico de Toluca – Tecnológico Nacional de México</p>
+    <p>Subdirección Académica · Sistema de Reducción de Monto de Inscripción</p>
+  </footer>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 21/09/2016, 11:09:29 AM
+    Author     : Cesar
+*/
+
+
+/*  ESTILO PARA BOTON DE BORRADO */
+
+
+.btn-borrar { 
+  color: #FFFFFF; 
+  background-color: #B73C39; 
+  border-color: #B73C39; 
+} 
+ 
+.btn-borrar:hover, 
+.btn-borrar:focus, 
+.btn-borrar:active, 
+.btn-borrar.active, 
+.open .dropdown-toggle.btn-borrar { 
+  color: #FFFFFF!important; 
+  background-color: #CD6D6B; 
+  border-color: #B73C39; 
+} 
+ 
+.btn-borrar:active, 
+.btn-borrar.active, 
+.open .dropdown-toggle.btn-borrar {
+  color: #FFFFFF!important; 
+  background-image: none; 
+} 
+ 
+.btn-borrar.disabled, 
+.btn-borrar[disabled], 
+fieldset[disabled] .btn-borrar, 
+.btn-borrar.disabled:hover, 
+.btn-borrar[disabled]:hover, 
+fieldset[disabled] .btn-borrar:hover, 
+.btn-borrar.disabled:focus, 
+.btn-borrar[disabled]:focus, 
+fieldset[disabled] .btn-borrar:focus, 
+.btn-borrar.disabled:active, 
+.btn-borrar[disabled]:active, 
+fieldset[disabled] .btn-borrar:active, 
+.btn-borrar.disabled.active, 
+.btn-borrar[disabled].active, 
+fieldset[disabled] .btn-borrar.active { 
+  background-color: #B73C39; 
+  border-color: #B73C39; 
+} 
+ 
+.btn-borrar .badge { 
+  color: #B73C39; 
+  background-color: #FFFFFF; 
+}
+
+
+
+/*  ESTILO PARA BOTON DE EDITADO */
+
+.btn-editar { 
+  color: #ffffff; 
+  background-color: #E5673A; 
+  border-color: #E5673A; 
+} 
+ 
+.btn-editar:hover, 
+.btn-editar:focus, 
+.btn-editar:active, 
+.btn-editar.active, 
+.open .dropdown-toggle.btn-editar { 
+  color: #ffffff!important; 
+  background-color: #E48C6C; 
+  border-color: #E5673A; 
+} 
+ 
+.btn-editar:active, 
+.btn-editar.active, 
+.open .dropdown-toggle.btn-editar { 
+  color: #FFFFFF!important; 
+  background-image: none; 
+} 
+ 
+.btn-editar.disabled, 
+.btn-editar[disabled], 
+fieldset[disabled] .btn-editar, 
+.btn-editar.disabled:hover, 
+.btn-editar[disabled]:hover, 
+fieldset[disabled] .btn-editar:hover, 
+.btn-editar.disabled:focus, 
+.btn-editar[disabled]:focus, 
+fieldset[disabled] .btn-editar:focus, 
+.btn-editar.disabled:active, 
+.btn-editar[disabled]:active, 
+fieldset[disabled] .btn-editar:active, 
+.btn-editar.disabled.active, 
+.btn-editar[disabled].active, 
+fieldset[disabled] .btn-editar.active { 
+  background-color: #E5673A; 
+  border-color: #E5673A; 
+} 
+ 
+.btn-editar .badge { 
+  color: #E5673A; 
+  background-color: #ffffff; 
+}
+
+
+
+
+/*  ESTILO PARA BOTON DE GUARDADO */
+
+.btn-agregar { 
+  color: #ffffff; 
+  background-color: #55B77A; 
+  border-color: #55B77A; 
+} 
+ 
+.btn-agregar:hover, 
+.btn-agregar:focus, 
+.btn-agregar:active, 
+.btn-agregar.active, 
+.open .dropdown-toggle.btn-agregar { 
+  color: #ffffff!important; 
+  background-color: #7ECD9C; 
+  border-color: #55B77A; 
+} 
+ 
+.btn-agregar:active, 
+.btn-agregar.active, 
+.open .dropdown-toggle.btn-agregar { 
+  color: #ffffff!important; 
+  background-image: none; 
+} 
+ 
+.btn-agregar.disabled, 
+.btn-agregar[disabled], 
+fieldset[disabled] .btn-agregar, 
+.btn-agregar.disabled:hover, 
+.btn-agregar[disabled]:hover, 
+fieldset[disabled] .btn-agregar:hover, 
+.btn-agregar.disabled:focus, 
+.btn-agregar[disabled]:focus, 
+fieldset[disabled] .btn-agregar:focus, 
+.btn-agregar.disabled:active, 
+.btn-agregar[disabled]:active, 
+fieldset[disabled] .btn-agregar:active, 
+.btn-agregar.disabled.active, 
+.btn-agregar[disabled].active, 
+fieldset[disabled] .btn-agregar.active { 
+  background-color: #55B77A; 
+  border-color: #55B77A; 
+} 
+ 
+.btn-agregar .badge { 
+  color: #55B77A; 
+  background-color: #ffffff; 
+}

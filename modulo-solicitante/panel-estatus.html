@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estado de Mi Solicitud | SAReducción ITT</title>
+  <meta name="description" content="Consulta el estado actual de tu solicitud de reducción de monto de inscripción en el Instituto Tecnológico de Toluca." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="css/itt-base.css" />
+  <link rel="stylesheet" href="css/solicitante.css" />
+</head>
+<body id="pagina-panel-estatus">
+
+  <!-- ═══ SPINNER ═══ -->
+  <div id="spinner-overlay" class="spinner-overlay">
+    <div class="spinner-ring"></div>
+  </div>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="itt-header">
+    <div class="itt-header-top">
+      <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" style="max-height:54px;" />
+    </div>
+    <nav class="itt-navbar" aria-label="Navegación principal">
+      <ul class="itt-navbar-links">
+        <li><a href="panel-estatus.html" class="activo"><i class="fa fa-tachometer"></i> Mi Solicitud</a></li>
+        <li><a href="formulario.html"><i class="fa fa-file-text"></i> Nueva Solicitud</a></li>
+      </ul>
+      <div class="itt-navbar-user">
+        <i class="fa fa-user-circle"></i>
+        <span id="nombre-usuario-nav">Usuario</span>
+        <button class="btn-cerrar-sesion" onclick="window.location.href='login.html'">
+          <i class="fa fa-sign-out"></i> Salir
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
+  <main class="itt-main">
+    <h2><i class="fa fa-list-alt" style="color:var(--itt-azul-claro);"></i> Estado de Mi Solicitud</h2>
+
+    <!-- Alertas -->
+    <div id="alerta-estatus"></div>
+
+    <!-- Tarjeta de información del alumno -->
+    <div class="info-alumno-card">
+      <div class="info-avatar"><i class="fa fa-user"></i></div>
+      <div class="info-datos">
+        <div class="info-nombre" id="info-nombre">Cargando...</div>
+        <div class="info-meta">
+          <span><i class="fa fa-id-card"></i> <span id="info-control">—</span></span>
+          <span><i class="fa fa-graduation-cap"></i> <span id="info-semestre">—</span> semestre</span>
+        </div>
+      </div>
+      <div style="margin-left:auto;align-self:center;">
+        <span id="badge-estatus-actual" class="badge-estatus badge-pendiente">Cargando...</span>
+      </div>
+    </div>
+
+    <!-- Folio actual -->
+    <div class="card-itt mb-24">
+      <div class="card-itt-header">
+        <i class="fa fa-file-text-o"></i> Información de la Solicitud
+      </div>
+      <div class="card-itt-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;">
+          <div>
+            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Folio</div>
+            <div id="info-folio" style="font-weight:700;font-size:1rem;color:var(--itt-azul);">—</div>
+          </div>
+          <div>
+            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Fecha de Solicitud</div>
+            <div id="info-fecha-solicitud" style="font-weight:500;">—</div>
+          </div>
+          <div>
+            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Última Actualización</div>
+            <div id="info-fecha-actualizacion" style="font-weight:500;">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline de estatus -->
+    <div class="card-itt">
+      <div class="card-itt-header">
+        <i class="fa fa-history"></i> Historial del Trámite
+      </div>
+      <div class="card-itt-body">
+        <div id="estatus-timeline" class="estatus-timeline">
+          <!-- Renderizado por JS -->
+          <div class="estatus-item activo">
+            <div class="estatus-item-fecha">—</div>
+            <div class="estatus-item-titulo">Cargando historial...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acciones disponibles para el alumno -->
+    <div class="card-itt" id="seccion-acciones" style="display:none;">
+      <div class="card-itt-header">
+        <i class="fa fa-wrench"></i> Acciones Disponibles
+      </div>
+      <div class="card-itt-body">
+        <div class="alerta alerta-advertencia">
+          <i class="fa fa-exclamation-triangle"></i>
+          <span>Su solicitud requiere corrección. Por favor revise los comentarios del administrador y actualice su información.</span>
+        </div>
+        <div style="margin-top:12px;">
+          <a href="formulario.html" class="btn-itt btn-editar">
+            <i class="fa fa-pencil"></i> Corregir Solicitud
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="itt-footer">
+    <p>© <span id="year"></span> Instituto Tecnológico de Toluca – Tecnológico Nacional de México</p>
+    <p>Subdirección Académica · Sistema de Reducción de Monto de Inscripción</p>
+  </footer>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="js/app.js"></script>
+</body>
+</html>
