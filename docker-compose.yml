@@ -66,6 +66,23 @@ services:
     profiles:
       - full-stack                  # Se activa con: docker compose --profile full-stack up
 
+  # ────────────────────────────────────────────────────────────
+  # FRONTEND (Nginx)
+  # Sirve los archivos HTML, CSS y JS estáticos
+  # ────────────────────────────────────────────────────────────
+  frontend:
+    image: nginx:alpine
+    container_name: sareduccion-frontend
+    restart: unless-stopped
+    ports:
+      - "8081:80"                    # Acceso al frontend por el puerto 8081 (evita conflicto con XAMPP)
+    volumes:
+      # Montamos las carpetas de los módulos en Nginx
+      - ./modulo-administrativo:/usr/share/nginx/html/administrativo:ro
+      - ./modulo-solicitante:/usr/share/nginx/html/solicitante:ro
+      # Archivo de configuración de Nginx (Reverse Proxy y CORS)
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
 # ────────────────────────────────────────────────────────────
 # VOLÚMENES
 # ────────────────────────────────────────────────────────────
