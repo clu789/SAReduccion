@@ -1,813 +1,258 @@
-# Servicio Administrativo de Reducción del Monto de Inscripción
+# SAReduccion
 
-Aplicación web del Instituto Tecnológico de Toluca destinada a gestionar el proceso de solicitud y consulta relacionado con el apoyo para inscripción y reinscripción de hijos y/o cónyuge de trabajadores del TecNM y sistemas homologados.
+Sistema Administrativo de Reduccion del monto de inscripcion del Instituto Tecnologico de Toluca.
 
-El proyecto surge como una evolución tecnológica del sistema anterior, reemplazando la arquitectura basada en Java EE, JSP, Servlets, Apache Ant y Payara Server por una arquitectura basada en Spring Boot y una API REST.
+El proyecto administra solicitudes de reduccion para estudiantes de reinscripcion y aspirantes de nuevo ingreso. Actualmente contiene dos modulos frontend estaticos, un backend Spring Boot en preparacion y un entorno Docker para Oracle, Nginx y el backend.
 
----
+## 1. Tecnologias confirmadas
 
-# 1. Descripción del proyecto
+| Area | Tecnologia | Uso actual |
+| --- | --- | --- |
+| Lenguaje backend | Java 8 | Version configurada en `pom.xml` y Dockerfile. |
+| Framework backend | Spring Boot 2.7.18 | Aplicacion backend y API REST. |
+| API web | Spring Web | Dependencia `spring-boot-starter-web`. |
+| Acceso a datos | Spring JDBC | Dependencia `spring-boot-starter-jdbc`. |
+| Driver de base de datos | Oracle JDBC `ojdbc8` | Conexion de Java con Oracle. |
+| Base de datos | Oracle XE 21c Slim | Servicio `oracle-db` para desarrollo. |
+| Frontend | HTML5 | Paginas de los modulos administrativo y solicitante. |
+| Estilos | CSS3 | Hojas de estilo propias de cada modulo. |
+| JavaScript | JavaScript ES6+ | Interaccion, validaciones y peticiones `fetch()`. |
+| Iconos | Font Awesome 4.7 por CDN | Iconos usados en las paginas HTML. |
+| Servidor frontend | Nginx Alpine | Sirve los archivos estaticos y hace proxy de `/api/`. |
+| Construccion | Apache Maven 3.8.8 | Descarga dependencias, compila y crea el JAR. |
+| Contenedores | Docker | Empaqueta y ejecuta servicios aislados. |
+| Orquestacion local | Docker Compose | Levanta Oracle, backend y frontend. |
+| Utilidad Java | Lombok | Reduce codigo repetitivo en las clases Java. |
+| Pruebas Java | Spring Boot Test | Dependencia disponible para pruebas. |
+| Control de versiones | Git | Repositorio del proyecto. |
 
-El sistema permitirá gestionar digitalmente el proceso administrativo relacionado con las solicitudes de apoyo para inscripción y reinscripción.
+## 2. Herramientas del proyecto
 
-De acuerdo con la convocatoria, el proceso contempla la captura en línea de la solicitud y la presentación posterior de documentación. Para alumnos de reinscripción y residencia profesional se contempla, entre otros documentos, el kardex vigente del estudiante y documentación relacionada con el trabajador.
+- **Maven:** administra las dependencias y construye el backend desde `pom.xml`.
+- **Docker Compose:** coordina los servicios definidos en `docker-compose.yml`.
+- **Dockerfile:** construye el backend en dos etapas: compilacion con Maven y ejecucion con Java Runtime.
+- **Oracle SQL:** los scripts de `docker/init-db/` crean el esquema y los datos iniciales.
+- **Nginx:** sirve los modulos estaticos y redirige las peticiones `/api/` al backend.
+- **Git:** registra los cambios del codigo y la configuracion.
 
-El sistema deberá permitir, de acuerdo con el alcance definido para el proyecto:
+Postman, Spring Security, Spring Data JPA, JasperReports y Spring Validation no estan configurados actualmente en `pom.xml`. Pueden incorporarse despues si el alcance los requiere, pero no se documentan como tecnologias activas.
 
-* Captura de solicitudes.
-* Consulta de información del alumno.
-* Consulta del estado de una solicitud.
-* Registro y validación de información.
-* Gestión de documentos requeridos.
-* Consulta de información administrativa.
-* Generación de documentos o comprobantes cuando sea necesario.
-* Comunicación entre frontend y backend mediante una API REST.
-
----
-
-# 2. Objetivos tecnológicos
-
-La nueva implementación tiene como objetivos:
-
-1. Sustituir la arquitectura Java EE utilizada anteriormente.
-2. Eliminar la dependencia de Payara Server como servidor de aplicaciones.
-3. Utilizar Spring Boot como plataforma principal del backend.
-4. Exponer las operaciones del sistema mediante una API REST.
-5. Mantener compatibilidad con Java 8.
-6. Mantener Oracle como sistema gestor de base de datos mientras la aplicación dependa de la infraestructura institucional existente.
-7. Separar las responsabilidades del backend mediante una arquitectura por capas.
-8. Utilizar tecnologías frontend independientes del servidor de aplicaciones.
-9. Facilitar la ejecución del entorno de desarrollo mediante Docker.
-10. Utilizar herramientas modernas de construcción, control de versiones y pruebas.
-
----
-
-# 3. Arquitectura general
-
-La aplicación utilizará una arquitectura cliente-servidor.
+## 3. Arquitectura actual
 
 ```text
-┌──────────────────────────────────────┐
-│              FRONTEND                │
-│                                      │
-│ HTML + CSS + JavaScript              │
-│ Bootstrap + Font Awesome             │
-└──────────────────┬───────────────────┘
-                   │
-                   │ HTTP / JSON
-                   ▼
-┌──────────────────────────────────────┐
-│             BACKEND                  │
-│                                      │
-│ Spring Boot                          │
-│                                      │
-│ REST Controllers                     │
-│        ↓                             │
-│ Services                             │
-│        ↓                             │
-│ Repository / DAO                     │
-└──────────────────┬───────────────────┘
-                   │
-                   │ JDBC
-                   ▼
-┌──────────────────────────────────────┐
-│          ORACLE DATABASE             │
-│                                      │
-│ Tablas / consultas / procedimientos  │
-└──────────────────────────────────────┘
+Navegador
+   |
+   v
+Nginx :8081
+   |\
+   | \__ Archivos estaticos
+   |
+   \____ /api/ -> Backend Spring Boot :8080
+                         |
+                         v
+                  Oracle XE :1521
 ```
 
-El frontend realizará peticiones HTTP al backend y recibirá información principalmente en formato JSON.
+### Frontend
 
-El backend será responsable de la lógica de negocio, validación, seguridad, acceso a datos y generación de respuestas.
+El frontend esta dividido en dos modulos independientes:
 
----
+- `modulo-solicitante/`: login, captura de formulario y consulta del estatus.
+- `modulo-administrativo/`: login administrativo, bandeja y revision de solicitudes.
 
-# 4. Backend
+Los modulos utilizan HTML, CSS y JavaScript sin un framework frontend. Las peticiones al backend se realizan con `fetch()`.
 
-## Spring Boot
+### Backend
 
-Spring Boot será la plataforma principal para el desarrollo del backend.
-
-Se utilizará para:
-
-* Crear la aplicación web.
-* Administrar los componentes de la aplicación.
-* Crear la API REST.
-* Configurar el acceso a la base de datos.
-* Administrar dependencias.
-* Proporcionar el servidor web embebido.
-* Gestionar configuración y componentes de Spring.
-
-La aplicación podrá ejecutarse como un archivo JAR utilizando el servidor web embebido.
+El proyecto Spring Boot se encuentra en `src/main/`. Actualmente contiene la clase principal de arranque:
 
 ```text
-java -jar aplicacion.jar
+src/main/java/com/itt/sareduccion/SareduccionApplication.java
 ```
 
----
+La estructura de controladores, servicios y repositorios esta contemplada para el desarrollo de la API, pero debe considerarse pendiente hasta que existan esas clases en `src/main`.
 
-# 5. Versión de Java
+### Base de datos
 
-## JDK 8
+Oracle XE se ejecuta en Docker. El esquema se crea con:
 
-El proyecto utilizará:
+[`docker/init-db/02-init-shema.sql`](docker/init-db/02-init-shema.sql)
+
+La documentacion detallada de las tablas se encuentra en [BaseDeDatos.md](BaseDeDatos.md).
+
+## 4. Servicios Docker
+
+### `oracle-db`
+
+- Imagen: `gvenzl/oracle-xe:21-slim`.
+- Contenedor: `sareduccion-oracle`.
+- Puerto local: `1521`.
+- Volumen: `sareduccion_oracle_data`.
+- Ejecuta los scripts de `docker/init-db/` durante la primera inicializacion.
+
+### `backend`
+
+- Se construye con `Dockerfile`.
+- Imagen de compilacion: Maven 3.8.8 con Eclipse Temurin 8.
+- Imagen de ejecucion: Eclipse Temurin 8 JRE Alpine.
+- Puerto local: `8080`.
+- Se activa con el perfil Compose `full-stack`.
+
+### `frontend`
+
+- Imagen: `nginx:alpine`.
+- Contenedor: `sareduccion-frontend`.
+- Puerto local: `8081`.
+- Sirve `/administrativo` y `/solicitante`.
+- Usa `docker/nginx/nginx.conf` para el proxy hacia el backend.
+
+## 5. Requisitos
+
+- Docker Engine o Docker Desktop.
+- Docker Compose v2, disponible como `docker compose`.
+- Git.
+- Para ejecutar el backend fuera de Docker: JDK 8 y Maven.
+
+## 6. Configuracion
+
+Las variables de entorno se definen en `.env` en la raiz del proyecto. Entre ellas se encuentran:
 
 ```text
-Java 8
+ORACLE_PASSWORD
+ORACLE_DATABASE
+ORACLE_APP_USER
+ORACLE_APP_PASSWORD
+ORACLE_PORT
+APP_PORT
+SPRING_PROFILES_ACTIVE
 ```
 
-La decisión se debe a la compatibilidad con el entorno tecnológico existente.
+No se deben publicar contrasenas reales ni credenciales de produccion en el repositorio. Para desarrollo se deben usar credenciales locales.
 
-La versión seleccionada de Spring Boot será:
+## 7. Ejecucion
 
-```text
-Spring Boot 2.7.18
-```
-
-Spring Boot 2.7.18 requiere Java 8 y permite utilizar servidores Servlet embebidos como Tomcat 9.
-
-Esta decisión deberá revisarse si posteriormente el proyecto puede migrar a una versión más reciente de Java.
-
----
-
-# 6. API REST
-
-La comunicación entre frontend y backend se realizará mediante una API REST.
-
-Ejemplo conceptual:
-
-```text
-POST /api/solicitudes
-GET  /api/solicitudes/{id}
-PUT  /api/solicitudes/{id}
-DELETE /api/solicitudes/{id}
-```
-
-Las respuestas utilizarán JSON cuando corresponda.
-
-Ejemplo:
-
-```json
-{
-    "id": 25,
-    "estado": "EN_REVISION",
-    "fechaSolicitud": "2026-01-08"
-}
-```
-
-Los antiguos Servlets del sistema serán sustituidos por controladores de Spring.
-
-Conceptualmente:
-
-```text
-Servlet
-   ↓
-REST Controller
-```
-
-No se implementarán Servlets manualmente como mecanismo principal de control de las peticiones.
-
----
-
-# 7. Arquitectura interna del backend
-
-El backend utilizará separación de responsabilidades.
-
-```text
-REST Controller
-       ↓
-Service
-       ↓
-Repository / DAO
-       ↓
-Database
-```
-
-## Controller
-
-Responsable de:
-
-* Recibir peticiones HTTP.
-* Validar parámetros básicos.
-* Invocar servicios.
-* Construir respuestas HTTP.
-
-## Service
-
-Responsable de:
-
-* Implementar reglas de negocio.
-* Coordinar operaciones.
-* Validar procesos.
-* Coordinar diferentes repositorios.
-
-## Repository / DAO
-
-Responsable de:
-
-* Acceder a la base de datos.
-* Ejecutar consultas.
-* Ejecutar procedimientos almacenados cuando sean necesarios.
-* Convertir resultados de base de datos a objetos Java.
-
----
-
-# 8. Acceso a datos
-
-El sistema utilizará Oracle Database como sistema gestor de base de datos mientras se mantenga la integración con la infraestructura institucional existente.
-
-La implementación anterior utilizaba JDBC, Oracle y procedimientos almacenados. Por lo tanto, antes de realizar una migración completa a JPA/Hibernate se deberá identificar qué operaciones actuales dependen directamente de Oracle.
-
-La tecnología de acceso a datos podrá utilizar:
-
-```text
-Spring JDBC
-```
-
-cuando se requiera trabajar directamente con consultas o procedimientos almacenados.
-
-Si se desarrollan nuevas entidades y operaciones que no dependan de procedimientos existentes, podrá evaluarse:
-
-```text
-Spring Data JPA
-```
-
-La elección entre JDBC y JPA deberá realizarse por módulo y no asumirse automáticamente para todo el sistema.
-
----
-
-# 9. Base de datos
-
-## Oracle Database
-
-Oracle será la base de datos principal del proyecto debido a la dependencia existente con el sistema institucional.
-
-La versión exacta de Oracle deberá determinarse con base en el ambiente donde será ejecutada la aplicación.
-
-No se asumirá que Oracle 12c XE es la versión de producción hasta verificar el ambiente institucional.
-
----
-
-# 10. Frontend
-
-El frontend será inicialmente desarrollado utilizando tecnologías web estándar:
-
-```text
-HTML
-CSS
-JavaScript
-Bootstrap
-Font Awesome
-```
-
-No se utilizará inicialmente un framework frontend como:
-
-* React
-* Angular
-* Vue
-
-La decisión podrá revisarse posteriormente si el tamaño o complejidad de la interfaz lo justifica.
-
----
-
-# 11. HTML
-
-HTML será utilizado para definir la estructura de las páginas:
-
-* Formularios.
-* Tablas.
-* Botones.
-* Menús.
-* Secciones.
-* Contenedores.
-* Elementos de navegación.
-
----
-
-# 12. CSS
-
-CSS será utilizado para:
-
-* Personalizar la apariencia.
-* Ajustar tamaños.
-* Espaciado.
-* Tipografía.
-* Componentes específicos del sistema.
-
-Bootstrap será utilizado como base para el diseño visual y responsivo.
-
----
-
-# 13. JavaScript
-
-JavaScript será utilizado para la lógica ejecutada en el navegador.
-
-Entre sus responsabilidades estarán:
-
-* Validación de formularios.
-* Manejo de eventos.
-* Actualización de elementos de la interfaz.
-* Comunicación con la API REST.
-* Procesamiento de respuestas JSON.
-* Control de modales y componentes dinámicos.
-
-La comunicación con el backend utilizará principalmente:
-
-```javascript
-fetch()
-```
-
-Por lo tanto, jQuery no será una dependencia obligatoria del nuevo sistema.
-
----
-
-# 14. Bootstrap
-
-Bootstrap será utilizado para facilitar la creación de una interfaz:
-
-* Responsiva.
-* Consistente.
-* Adaptable a diferentes tamaños de pantalla.
-
-Se utilizará para componentes como:
-
-* Formularios.
-* Botones.
-* Tablas.
-* Modales.
-* Alertas.
-* Navegación.
-
----
-
-# 15. Font Awesome
-
-Font Awesome será utilizado para proporcionar iconos a los elementos de la interfaz.
-
-Ejemplos:
-
-* Usuarios.
-* Solicitudes.
-* Documentos.
-* Alertas.
-* Acciones.
-* Navegación.
-
----
-
-# 16. JSON
-
-JSON será el formato principal para intercambiar información entre frontend y backend.
-
-Flujo general:
-
-```text
-JavaScript
-    ↓
-HTTP Request
-    ↓
-Spring Boot REST Controller
-    ↓
-Service
-    ↓
-Database
-    ↓
-Service
-    ↓
-REST Controller
-    ↓
-JSON
-    ↓
-JavaScript
-```
-
-La utilización de JSON permite separar la interfaz de usuario de la lógica del servidor.
-
----
-
-# 17. Seguridad
-
-El sistema deberá contemplar mecanismos de seguridad para proteger:
-
-* Autenticación.
-* Sesiones o tokens.
-* Información personal.
-* Solicitudes.
-* Documentos.
-* Endpoints protegidos.
-
-Se evaluará la utilización de:
-
-```text
-Spring Security
-```
-
-La implementación específica dependerá del mecanismo de autenticación disponible en el entorno institucional.
-
----
-
-# 18. Validación
-
-Las entradas recibidas por la API deberán validarse antes de ejecutar operaciones.
-
-Se evaluará el uso de:
-
-```text
-Spring Validation
-```
-
-Las validaciones deberán aplicarse tanto a:
-
-* Datos recibidos desde el frontend.
-* Parámetros de las peticiones.
-* Información enviada a la base de datos.
-
-La validación del frontend no sustituye la validación del backend.
-
----
-
-# 19. Generación de documentos
-
-El sistema anterior utiliza JasperReports e iText para generar y procesar documentos PDF.
-
-Estas tecnologías podrán conservarse si el nuevo alcance requiere:
-
-* Vouchers.
-* Comprobantes.
-* Reportes.
-* Constancias.
-* Documentos descargables.
-
-La generación de documentos deberá integrarse como parte del backend.
-
-Flujo:
-
-```text
-Solicitud
-   ↓
-Spring Boot
-   ↓
-Datos
-   ↓
-JasperReports / PDF
-   ↓
-Documento
-   ↓
-Usuario
-```
-
----
-
-# 20. Maven
-
-Maven será utilizado como sistema de construcción y administración de dependencias.
-
-Responsabilidades:
-
-* Descargar dependencias.
-* Compilar el proyecto.
-* Ejecutar pruebas.
-* Empaquetar la aplicación.
-* Ejecutar plugins.
-* Generar el archivo JAR.
-
-El proyecto utilizará Maven en lugar de Apache Ant.
-
-Ejemplo:
+### Solo la base de datos
 
 ```bash
-mvn clean
-mvn test
-mvn package
+docker compose up oracle-db -d
 ```
 
----
+Oracle puede tardar varios minutos en estar disponible la primera vez.
 
-# 21. Servidor web
+### Solo el frontend
 
-No se utilizará Payara Server como servidor principal.
+```bash
+docker compose up frontend -d
+```
 
-Spring Boot utilizará un servidor Servlet embebido, normalmente Tomcat.
+Accesos:
 
-Arquitectura:
+- Solicitante: http://localhost:8081/solicitante/login.html
+- Administrativo: http://localhost:8081/administrativo/login.html
+
+### Backend y base de datos
+
+```bash
+docker compose --profile full-stack up --build
+```
+
+La API queda disponible en `http://localhost:8080` cuando existan los controladores implementados.
+
+### Todo el entorno
+
+```bash
+docker compose up --build
+```
+
+El servicio backend requiere el perfil `full-stack`; por eso, para levantar backend, frontend y base de datos se recomienda:
+
+```bash
+docker compose --profile full-stack up --build
+```
+
+### Detener servicios
+
+```bash
+docker compose down
+```
+
+Para eliminar tambien la base de datos de desarrollo y volver a ejecutar los scripts SQL:
+
+```bash
+docker compose down -v
+docker compose --profile full-stack up --build
+```
+
+## 8. Construccion manual del backend
+
+Desde la raiz del proyecto:
+
+```bash
+mvn clean package
+java -jar target/sareduccion-0.0.1-SNAPSHOT.jar
+```
+
+Para compilar sin ejecutar pruebas:
+
+```bash
+mvn clean package -DskipTests
+```
+
+El Dockerfile usa el mismo proceso durante su etapa de compilacion.
+
+## 9. API y frontend
+
+Los modulos frontend estan preparados para consumir rutas como las siguientes:
+
+| Metodo | Ruta | Proposito |
+| --- | --- | --- |
+| `POST` | `/api/auth/login` | Iniciar sesion. |
+| `GET` | `/api/solicitudes` | Consultar solicitudes. |
+| `GET` | `/api/solicitudes/{id}` | Consultar el detalle de una solicitud. |
+| `POST` | `/api/solicitudes` | Crear una solicitud. |
+| `PUT` | `/api/solicitudes/{id}` | Actualizar una solicitud. |
+
+Estas rutas son contratos esperados por el frontend. Deben implementarse en controladores Spring Boot antes de considerarlas disponibles.
+
+## 10. Seguridad y pendientes
+
+El proyecto tiene configuradas variables de entorno para la conexion a Oracle, pero todavia deben implementarse y verificarse:
+
+- Autenticacion y autorizacion de usuarios.
+- Proteccion de endpoints.
+- Validacion de datos en el backend.
+- Manejo centralizado de errores.
+- Pruebas de los endpoints.
+- Almacenamiento y descarga de documentos.
+- Integracion con servicios institucionales.
+
+La validacion en JavaScript del frontend no sustituye la validacion del backend.
+
+## 11. Estructura principal
 
 ```text
-Spring Boot
-     ↓
-Tomcat embebido
-     ↓
-HTTP
+SAReduccion/
+├── docker-compose.yml
+├── Dockerfile
+├── pom.xml
+├── .env
+├── readme.md
+├── BaseDeDatos.md
+├── docker/
+│   ├── init-db/
+│   │   └── 02-init-shema.sql
+│   └── nginx/
+│       └── nginx.conf
+├── modulo-administrativo/
+├── modulo-solicitante/
+└── src/
+    └── main/
+        └── java/com/itt/sareduccion/
 ```
 
-Esto elimina la necesidad de instalar y configurar Payara para ejecutar el backend.
+## 12. Documentacion relacionada
 
----
-
-# 22. Docker
-
-Docker será utilizado principalmente para facilitar la creación de ambientes reproducibles de desarrollo.
-
-El objetivo no es sustituir Spring Boot, sino facilitar la ejecución de los servicios que necesite el proyecto.
-
-Dependiendo del ambiente disponible, Docker podrá utilizarse para:
-
-* Base de datos de desarrollo.
-* Servicios auxiliares.
-* Backend.
-* Entorno completo de desarrollo.
-
-La base de datos institucional de producción no deberá introducirse automáticamente en Docker.
-
----
-
-# 23. Docker Compose
-
-Docker Compose podrá utilizarse para levantar múltiples servicios de desarrollo.
-
-Ejemplo conceptual:
-
-```text
-Docker Compose
-       │
-       ├── Database
-       │
-       └── Backend
-```
-
-En un ambiente donde Spring Boot se ejecute directamente en la computadora del desarrollador:
-
-```text
-Computadora
-│
-├── Spring Boot
-│
-└── Docker
-      └── Oracle / Base de datos de desarrollo
-```
-
-Esto permite que cada integrante pueda iniciar el ambiente de desarrollo sin realizar manualmente toda la configuración.
-
----
-
-# 24. Git
-
-Git será utilizado para el control de versiones.
-
-El repositorio deberá permitir:
-
-* Controlar cambios.
-* Trabajar mediante ramas.
-* Revisar modificaciones.
-* Recuperar versiones anteriores.
-* Integrar cambios de diferentes integrantes.
-
-Se recomienda utilizar ramas para funcionalidades independientes.
-
----
-
-# 25. Pruebas de API
-
-Se utilizará una herramienta como:
-
-```text
-Postman
-```
-
-o una alternativa equivalente para probar los endpoints REST.
-
-Ejemplo:
-
-```text
-POST /api/solicitudes
-GET  /api/solicitudes/25
-PUT  /api/solicitudes/25
-```
-
-Las pruebas deberán verificar:
-
-* Código HTTP.
-* Estructura JSON.
-* Validaciones.
-* Errores.
-* Autenticación.
-* Comportamiento esperado.
-
----
-
-# 26. Tecnologías principales
-
-| Área                 | Tecnología                     | Propósito                       |
-| -------------------- | ------------------------------ | ------------------------------- |
-| Lenguaje             | Java 8                         | Lenguaje principal              |
-| Framework backend    | Spring Boot 2.7.18             | Desarrollo del backend          |
-| API                  | REST                           | Comunicación cliente-servidor   |
-| Servidor             | Tomcat embebido                | Servidor HTTP                   |
-| Build                | Maven                          | Compilación y dependencias      |
-| Base de datos        | Oracle                         | Persistencia de información     |
-| Acceso a datos       | Spring JDBC / JPA según módulo | Comunicación con Oracle         |
-| Frontend             | HTML                           | Estructura                      |
-| Estilos              | CSS                            | Personalización visual          |
-| UI                   | Bootstrap                      | Componentes y diseño responsivo |
-| Scripts              | JavaScript                     | Lógica del navegador            |
-| Iconos               | Font Awesome                   | Iconografía                     |
-| Comunicación         | JSON                           | Intercambio de datos            |
-| Seguridad            | Spring Security                | Autenticación y autorización    |
-| Validación           | Spring Validation              | Validación de datos             |
-| Reportes             | JasperReports                  | Generación de reportes          |
-| PDF                  | Biblioteca PDF según necesidad | Generación de documentos        |
-| Control de versiones | Git                            | Control del código              |
-| Contenedores         | Docker                         | Ambientes reproducibles         |
-| Orquestación local   | Docker Compose                 | Ejecución de servicios          |
-| Pruebas API          | Postman                        | Pruebas de endpoints            |
-
----
-
-# 27. Tecnologías descartadas de la arquitectura anterior
-
-Las siguientes tecnologías formaban parte de la implementación anterior, pero no serán componentes principales de la nueva arquitectura:
-
-```text
-Java EE
-JSP
-Servlets manuales
-Apache Ant
-Payara Server
-GlassFish
-web.xml como mecanismo principal de configuración
-jQuery
-WAR como formato principal de despliegue
-```
-
-Esto no significa que todas desaparezcan de manera absoluta del ecosistema Java, sino que dejan de ser componentes principales de la arquitectura propuesta.
-
----
-
-# 28. Equivalencia entre arquitectura anterior y nueva
-
-| Arquitectura anterior | Nueva arquitectura      |
-| --------------------- | ----------------------- |
-| Java EE               | Spring Boot             |
-| Servlet               | REST Controller         |
-| JSP                   | HTML + JavaScript       |
-| AJAX/jQuery           | Fetch API               |
-| DAO                   | Repository / DAO        |
-| Bean                  | Entity / DTO            |
-| web.xml               | Configuración de Spring |
-| Payara                | Tomcat embebido         |
-| WAR                   | JAR ejecutable          |
-| Apache Ant            | Maven                   |
-| JDBC Oracle           | Spring JDBC / JPA       |
-| Gson                  | Jackson / JSON          |
-| Bootstrap             | Bootstrap               |
-| Font Awesome          | Font Awesome            |
-| JasperReports         | JasperReports           |
-
----
-
-# 29. Flujo general de funcionamiento
-
-```text
-Usuario
-   ↓
-Navegador
-   ↓
-HTML + CSS + JavaScript
-   ↓
-Fetch API
-   ↓
-HTTP / JSON
-   ↓
-Spring Boot
-   ↓
-REST Controller
-   ↓
-Service
-   ↓
-Repository / DAO
-   ↓
-Oracle
-   ↓
-Repository / DAO
-   ↓
-Service
-   ↓
-REST Controller
-   ↓
-JSON / PDF
-   ↓
-Navegador
-   ↓
-Usuario
-```
-
----
-
-# 30. Flujo de una solicitud
-
-Ejemplo conceptual:
-
-```text
-1. El alumno abre el sistema.
-2. El frontend muestra el formulario.
-3. El alumno captura la información.
-4. JavaScript valida los datos básicos.
-5. JavaScript envía una petición HTTP.
-6. Spring Boot recibe la petición.
-7. El Controller recibe los datos.
-8. El Service aplica las reglas de negocio.
-9. El Repository/DAO consulta o modifica Oracle.
-10. Oracle devuelve el resultado.
-11. El Service procesa el resultado.
-12. El Controller genera una respuesta.
-13. La API devuelve JSON.
-14. JavaScript actualiza la interfaz.
-```
-
----
-
-# 31. Principios de desarrollo
-
-El proyecto deberá seguir los siguientes principios:
-
-* Separación de responsabilidades.
-* Bajo acoplamiento entre componentes.
-* Validación en backend.
-* Uso de DTO para intercambio de datos cuando sea necesario.
-* Manejo centralizado de errores.
-* Configuración externa de credenciales.
-* No almacenar contraseñas o credenciales directamente en el código.
-* Uso de variables de entorno para información sensible.
-* Control de versiones mediante Git.
-* Pruebas de los endpoints principales.
-* Documentación de la API.
-
----
-
-# 32. Decisiones pendientes
-
-Antes de comenzar el desarrollo deberán definirse:
-
-1. Versión exacta de Oracle disponible.
-2. Forma de autenticación.
-3. Si se utilizarán procedimientos almacenados existentes.
-4. Módulos que utilizarán JDBC.
-5. Módulos que podrán utilizar JPA.
-6. Requerimientos exactos de generación de PDF.
-7. Ubicación y almacenamiento de documentos.
-8. Si el frontend será servido por Spring Boot o desplegado de forma independiente.
-9. Configuración de Docker para desarrollo.
-10. Configuración de conexión con la base institucional.
-
-Estas decisiones deberán realizarse antes de implementar los módulos que dependan de ellas.
-
----
-
-# 33. Resumen de la arquitectura propuesta
-
-```text
-                    USUARIO
-                       │
-                       ▼
-              ┌─────────────────┐
-              │    FRONTEND     │
-              │                 │
-              │ HTML            │
-              │ CSS             │
-              │ JavaScript      │
-              │ Bootstrap       │
-              │ Font Awesome    │
-              └────────┬────────┘
-                       │
-                    HTTP/JSON
-                       │
-                       ▼
-              ┌─────────────────┐
-              │   SPRING BOOT   │
-              │                 │
-              │ REST Controller │
-              │       ↓         │
-              │    Service      │
-              │       ↓         │
-              │ Repository/DAO  │
-              └────────┬────────┘
-                       │
-                      JDBC
-                       │
-                       ▼
-              ┌─────────────────┐
-              │     ORACLE      │
-              │                 │
-              │ Datos           │
-              │ Consultas       │
-              │ Procedimientos  │
-              └─────────────────┘
-
-       Herramientas de soporte:
-
-       Git
-       Maven
-       Docker
-       Docker Compose
-       Postman
-```
+- [Base de datos](BaseDeDatos.md)
+- [Guia de Docker](README-DOCKER.md)
+- [Modulo administrativo](modulo-administrativo/README.md)
+- [Modulo solicitante](modulo-solicitante/README.md)
