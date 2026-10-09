@@ -36,3 +36,6 @@ Desktop.ini
 # ── Logs ────────────────────────────────────────────────────
 *.log
 logs/
+
+# ── Oracle backups (local only) ─────────────────────────────
+backups/oracle/
