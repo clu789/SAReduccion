@@ -63,7 +63,7 @@ No se encontraron controladores `@RestController`, servicios `@Service`, reposit
 |---|---:|---:|
 | Nginx | 80 | 8081 |
 | Spring Boot | 8080 | 8080 |
-| Oracle | 1521 | 1521 |
+| Oracle | 1521 | 1522 |
 
 Direcciones principales:
 
@@ -78,7 +78,7 @@ Backend:
 http://localhost:8080
 
 Oracle:
-localhost:1521
+localhost:1522
 ```
 
 ### DNS interno de Docker
@@ -181,9 +181,12 @@ Usa Oracle XE 21c en una imagen ligera, con un nombre fijo y reinicio automátic
 ```yaml
 environment:
   ORACLE_PASSWORD: ${ORACLE_PASSWORD}
-  ORACLE_DATABASE: ${ORACLE_DATABASE}
-  APP_USER: ${ORACLE_APP_USER}
-  APP_USER_PASSWORD: ${ORACLE_APP_PASSWORD}
+    ORACLE_APP_USER: ${ORACLE_APP_USER}
+    ORACLE_APP_PASSWORD: ${ORACLE_APP_PASSWORD}
+    ORACLE_ALUMNO_USER: ${ORACLE_ALUMNO_USER}
+    ORACLE_ALUMNO_PASSWORD: ${ORACLE_ALUMNO_PASSWORD}
+    ORACLE_ADMIN_USER: ${ORACLE_ADMIN_USER}
+    ORACLE_ADMIN_PASSWORD: ${ORACLE_ADMIN_PASSWORD}
 ```
 
 Los valores se leen de `.env`:
@@ -191,9 +194,11 @@ Los valores se leen de `.env`:
 | Variable | Función |
 |---|---|
 | `ORACLE_PASSWORD` | Contraseña administrativa inicial |
-| `ORACLE_DATABASE` | Nombre del PDB o servicio, actualmente `XEPDB1` |
-| `ORACLE_APP_USER` | Usuario técnico, actualmente `sa_reduccion` |
+| `ORACLE_DATABASE` | PDB existente de XE 21c, `XEPDB1` (se pasa al inicializador, no al entrypoint de imagen) |
+| `ORACLE_APP_USER` | Esquema técnico, `SA_REDUCCION` |
 | `ORACLE_APP_PASSWORD` | Contraseña del usuario técnico |
+| `ORACLE_ALUMNO_USER` | Usuario Oracle del estudiante, `ALU_21281181` |
+| `ORACLE_ADMIN_USER` | Usuario Oracle del administrador, `SA01` |
 
 #### Puerto
 
@@ -217,7 +222,8 @@ El volumen nombrado conserva tablas y datos entre reinicios.
 
 ```yaml
 volumes:
-  - ./docker/init-db:/container-entrypoint-initdb.d:ro
+    - ./docker/init-db/init-db.sh:/container-entrypoint-initdb.d/00-init-db.sh:ro
+    - ./docker/init-db:/opt/sareduccion/init-db:ro
 ```
 
 El directorio local se monta dentro del contenedor como directorio de inicialización, en modo solo lectura.
@@ -233,7 +239,7 @@ healthcheck:
   start_period: 120s
 ```
 
-Oracle tarda en iniciar porque debe levantar la instancia, abrir el PDB, crear el usuario y preparar el listener. El healthcheck ejecuta `SELECT 1 FROM DUAL` para comprobar que el usuario de aplicación puede conectarse.
+Oracle tarda en iniciar porque debe levantar la instancia, abrir el PDB y ejecutar los SQL. El healthcheck espera tanto al listener como al marcador que `init-db.sh` crea tras verificar tablas, paquetes, usuarios y roles.
 
 `start_period: 120s` evita que Docker marque el contenedor como fallido durante el arranque inicial.
 
@@ -404,7 +410,6 @@ Copia el JAR creado en la primera etapa.
 ```dockerfile
 ENV DB_URL=jdbc:oracle:thin:@oracle-db:1521/XEPDB1
 ENV DB_USER=sa_reduccion
-ENV DB_PASSWORD=AppPass2026!
 ```
 
 Estos valores son predeterminados. `docker-compose.yml` los sobrescribe con las variables de `.env`.
@@ -427,14 +432,14 @@ Inicia el JAR con un máximo de 512 MB de memoria para la JVM.
 
 ## 5. Ciclo de vida de Oracle
 
-La imagen `gvenzl/oracle-xe:21-slim` prepara una instalación con una instancia Oracle XE y el PDB `XEPDB1`.
+La imagen `gvenzl/oracle-xe:21-slim` inicia Oracle XE con el PDB `XEPDB1` ya existente. No se pasa `ORACLE_DATABASE=XEPDB1` al entrypoint de la imagen: al hacerlo, intenta crear un segundo PDB y falla con `ORA-65012`.
 
 Conceptualmente:
 
 ```text
 Oracle XE
   └── PDB XEPDB1
-        └── usuario técnico sa_reduccion
+        └── esquema técnico SA_REDUCCION
 ```
 
 La cadena JDBC es:
@@ -469,11 +474,13 @@ docker compose --profile full-stack up -d --build
 
 ### Orden de scripts
 
-Los archivos SQL se ejecutan en orden alfabético:
+`init-db.sh` ejecuta los SQL explícitamente, en este orden:
 
 ```text
-01-grant-dba.sql
-02-init-shema.sql
+01-configurar-esquema.sql (SYS en XEPDB1)
+02-crear-estructura.sql (SA_REDUCCION en XEPDB1)
+03-crear-identidades-roles.sql (SYS en XEPDB1)
+04-crear-paquetes-permisos.sql (SA_REDUCCION en XEPDB1)
 ```
 
 Los archivos `.bak` no se ejecutan como scripts de inicialización:
@@ -486,33 +493,11 @@ Los archivos `.bak` no se ejecutan como scripts de inicialización:
 ---
 
 ## 6. Scripts SQL de inicialización
+La descripción de los scripts antiguos que sigue en esta sección es histórica. La inicialización vigente usa los cuatro scripts `docker/init-db/01` a `04` coordinados por `docker/init-db/init-db.sh`; el esquema actual elimina la tabla `Usuarios`. Consulta [BaseDeDatos.md](BaseDeDatos.md) para el modelo vigente.
 
 ### `01-grant-dba.sql`
 
-```sql
-ALTER USER sa_reduccion IDENTIFIED BY "AppPass2026!";
-
-GRANT CONNECT, RESOURCE, DBA
-TO sa_reduccion;
-
-EXIT;
-```
-
-`ALTER USER` modifica la contraseña del usuario técnico.
-
-`CONNECT` permite conectarse a Oracle. En instalaciones modernas se puede reemplazar por:
-
-```sql
-GRANT CREATE SESSION TO sa_reduccion;
-```
-
-`RESOURCE` es un rol antiguo que permite crear ciertos objetos.
-
-`DBA` otorga privilegios administrativos muy amplios.
-
-Dar `DBA` a la aplicación es tolerable solo como comodidad de desarrollo. En producción debe eliminarse.
-
-Además, la contraseña está escrita directamente en el script. Debe mantenerse consistente con `ORACLE_APP_PASSWORD` del archivo `.env`.
+El script `01-grant-dba.sql` fue retirado. `01-configurar-esquema.sql` crea o configura `SA_REDUCCION` con variables de entorno y concede únicamente `CREATE SESSION`, `CREATE TABLE`, `CREATE SEQUENCE`, `CREATE TRIGGER` y `CREATE PROCEDURE`; no concede `DBA`.
 
 ### `02-init-shema.sql`
 
@@ -754,7 +739,7 @@ CREATE TABLE Opciones (
 El DDL exacto y completo de estas tablas está en:
 
 ```text
-docker/init-db/02-init-shema.sql
+docker/init-db/02-crear-estructura.sql
 ```
 
 Todas las tablas se crean en el esquema `SA_REDUCCION`, porque el script se ejecuta conectado como ese usuario.
@@ -877,7 +862,7 @@ Ejemplos posibles:
 
 ```text
 ALU_22280600
-CA01
+SA01
 ```
 
 Estos identificadores no deben crearse con `CREATE USER` en Oracle. Son usuarios internos de la aplicación.
@@ -1041,7 +1026,7 @@ VALUES (
 COMMIT;
 ```
 
-### Crear `CA01`
+### Crear `SA01`
 
 ```sql
 INSERT INTO Usuarios (
@@ -1049,7 +1034,7 @@ INSERT INTO Usuarios (
     password_hash
 )
 VALUES (
-    'CA01',
+    'SA01',
     'HASH_BCRYPT'
 );
 
@@ -1061,11 +1046,11 @@ INSERT INTO Administradores (
     id_usuario
 )
 VALUES (
-    'CA01',
+    'SA01',
     'Administrador',
     'Sistema',
     NULL,
-    'CA01'
+    'SA01'
 );
 
 COMMIT;
@@ -1187,7 +1172,7 @@ Actualmente estos endpoints están documentados y consumidos por el frontend, pe
 
 | Error | Causa probable | Diagnóstico | Solución |
 |---|---|---|---|
-| `ORA-01017` | Usuario o contraseña incorrectos | `docker compose logs oracle-db` | Revisar `.env`, `01-grant-dba.sql` y `DB_PASSWORD` |
+| `ORA-01017` | Usuario o contraseña incorrectos | `docker compose logs oracle-db` | Revisar `.env` y `docker/init-db/01-configurar-esquema.sql` |
 | `ORA-00942` | Tabla inexistente o sin permisos | `SELECT table_name FROM user_tables;` | Crear esquema o conceder permisos |
 | `ORA-01031` | Privilegios insuficientes | Revisar privilegios del usuario | Conceder solo el permiso necesario |
 | `ORA-28000` | Cuenta Oracle bloqueada | Consultar `dba_users` como SYS | Desbloquear la cuenta |
@@ -1311,7 +1296,7 @@ Puede devolver `404` mientras no existan controladores Spring que implementen es
 7. Los scripts SQL solo se ejecutan al crear el volumen por primera vez.
 8. `down -v` elimina la base y permite repetir la inicialización.
 9. `sa_reduccion` es el usuario técnico de Oracle, no un usuario final.
-10. `ALU_22280600` y `CA01` deben ser filas de `Usuarios`, no cuentas Oracle.
+10. `ALU_22280600` y `SA01` deben ser filas de `Usuarios`, no cuentas Oracle.
 11. El esquema actual no tiene roles y permisos de aplicación formales.
 12. No existe código visible de login, BCrypt, controladores o servicios.
 13. `GRANT DBA` es excesivo para producción.

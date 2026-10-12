@@ -50,7 +50,7 @@ Nginx :8081
    \____ /api/ -> Backend Spring Boot :8080
                          |
                          v
-                  Oracle XE :1521
+                  Oracle XE :1522
 ```
 
 ### Frontend
@@ -74,9 +74,9 @@ La estructura de controladores, servicios y repositorios esta contemplada para e
 
 ### Base de datos
 
-Oracle XE se ejecuta en Docker. El esquema se crea con:
+Oracle XE 21c se ejecuta en Docker. El esquema se crea automáticamente al inicializar un volumen vacío:
 
-[`docker/init-db/02-init-shema.sql`](docker/init-db/02-init-shema.sql)
+[`docker/init-db/init-db.sh`](docker/init-db/init-db.sh)
 
 La documentacion detallada de las tablas se encuentra en [BaseDeDatos.md](BaseDeDatos.md).
 
@@ -86,7 +86,7 @@ La documentacion detallada de las tablas se encuentra en [BaseDeDatos.md](BaseDe
 
 - Imagen: `gvenzl/oracle-xe:21-slim`.
 - Contenedor: `sareduccion-oracle`.
-- Puerto local: `1521`.
+- Puerto local: `1522` (interno `1521`).
 - Volumen: `sareduccion_oracle_data`.
 - Ejecuta los scripts de `docker/init-db/` durante la primera inicializacion.
 
@@ -123,6 +123,10 @@ ORACLE_DATABASE
 ORACLE_APP_USER
 ORACLE_APP_PASSWORD
 ORACLE_PORT
+ORACLE_ALUMNO_USER
+ORACLE_ALUMNO_PASSWORD
+ORACLE_ADMIN_USER
+ORACLE_ADMIN_PASSWORD
 APP_PORT
 SPRING_PROFILES_ACTIVE
 ```
@@ -137,7 +141,7 @@ No se deben publicar contrasenas reales ni credenciales de produccion en el repo
 docker compose up oracle-db -d
 ```
 
-Oracle puede tardar varios minutos en estar disponible la primera vez.
+Oracle XE usa el PDB existente `XEPDB1`. `docker/init-db/init-db.sh` crea el esquema y sus objetos automáticamente al inicializar un volumen vacío; se requieren las variables de `.env.example`.
 
 ### Solo el frontend
 
@@ -240,7 +244,11 @@ SAReduccion/
 ├── BaseDeDatos.md
 ├── docker/
 │   ├── init-db/
-│   │   └── 02-init-shema.sql
+│   │   ├── init-db.sh
+│   │   ├── 01-configurar-esquema.sql
+│   │   ├── 02-crear-estructura.sql
+│   │   ├── 03-crear-identidades-roles.sql
+│   │   └── 04-crear-paquetes-permisos.sql
 │   └── nginx/
 │       └── nginx.conf
 ├── modulo-administrativo/

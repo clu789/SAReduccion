@@ -2,28 +2,26 @@
 
 ## 1. Propósito
 
-La base de datos administra las solicitudes de reducción del monto de inscripción y reinscripción. El modelo utiliza Oracle Database y se construye con el script V5:
+La base de datos administra las solicitudes de reducción del monto de inscripción y reinscripción. El modelo utiliza Oracle XE 21c y se construye con los scripts de inicialización:
 
-[`docker/init-db/02-init-shema.sql`](docker/init-db/02-init-shema.sql)
+[`docker/init-db/02-crear-estructura.sql`](docker/init-db/02-crear-estructura.sql)
 
 El script crea tablas, claves primarias, claves foráneas, restricciones, índices, secuencias, triggers y datos iniciales de catálogos. Esta versión elimina la tabla `Usuarios` y utiliza los identificadores de los perfiles para relacionar la identidad con Oracle.
 
 ## 2. Ubicación y ejecución
 
-El script debe colocarse en `docker/init-db/`, carpeta montada desde `docker-compose.yml`:
+`docker/init-db/init-db.sh` ejecuta los cuatro SQL en orden. La imagen conecta los `.sql` de `/container-entrypoint-initdb.d` como `SYS` en `XE`, así que el orquestador cambia a `XEPDB1` y conecta como `SA_REDUCCION` para crear el esquema y los paquetes. Solo el orquestador se monta en el directorio de auto-inicialización; los SQL se montan en una ruta separada para evitar su ejecución implícita con un usuario o contexto incorrecto.
 
-```yaml
-- ./docker/init-db:/container-entrypoint-initdb.d:ro
-```
-
-Los scripts SQL de inicialización se ejecutan al crear por primera vez el volumen de Oracle. Para reconstruir el entorno desde cero:
+Los scripts se ejecutan solo con un volumen Oracle vacío. Para reconstruir el entorno desde cero:
 
 ```bash
 docker compose down -v
-docker compose up oracle-db
+docker compose up -d oracle-db
 ```
 
 **Advertencia:** `down -v` elimina los datos persistidos en los volúmenes del proyecto. No debe ejecutarse sobre una base con información que se quiera conservar. Reemplazar el archivo SQL no migra automáticamente una base existente.
+
+Las verificaciones manuales están en `database/tests/` y no se ejecutan automáticamente.
 
 ## 3. Modelo de datos
 
@@ -258,6 +256,6 @@ El diagrama debe corresponder a la versión V5, con los nombres de tablas en plu
 
 ## 8. Archivos relacionados
 
-- [Script de creación de la base de datos](docker/init-db/02-init-shema.sql)
+- [Script de creación de la base de datos](docker/init-db/02-crear-estructura.sql)
 - [Configuración Docker](docker-compose.yml)
 - [Guía del entorno Docker](README-DOCKER.md)
