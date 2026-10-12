@@ -35,9 +35,6 @@ COPY --from=build /app/target/*.jar app.jar
 # Variables de entorno con valores por defecto
 # (se sobreescriben desde docker-compose.yml o el entorno real)
 ENV SPRING_PROFILES_ACTIVE=dev
-ENV DB_URL=jdbc:oracle:thin:@oracle-db:1521/XEPDB1
-ENV DB_USER=sa_reduccion
-ENV DB_PASSWORD=AppPass2026!
 ENV SERVER_PORT=8080
 
 # Exponer el puerto de la API REST
