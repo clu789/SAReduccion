@@ -258,4 +258,5 @@ El diagrama debe corresponder a la versión V5, con los nombres de tablas en plu
 
 - [Script de creación de la base de datos](docker/init-db/02-crear-estructura.sql)
 - [Configuración Docker](docker-compose.yml)
-- [Guía del entorno Docker](README-DOCKER.md)
+- [Ejecución del proyecto](README.md)
+- [Arquitectura técnica](ARQUITECTURA.md)
