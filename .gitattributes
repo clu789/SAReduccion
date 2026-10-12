@@ -1,0 +1,6 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Ensure shell scripts always use LF (Linux line endings)
+*.sh text eol=lf
+*.sql text eol=lf

@@ -92,6 +92,9 @@ services:
       - ./modulo-solicitante:/usr/share/nginx/html/solicitante:ro
       - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
+    profiles:
+      - full-stack
+
 volumes:
   oracle_data:
     # Mantener este nombre para reutilizar los datos existentes.
