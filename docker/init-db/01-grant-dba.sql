@@ -1,3 +1,0 @@
-ALTER USER sa_reduccion IDENTIFIED BY "AppPass2026!";
-GRANT CONNECT, RESOURCE, DBA TO sa_reduccion;
-EXIT;

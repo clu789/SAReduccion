@@ -1,86 +1,72 @@
 # Guía de Entorno Docker - SAReducción
 
-Este documento explica cómo configurar, levantar y administrar el entorno de desarrollo del sistema **SAReducción** utilizando Docker.
+## Requisitos
 
-## 📋 Requisitos Previos
-
-1. **Docker Desktop** (o Docker Engine + Docker Compose) instalado y ejecutándose.
-   - [Descargar Docker Desktop](https://www.docker.com/products/docker-desktop/)
-2. Git (Opcional, para clonar el repositorio).
-
-## ⚙️ Configuración Inicial
-
-Antes de levantar los contenedores, asegúrate de tener configurado tu archivo `.env` en la raíz del proyecto. Este archivo debe contener las credenciales y puertos de la base de datos (por ejemplo, el usuario `ORACLE_APP_USER` y su contraseña).
-
-## 🚀 Levantando los Contenedores
-
-El proyecto está dividido en varios servicios dentro del archivo `docker-compose.yml`. Puedes levantar partes específicas del proyecto según lo que necesites probar.
-
-### 1. Solo levantar el Frontend
-
-Si solo vas a trabajar o visualizar el diseño y la maquetación HTML/JS:
+- Docker Engine o Docker Desktop con Docker Compose v2.
+- Archivo `.env` configurado a partir de `.env.example`.
 
 ```bash
-docker compose up frontend -d
+cp .env.example .env
 ```
 
-> 🌐 **Acceso:** http://localhost:8081/solicitante/login.html o http://localhost:8081/administrativo/login.html
+La inicialización no solicita entradas interactivas. Define contraseñas para Oracle, el esquema, el alumno y el administrador en `.env`; usa valores de al menos ocho caracteres sin espacios, comillas dobles, `&`, `@` ni `/`.
 
-### 2. Solo levantar la Base de Datos (Oracle XE)
+## Oracle XE 21c
 
-Si estás desarrollando el Backend localmente en tu IDE (Eclipse/IntelliJ) y solo necesitas la base de datos:
+Inicia la base de datos desde la raíz del proyecto:
 
 ```bash
-docker compose up oracle-db -d
+docker compose up -d oracle-db
 ```
 
-> 🛢️ **Acceso:** `localhost:1521`
-> *Nota: La primera vez que se ejecuta, Oracle tarda un par de minutos en inicializar la base de datos. Actualmente los scripts de creación de tablas están desactivados, por lo que el contenedor solo creará el usuario y la conexión basándose en las variables del `.env` (ideal para que el backend o tu IDE generen el esquema).*
+La primera inicialización crea el esquema `SA_REDUCCION`, sus 21 tablas, secuencias, triggers y catálogos, los usuarios `ALU_21281181` y `SA01`, sus roles, y los paquetes `PKG_ESTUDIANTE` y `PKG_ADMINISTRADOR`. El orquestador `docker/init-db/init-db.sh` ejecuta los cuatro SQL con el usuario y PDB adecuados.
 
-### 3. Levantar Todo (Front, Back y Base de Datos)
+Oracle queda disponible en `localhost:1522`, servicio `XEPDB1` (puerto interno `1521`). El contenedor solo estará `healthy` cuando la inicialización completa haya terminado.
 
-Si tienes el backend listo (con su Dockerfile habilitado) y quieres probar el ecosistema completo:
+Comprueba el estado y los registros:
 
 ```bash
-docker compose --profile full-stack up -d
+docker compose ps
+docker compose logs --tail=150 oracle-db
 ```
 
-## 🛑 Detener y Limpiar el Entorno
+Busca `Inicializacion Oracle de SAReduccion completada.` y el estado `healthy`. Las comprobaciones SQL manuales están en `database/tests/`; no se ejecutan al iniciar.
 
-Para detener los contenedores sin borrar los datos de la base de datos:
+## Otros servicios
+
+Frontend:
+
+```bash
+docker compose up -d frontend
+```
+
+Acceso: `http://localhost:8081/solicitante/login.html` o `http://localhost:8081/administrativo/login.html`.
+
+Backend, frontend y Oracle:
+
+```bash
+docker compose --profile full-stack up -d --build
+```
+
+## Persistencia
+
+Detener servicios sin borrar la base:
 
 ```bash
 docker compose down
 ```
 
-Para detener los contenedores y **BORRAR** la base de datos (útil si modificaste los scripts SQL y necesitas que se vuelvan a ejecutar desde cero):
+Recrear Oracle desde cero, eliminando permanentemente el volumen y sus datos:
 
 ```bash
 docker compose down -v
+docker compose up -d oracle-db
 ```
 
-## 🔍 Comandos Útiles (Troubleshooting)
+Los scripts de `/container-entrypoint-initdb.d` solo corren cuando Oracle inicializa un volumen vacío. Cambiar los SQL o `.env` no modifica una base que ya existe.
 
-**Ver los logs de un contenedor (ej. la base de datos):**
+## Puertos
 
-```bash
-docker compose logs -f oracle-db
-```
-
-**Ver el estado de los contenedores:**
-
-```bash
-docker compose ps
-```
-
-## 🌐 Puertos Utilizados
-
-Si tienes conflictos con otras aplicaciones (como XAMPP, Tomcat o servicios locales), verifica estos puertos:
-
-- **`8081`** - Frontend (Nginx)
-- **`8080`** - Backend (Spring Boot - API REST)
-- **`1521`** - Base de Datos (Oracle XE)
-
-docker exec -it sareduccion-oracle sqlplus sys/SaReduccion2026!@localhost:1521/XEPDB1 as sysdba
-
-docker exec -it sareduccion-oracle sqlplus sa_reduccion/AppPass2026!@localhost:1521/XEPDB1
+- `8081`: frontend Nginx.
+- `8080`: backend Spring Boot.
+- `1522`: Oracle XE 21c en el host; `1521` dentro de Docker.
