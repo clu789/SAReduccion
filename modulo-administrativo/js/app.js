@@ -20,25 +20,55 @@ const Config = {
    UTILIDADES HTTP (fetch wrapper)
 ───────────────────────────────────────── */
 const Http = {
+  csrfToken: null,
+
   async get(endpoint) {
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    return resp.json();
+    const data = await resp.json().catch(() => ({}));
+    if (data.csrfToken) this.csrfToken = data.csrfToken;
+    if (!resp.ok) {
+      const error = new Error('No se pudo comprobar la sesión.');
+      error.status = resp.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
   },
 
   async post(endpoint, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (endpoint === '/auth/login' || endpoint === '/auth/logout') {
+      if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
+      headers['X-CSRF-TOKEN'] = this.csrfToken;
+    }
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'same-origin',
       body: JSON.stringify(body),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    return resp.json();
+    const data = resp.status === 204 ? null : await resp.json().catch(() => ({}));
+    if (data?.csrfToken) this.csrfToken = data.csrfToken;
+    if (!resp.ok) {
+      const error = new Error('No se pudo completar la solicitud.');
+      error.status = resp.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
+  },
+
+  async authSession() {
+    try {
+      return await this.get('/auth/me');
+    } catch (error) {
+      if (error.status === 401 && error.payload?.csrfToken) return error.payload;
+      throw error;
+    }
   },
 
   async put(endpoint, body) {
@@ -52,6 +82,63 @@ const Http = {
     return resp.json();
   },
 };
+
+const AuthSession = {
+  async requireRole(expectedRole, loginPath, otherProfileLoginPath) {
+    try {
+      const session = await Http.authSession();
+      if (!session.authenticated) {
+        window.location.replace(loginPath);
+        return false;
+      }
+      if (session.role !== expectedRole) {
+        window.location.replace(otherProfileLoginPath);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      window.location.replace(loginPath);
+      return false;
+    }
+  },
+
+  async loginPage(expectedRole, panelPath, alertId) {
+    try {
+      const session = await Http.authSession();
+      if (session.authenticated && session.role === expectedRole) {
+        window.location.replace(panelPath);
+        return;
+      }
+      if (session.authenticated) {
+        Alerta.mostrar(alertId, 'advertencia', 'Hay una sesión activa de otro perfil. Inicie sesión con la cuenta autorizada.');
+      }
+    } catch (error) {
+      Alerta.mostrar(alertId, 'error', 'El servicio de autenticación no está disponible. Intente más tarde.');
+    }
+  },
+
+  async logout(loginPath, alertId) {
+    try {
+      await Http.authSession();
+      await Http.post('/auth/logout', {});
+      window.location.replace(loginPath);
+    } catch (error) {
+      Alerta.mostrar(alertId, 'error', 'No se pudo cerrar la sesión. Intente nuevamente.');
+    }
+  },
+
+  bindLogout(loginPath, alertId) {
+    document.querySelectorAll('[data-auth-logout]').forEach((button) => {
+      button.addEventListener('click', () => this.logout(loginPath, alertId));
+    });
+  },
+};
+
+function mensajeLogin(error) {
+  if (error.status === 503) return 'El servicio de autenticación no está disponible. Intente más tarde.';
+  if (error.status === 403) return 'La sesión de seguridad expiró. Recargue la página e intente de nuevo.';
+  return 'Credenciales o perfil no válidos.';
+}
 
 /* ─────────────────────────────────────────
    SPINNER
@@ -127,6 +214,7 @@ const LoginAdmin = {
   init() {
     const form = document.getElementById('form-login-admin');
     if (!form) return;
+    AuthSession.loginPage('ADMIN', 'panel-admin.html', 'alerta-login-admin');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -149,15 +237,22 @@ const LoginAdmin = {
 
       Spinner.show();
       try {
-        await Http.post('/auth/login', {
-          identificador: usuario.value.trim(),
+        await Http.authSession();
+        const username = usuario.value.trim().toUpperCase();
+        const session = await Http.post('/auth/login', {
+          username,
           password: password.value,
-          rol: 'ADMIN',
         });
+        if (session.role !== 'ADMIN' || session.identity !== username) {
+          await Http.post('/auth/logout', {});
+          throw new Error('Perfil no autorizado');
+        }
+        password.value = '';
         window.location.href = 'panel-admin.html';
       } catch (err) {
-        Alerta.mostrar('alerta-login-admin', 'error', 'Usuario o contraseña incorrectos.');
+        Alerta.mostrar('alerta-login-admin', 'error', mensajeLogin(err));
       } finally {
+        password.value = '';
         Spinner.hide();
       }
     });
@@ -175,6 +270,8 @@ const PanelAdmin = {
   async init() {
     const bandeja = document.getElementById('tabla-solicitudes');
     if (!bandeja) return;
+    if (!await AuthSession.requireRole('ADMIN', 'login.html', '/solicitante/login.html')) return;
+    AuthSession.bindLogout('login.html', 'alerta-admin');
 
     await this.cargarEstadisticas();
     await this.cargarSolicitudes();

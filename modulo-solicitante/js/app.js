@@ -20,6 +20,8 @@ const Config = {
    UTILIDADES HTTP (fetch wrapper)
 ───────────────────────────────────────── */
 const Http = {
+  csrfToken: null,
+
   /**
    * Realiza una petición GET.
    * @param {string} endpoint  - Ruta relativa (p.ej. '/solicitudes/25')
@@ -31,8 +33,15 @@ const Http = {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    return resp.json();
+    const data = await resp.json().catch(() => ({}));
+    if (data.csrfToken) this.csrfToken = data.csrfToken;
+    if (!resp.ok) {
+      const error = new Error('No se pudo comprobar la sesión.');
+      error.status = resp.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
   },
 
   /**
@@ -41,14 +50,35 @@ const Http = {
    * @param {object} body
    */
   async post(endpoint, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (endpoint === '/auth/login' || endpoint === '/auth/logout') {
+      if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
+      headers['X-CSRF-TOKEN'] = this.csrfToken;
+    }
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'same-origin',
       body: JSON.stringify(body),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    return resp.json();
+    const data = resp.status === 204 ? null : await resp.json().catch(() => ({}));
+    if (data?.csrfToken) this.csrfToken = data.csrfToken;
+    if (!resp.ok) {
+      const error = new Error('No se pudo completar la solicitud.');
+      error.status = resp.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
+  },
+
+  async authSession() {
+    try {
+      return await this.get('/auth/me');
+    } catch (error) {
+      if (error.status === 401 && error.payload?.csrfToken) return error.payload;
+      throw error;
+    }
   },
 
   /**
@@ -65,6 +95,63 @@ const Http = {
     return resp.json();
   },
 };
+
+const AuthSession = {
+  async requireRole(expectedRole, loginPath, otherProfileLoginPath) {
+    try {
+      const session = await Http.authSession();
+      if (!session.authenticated) {
+        window.location.replace(loginPath);
+        return false;
+      }
+      if (session.role !== expectedRole) {
+        window.location.replace(otherProfileLoginPath);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      window.location.replace(loginPath);
+      return false;
+    }
+  },
+
+  async loginPage(expectedRole, panelPath, alertId) {
+    try {
+      const session = await Http.authSession();
+      if (session.authenticated && session.role === expectedRole) {
+        window.location.replace(panelPath);
+        return;
+      }
+      if (session.authenticated) {
+        Alerta.mostrar(alertId, 'advertencia', 'Hay una sesión activa de otro perfil. Inicie sesión con la cuenta autorizada.');
+      }
+    } catch (error) {
+      Alerta.mostrar(alertId, 'error', 'El servicio de autenticación no está disponible. Intente más tarde.');
+    }
+  },
+
+  async logout(loginPath, alertId) {
+    try {
+      await Http.authSession();
+      await Http.post('/auth/logout', {});
+      window.location.replace(loginPath);
+    } catch (error) {
+      Alerta.mostrar(alertId, 'error', 'No se pudo cerrar la sesión. Intente nuevamente.');
+    }
+  },
+
+  bindLogout(loginPath, alertId) {
+    document.querySelectorAll('[data-auth-logout]').forEach((button) => {
+      button.addEventListener('click', () => this.logout(loginPath, alertId));
+    });
+  },
+};
+
+function mensajeLogin(error) {
+  if (error.status === 503) return 'El servicio de autenticación no está disponible. Intente más tarde.';
+  if (error.status === 403) return 'La sesión de seguridad expiró. Recargue la página e intente de nuevo.';
+  return 'Credenciales o perfil no válidos.';
+}
 
 /* ─────────────────────────────────────────
    SPINNER
@@ -155,7 +242,7 @@ const Validacion = {
 
   /** Validación básica de número de control (ej: 20230001) */
   numeroControl(valor) {
-    return /^\d{8}$/.test(valor.trim());
+    return /^[A-Z0-9]{8,26}$/i.test(valor.trim());
   },
 
   /** Validación de CURP */
@@ -225,32 +312,37 @@ const LoginEstudiante = {
     if (!form) return;
 
     TabsTipoUsuario.init();
+    AuthSession.loginPage('STUDENT', 'panel-estatus.html', 'alerta-login');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const tipoActivo = document.querySelector('.tab-tipo.activo')?.dataset.tipo || 'alumno';
+      if (tipoActivo !== 'alumno') {
+        Alerta.mostrar('alerta-login', 'info', 'La autenticación de aspirantes aún no está disponible.');
+        return;
+      }
       if (!this.validar()) return;
 
       Spinner.show();
       try {
-        const tipoActivo = document.querySelector('.tab-tipo.activo')?.dataset.tipo || 'alumno';
-        const payload = tipoActivo === 'alumno'
-          ? {
-              identificador: document.getElementById('numero-control').value.trim(),
-              password: document.getElementById('password-alumno').value,
-              rol: 'ALUMNO',
-            }
-          : {
-              identificador: document.getElementById('curp-aspirante').value.trim().toUpperCase(),
-              password: document.getElementById('folio-aspirante').value.trim(),
-              rol: 'ASPIRANTE',
-            };
-
-        // const data = await Http.post('/auth/login', payload);
-        // Redirigir a panel de estatus tras login exitoso
+        await Http.authSession();
+        const numeroControl = document.getElementById('numero-control').value.trim().toUpperCase();
+        const password = document.getElementById('password-alumno').value;
+        const session = await Http.post('/auth/login', {
+          username: `ALU_${numeroControl}`,
+          password,
+        });
+        if (session.role !== 'STUDENT' || session.identity !== numeroControl) {
+          await Http.post('/auth/logout', {});
+          throw new Error('Perfil no autorizado');
+        }
+        document.getElementById('password-alumno').value = '';
         window.location.href = 'panel-estatus.html';
       } catch (err) {
-        Alerta.mostrar('alerta-login', 'error', 'Credenciales incorrectas. Verifique e intente de nuevo.');
+        Alerta.mostrar('alerta-login', 'error', mensajeLogin(err));
       } finally {
+        const password = document.getElementById('password-alumno');
+        if (password) password.value = '';
         Spinner.hide();
       }
     });
@@ -301,6 +393,8 @@ const PanelEstatus = {
   async init() {
     const timeline = document.getElementById('estatus-timeline');
     if (!timeline) return;
+    if (!await AuthSession.requireRole('STUDENT', 'login.html', '/administrativo/login.html')) return;
+    AuthSession.bindLogout('login.html', 'alerta-estatus');
 
     Spinner.show();
     try {
@@ -373,6 +467,8 @@ const FormularioSolicitud = {
   async init() {
     const form = document.getElementById('form-solicitud');
     if (!form) return;
+    if (!await AuthSession.requireRole('STUDENT', 'login.html', '/administrativo/login.html')) return;
+    AuthSession.bindLogout('login.html', 'alerta-formulario');
 
     await this.cargarFormulario();
     this.iniciarNavegacion();
