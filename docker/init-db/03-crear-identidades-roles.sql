@@ -3,7 +3,7 @@
 -- Proyecto: SAReduccion / Oracle XE 21c
 --
 -- OBJETIVO
---   Crear roles, cuentas Oracle individuales y la cuenta tecnica del backend.
+--   Crear roles y cuentas Oracle individuales.
 --
 -- EJECUCION: SQL*Plus o SQLcl, conectado como SYSDBA en XEPDB1.
 --   Ejecutar DESPUES de 02-crear-estructura.sql y ANTES de
@@ -16,7 +16,7 @@
 --   * NO concede acceso directo a las tablas de SA_REDUCCION.
 --   * Los permisos EXECUTE a los paquetes se otorgan en el script 04.
 --   * Las cuentas y claves se reciben como variables SQL*Plus desde init-db.sh.
---   * SAR_BACKEND solo recibe CREATE SESSION; EXECUTE se concede en el script 04.
+--   * La cuenta tecnica SAR_BACKEND se crea en 05-crear-cuenta-tecnica.sql.
 --
 -- IMPORTANTE: los usuarios Oracle no equivalen a los registros de las tablas
 -- ESTUDIANTES y ADMINISTRADORES. Este script NO inserta filas de prueba.
@@ -95,11 +95,6 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('Cuenta de administrador creada.');
   END IF;
 
-  SELECT COUNT(*) INTO n FROM DBA_USERS WHERE USERNAME = '&&ORACLE_BACKEND_USER';
-  IF n = 0 THEN
-    EXECUTE IMMEDIATE 'CREATE USER &&ORACLE_BACKEND_USER IDENTIFIED BY "&&ORACLE_BACKEND_PASSWORD"';
-    DBMS_OUTPUT.PUT_LINE('Cuenta tecnica del backend creada.');
-  END IF;
 END;
 /
 
@@ -109,13 +104,12 @@ GRANT ROL_SAR_ESTUDIANTE_SIM TO &&ORACLE_ALUMNO_USER;
 GRANT ROL_SAR_ADMIN_SIM TO &&ORACLE_ADMIN_USER;
 ALTER USER &&ORACLE_ALUMNO_USER DEFAULT ROLE ROL_SAR_ESTUDIANTE_SIM;
 ALTER USER &&ORACLE_ADMIN_USER DEFAULT ROLE ROL_SAR_ADMIN_SIM;
-GRANT CREATE SESSION TO &&ORACLE_BACKEND_USER;
 
 -- 7. Verificacion de cuentas, roles y permisos de inicio de sesion.
 COLUMN USERNAME FORMAT A20
 COLUMN ACCOUNT_STATUS FORMAT A20
 SELECT USERNAME, ACCOUNT_STATUS FROM DBA_USERS
- WHERE USERNAME IN ('&&ORACLE_ALUMNO_USER', '&&ORACLE_ADMIN_USER', '&&ORACLE_BACKEND_USER')
+ WHERE USERNAME IN ('&&ORACLE_ALUMNO_USER', '&&ORACLE_ADMIN_USER')
  ORDER BY USERNAME;
 
 COLUMN GRANTEE FORMAT A20

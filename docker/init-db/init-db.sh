@@ -87,6 +87,7 @@ printf 'Inicializando el esquema SAReduccion en %s.\n' "$oracle_pdb"
 run_as_sys 01-configurar-esquema.sql
 run_as_app 02-crear-estructura.sql
 run_as_sys 03-crear-identidades-roles.sql
+run_as_sys 05-crear-cuenta-tecnica.sql
 run_as_app 04-crear-paquetes-permisos.sql
 
 printf 'Verificando tablas, paquetes, usuarios y roles...\n'
