@@ -53,17 +53,19 @@ Los paquetes `SA_REDUCCION.PKG_ESTUDIANTE` y `SA_REDUCCION.PKG_ADMINISTRADOR` us
 
 Los parámetros son identificadores, no credenciales ni pruebas independientes de autenticación. El backend debe tomarlos exclusivamente del principal de una sesión autenticada, comprobar el perfil para cada endpoint y no aceptar esos valores desde una petición del cliente.
 
-## Autenticación y sesiones: pendiente
+## Autenticación y sesiones
 
-La arquitectura prevista es:
+La primera versión para estudiantes y administradores está implementada en Spring Boot:
 
-1. Validar inicialmente las credenciales Oracle del estudiante o administrador y determinar su perfil real.
-2. Crear en Spring Boot una `HttpSession` con la identidad y el perfil, sin guardar la contraseña.
-3. Autorizar cada operación según el perfil autenticado.
-4. Ejecutar las operaciones posteriores con el pool JDBC de `SAR_BACKEND`, pasando al paquete la identidad tomada de la sesión.
-5. Autenticar aspirantes por ficha, CURP, año y periodo vigente de convocatoria, sin crearles cuentas Oracle individuales.
+1. `POST /api/auth/login` valida las credenciales mediante una conexión JDBC temporal (`DriverManager`), comprueba `SESSION_USER` y `SESSION_ROLES`, y no usa el pool `SAR_BACKEND` para validar contraseñas.
+2. La regla de estudiante valida `ALU_<Numero_Control>` y comprueba el perfil mediante `PKG_ESTUDIANTE.mis_datos`. La regla administrativa relaciona el username con `idAdministrador` y valida el perfil llamando `PKG_ADMINISTRADOR.listar_estudiantes`; el cursor de listado se cierra sin devolver filas.
+3. La sesión conserva el principal (usuario Oracle, identidad de perfil y rol) y un token CSRF; nunca conserva la contraseña. El ID de sesión se rota tras el login.
+4. `GET /api/auth/me` devuelve la identidad propia de la sesión; para una sesión anónima devuelve `401` y un token CSRF para iniciar el flujo.
+5. `POST /api/auth/logout` exige el token CSRF y luego invalida la sesión.
 
-Ninguno de esos flujos está implementado todavía. La tabla `Aspirantes` contiene `ficha`, `Curp`, `periodo` y `anio`, y la convocatoria define sus fechas; falta desarrollar y probar la validación del aspirante. También están pendientes los endpoints de login, consulta, operaciones de negocio y cierre de sesión.
+Las respuestas distinguen de forma genérica autenticación/perfil inválido, CSRF inválido y servicio temporalmente no disponible, sin revelar errores Oracle. La cookie de sesión es `HttpOnly` y `SameSite=Lax`; `SESSION_COOKIE_SECURE` vale `false` localmente y debe configurarse como `true` tras HTTPS en producción. Las operaciones `POST` requieren `X-CSRF-TOKEN` obtenido de `/me`.
+
+La primera integración de autenticación de estudiante y administrador se probó contra las cuentas existentes. Aún no se implementan los endpoints de negocio ni la autorización de operaciones fuera de estas rutas de autenticación. La autenticación de aspirantes sigue pendiente; la tabla `Aspirantes` contiene `ficha`, `Curp`, `periodo` y `anio`, y la convocatoria define sus fechas.
 
 ## Inicialización y actualización de Oracle
 
@@ -71,50 +73,40 @@ Ninguno de esos flujos está implementado todavía. La tabla `Aspirantes` contie
 
 1. `01-configurar-esquema.sql`: crea/configura `SA_REDUCCION` como SYS en `XEPDB1`.
 2. `02-crear-estructura.sql`: crea tablas, secuencias, triggers, relaciones y catálogos como `SA_REDUCCION`.
-3. `03-crear-identidades-roles.sql`: crea roles y cuentas individuales y técnicas como SYS.
-4. `04-crear-paquetes-permisos.sql`: crea los paquetes y grants como `SA_REDUCCION`.
+3. `03-crear-identidades-roles.sql`: crea roles y cuentas individuales como SYS.
+4. `05-crear-cuenta-tecnica.sql`: crea/verifica `SAR_BACKEND` y concede `CREATE SESSION` como SYS.
+5. `04-crear-paquetes-permisos.sql`: crea los paquetes y concede sus permisos como `SA_REDUCCION`.
 
 El inicializador comprueba los objetos y privilegios, y deja un marcador de finalización para el healthcheck. La imagen ejecuta la inicialización automática solo cuando Oracle inicializa un volumen vacío; modificar SQL o `.env` no migra automáticamente la base existente.
 
-Para bases ya inicializadas se prepararon `05-crear-cuenta-tecnica.sql` y `migrate-backend.sh`. El migrador crea o verifica `SAR_BACKEND` sin cambiar la contraseña de una cuenta existente y vuelve a instalar los paquetes/grants; se detiene si detecta privilegios adicionales que requieren revisión. **Esta migración a la arquitectura `SAR_BACKEND` está pendiente de ejecución y validación en la base existente.** No se debe borrar ni recrear el volumen para aplicarla. Los detalles operativos están en [README.md](README.md) y el estado de la migración, en la tabla siguiente.
-
-Cuando se autorice aplicar la migración, después de definir `ORACLE_BACKEND_USER` y `ORACLE_BACKEND_PASSWORD` en `.env`, los comandos preparados son:
+Para bases ya inicializadas, `05-crear-cuenta-tecnica.sql` y `migrate-backend.sh` crean/verifican `SAR_BACKEND` sin cambiar la contraseña de una cuenta existente y vuelven a instalar los paquetes/grants; el migrador se detiene si detecta privilegios adicionales que requieren revisión. La migración se aplicó a la base existente:
 
 ```bash
-docker compose up -d --no-deps --force-recreate oracle-db
-docker compose exec -T oracle-db bash /opt/sareduccion/init-db/migrate-backend.sh
+docker exec sareduccion-oracle bash /opt/sareduccion/init-db/migrate-backend.sh
 ```
 
-El primer comando recrea el contenedor para cargar el entorno actualizado, no elimina el volumen. El segundo ejecuta el script de migración dentro de Oracle. No ejecutar `docker compose down -v`.
+Se conservaron el contenedor y el volumen. No se ejecutó `docker compose down -v` ni se recreó la base.
 
 El destino futuro es Oracle 12c, pero ni los scripts ni el driver han sido validados aún contra la versión exacta de 12c prevista.
 
 ## Estado del desarrollo
 
-### Implementado y validado previamente
+### Implementado y validado
 
-- La estructura base reportada de Oracle XE 21c: 21 tablas, 15 secuencias, 22 triggers y los paquetes originales.
-- Las cuentas individuales de prueba, roles y esquema según la inicialización existente.
-- Frontend estático, proxy Nginx y configuración Docker Compose del entorno.
-
-La validación previa corresponde al estado anterior a la adaptación de `SAR_BACKEND`; no demuestra que los cambios nuevos estén instalados en la base actual.
-
-### Implementado en archivos, pendiente de aplicar o verificar
-
-- Firmas nuevas y validaciones de identidad de los paquetes PL/SQL.
-- Cuenta `SAR_BACKEND`, permisos mínimos y configuración del pool JDBC.
-- Scripts de instalación para volúmenes nuevos y migración no destructiva para la base existente.
-
-No se ejecutaron la migración ni SQL en esta actualización documental. `database/tests/05-verificar-instalacion.sql` comprueba conteos y paquetes. `database/tests/06-probar-permisos.sql` todavía espera los antiguos grants a roles individuales y debe actualizarse antes de usarse para validar el modelo nuevo.
+- La prueba `database/tests/05-verificar-instalacion.sql`: 21 tablas, 15 secuencias, 22 triggers, 2 paquetes y 2 cuerpos válidos, sin objetos inválidos.
+- La migración de `SAR_BACKEND` y la prueba `database/tests/06-probar-permisos.sql`: `CREATE SESSION`, `EXECUTE` en ambos paquetes, sin CRUD directo, privilegios administrativos ni grants antiguos a roles individuales.
+- `EstudianteRepository.misDatos()` invoca `PKG_ESTUDIANTE.mis_datos` con `CallableStatement`, parámetros enlazados y lectura de `SYS_REFCURSOR`. `EstudianteRepositoryIntegrationTest` pasó usando `SAR_BACKEND` desde Maven/Java 8 en la red Docker y verificó los campos devueltos.
+- Login, `/me` y logout para las cuentas existentes `ALU_21281181` y `SA01`: autenticación Oracle temporal, comprobación de roles/perfiles, rotación de sesión y protección CSRF.
+- Se conserva el estudiante ficticio `PRUEBA_JDBC_20261014` para pruebas posteriores.
+- Oracle XE sigue `healthy` y el volumen persistente continúa montado.
 
 ### Pendiente de desarrollar
 
-- Autenticación inicial con Oracle, determinación del perfil y `HttpSession`.
-- Autorización por perfil en los endpoints.
-- Capa JDBC para invocar los paquetes y manejar cursores/transacciones.
-- Autenticación de aspirantes y cierre de sesión.
-- Controladores REST funcionales, validación de entradas y manejo centralizado de errores.
-- Pruebas de integración de la nueva ruta de autenticación y de los paquetes.
+- Integrar el frontend con los endpoints de autenticación y enviar/retener el token CSRF.
+- Aplicar autorización por perfil a futuros endpoints de negocio.
+- Capa JDBC para las operaciones restantes de los paquetes y manejo de cursores/transacciones.
+- Autenticación de aspirantes.
+- Pruebas negativas de autenticación/CSRF y compatibilidad con la versión objetivo de Oracle 12c.
 - Pruebas de compatibilidad con la versión objetivo de Oracle 12c.
 
 ## Diagnóstico rápido
