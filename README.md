@@ -46,7 +46,21 @@ La aplicación frontend queda disponible en:
 - Solicitante: <http://localhost:8081/solicitante/login.html>
 - Administrativo: <http://localhost:8081/administrativo/login.html>
 
-Oracle se publica en `localhost:1522`. El backend usa el puerto `8080`; actualmente todavía no implementa endpoints REST funcionales, por lo que el login y las operaciones del frontend no completan flujos contra la API.
+Oracle se publica en `localhost:1522`. El backend usa el puerto `8080` e implementa actualmente los endpoints de autenticación (`/api/auth/me`, `/api/auth/login`, `/api/auth/login/aspirante` y `/api/auth/logout`). Las vistas de solicitudes, respuestas y deducciones siguen mostrando datos simulados porque sus endpoints de negocio aún no existen.
+
+## Respaldo de Oracle
+
+Además del volumen persistente, el esquema puede respaldarse con Oracle Data Pump:
+
+```bash
+docker exec -e SARTS="$(date +%Y%m%d-%H%M%S)" sareduccion-oracle \
+  expdp "SA_REDUCCION/<APP_PASSWORD>@//localhost:1521/XEPDB1" \
+    SCHEMAS=SA_REDUCCION DIRECTORY=SAR_BACKUP_DIR \
+    DUMPFILE="sa_reduccion_${SARTS}.dmp" LOGFILE="sa_reduccion_${SARTS}.exp.log" \
+    REUSE_DUMPFILES=N CONTENT=ALL EXCLUDE=STATISTICS PARALLEL=1
+```
+
+Los archivos se copian luego a `backups/oracle/` con `docker cp`. La carpeta está excluida por `.gitignore`: nunca deben subirse los `.dmp` al repositorio. El procedimiento completo, la verificación por hash y la restauración con `impdp` están en [BaseDeDatos.md](BaseDeDatos.md).
 
 ## Estado y logs
 
