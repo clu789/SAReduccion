@@ -12,8 +12,10 @@ import org.springframework.stereotype.Service;
 import com.itt.sareduccion.auth.OracleCredentialValidator.AuthenticationRejectedException;
 import com.itt.sareduccion.auth.OracleCredentialValidator.AuthenticationUnavailableException;
 import com.itt.sareduccion.auth.OracleCredentialValidator.OracleIdentity;
+import com.itt.sareduccion.model.ApplicantIdentity;
 import com.itt.sareduccion.model.EstudianteDatos;
 import com.itt.sareduccion.repository.AdministradorRepository;
+import com.itt.sareduccion.repository.ApplicantRepository;
 import com.itt.sareduccion.repository.EstudianteRepository;
 
 @Service
@@ -26,12 +28,15 @@ public class AuthenticationService {
     private final OracleCredentialValidator credentialValidator;
     private final EstudianteRepository estudianteRepository;
     private final AdministradorRepository administradorRepository;
+    private final ApplicantRepository applicantRepository;
 
     public AuthenticationService(OracleCredentialValidator credentialValidator,
-            EstudianteRepository estudianteRepository, AdministradorRepository administradorRepository) {
+            EstudianteRepository estudianteRepository, AdministradorRepository administradorRepository,
+            ApplicantRepository applicantRepository) {
         this.credentialValidator = credentialValidator;
         this.estudianteRepository = estudianteRepository;
         this.administradorRepository = administradorRepository;
+        this.applicantRepository = applicantRepository;
     }
 
     public AuthenticatedPrincipal authenticate(String username, String password) {
@@ -81,6 +86,25 @@ public class AuthenticationService {
             throw new AuthenticationUnavailableException();
         }
         return new AuthenticatedPrincipal(oracleUsername, idAdministrador, AuthRole.ADMIN);
+    }
+
+    /**
+     * Autenticacion provisional de aspirante: ficha + CURP. Oracle valida el
+     * anio vigente y la unicidad del registro; aqui solo se traduce el
+     * resultado a un principal de sesion sin exponer datos personales.
+     */
+    public ApplicantPrincipal authenticateApplicant(String ficha, String curp) {
+        try {
+            ApplicantIdentity identity = applicantRepository.validar(ficha, curp)
+                    .orElseThrow(AuthenticationRejectedException::new);
+            return new ApplicantPrincipal(identity.getFicha(), identity.getPeriodo(), identity.getAnio());
+        } catch (DataAccessException exception) {
+            if (hasOracleError(exception, 20840) || hasOracleError(exception, 20841)
+                    || hasOracleError(exception, 20842)) {
+                throw new AuthenticationRejectedException();
+            }
+            throw new AuthenticationUnavailableException();
+        }
     }
 
     private boolean hasOracleError(Throwable throwable, int expectedCode) {

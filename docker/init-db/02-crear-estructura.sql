@@ -139,13 +139,19 @@ CREATE TABLE Aspirantes (
     SegundoApellido VARCHAR2(50),
     Semestre        NUMBER(2),
     Curp            VARCHAR2(18)  NOT NULL,
-    correo          VARCHAR2(254),
+    correo          VARCHAR2(254) NOT NULL,
     CONSTRAINT pk_aspirantes PRIMARY KEY (ficha, periodo, anio),
     CONSTRAINT fk_aspirante_periodo
         FOREIGN KEY (periodo) REFERENCES Periodos(idPeriodo),
     CONSTRAINT ck_aspirantes_anio CHECK (anio BETWEEN 2000 AND 2200),
     CONSTRAINT ck_aspirantes_curp CHECK (LENGTH(Curp) = 18),
-    CONSTRAINT ck_aspirantes_semestre CHECK (Semestre IS NULL OR Semestre BETWEEN 1 AND 20)
+    CONSTRAINT ck_aspirantes_semestre CHECK (Semestre IS NULL OR Semestre BETWEEN 1 AND 20),
+    CONSTRAINT ck_aspirantes_correo CHECK (
+        REGEXP_LIKE(
+            correo,
+            '^[A-Za-z0-9_%+-]+(\.[A-Za-z0-9_%+-]+)*@(yahoo\.com\.mx|gmail\.com|hotmail\.com|outlook\.com|live\.com|yahoo\.com|icloud\.com)$',
+            'i')
+    )
 );
 
 -- ------------------------------------------------------------------------

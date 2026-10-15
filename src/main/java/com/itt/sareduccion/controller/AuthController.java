@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -18,10 +20,13 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.itt.sareduccion.auth.ApplicantPrincipal;
 import com.itt.sareduccion.auth.AuthenticatedPrincipal;
 import com.itt.sareduccion.auth.AuthenticationService;
+import com.itt.sareduccion.auth.LoginAttemptLimiter;
 import com.itt.sareduccion.auth.OracleCredentialValidator.AuthenticationRejectedException;
 import com.itt.sareduccion.auth.OracleCredentialValidator.AuthenticationUnavailableException;
+import com.itt.sareduccion.auth.SessionPrincipal;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -30,19 +35,24 @@ public class AuthController {
     private static final String PRINCIPAL_ATTRIBUTE = AuthController.class.getName() + ".principal";
     private static final String CSRF_ATTRIBUTE = AuthController.class.getName() + ".csrf";
     private static final String CSRF_HEADER = "X-CSRF-TOKEN";
+    private static final Pattern FICHA_PATTERN = Pattern.compile("^[A-Z0-9]{1,18}$");
+    private static final Pattern CURP_PATTERN = Pattern.compile("^[A-Z0-9]{18}$");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final AuthenticationService authenticationService;
+    private final LoginAttemptLimiter loginAttemptLimiter;
 
-    public AuthController(AuthenticationService authenticationService) {
+    public AuthController(AuthenticationService authenticationService,
+            LoginAttemptLimiter loginAttemptLimiter) {
         this.authenticationService = authenticationService;
+        this.loginAttemptLimiter = loginAttemptLimiter;
     }
 
     @GetMapping("/me")
     public ResponseEntity<SessionResponse> me(HttpServletRequest request) {
         HttpSession session = request.getSession(true);
         String csrfToken = csrfToken(session);
-        AuthenticatedPrincipal principal = principal(session);
+        SessionPrincipal principal = principal(session);
         SessionResponse response = principal == null
                 ? SessionResponse.anonymous(csrfToken)
                 : SessionResponse.authenticated(principal, csrfToken);
@@ -69,6 +79,46 @@ public class AuthController {
         return ResponseEntity.ok(SessionResponse.authenticated(principal, csrfToken(session)));
     }
 
+    /**
+     * Autenticacion provisional de aspirantes (ficha + CURP). Reutiliza el
+     * mismo mecanismo de CSRF y HttpSession que el login de estudiante/admin.
+     * No solicita anio ni periodo: Oracle valida el anio vigente.
+     */
+    @PostMapping("/login/aspirante")
+    public ResponseEntity<?> loginAspirante(@RequestBody ApplicantLoginRequest loginRequest,
+            @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
+            HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (!validCsrf(session, csrfHeader)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse("Solicitud no válida"));
+        }
+        // Un intento fallido no debe conservar una identidad autenticada previa.
+        clearPrincipal(session);
+
+        String ficha = normalize(loginRequest == null ? null : loginRequest.getFicha());
+        String curp = normalize(loginRequest == null ? null : loginRequest.getCurp());
+        String limiterKey = limiterKey(request, ficha);
+        if (loginAttemptLimiter.isBlocked(limiterKey)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new ErrorResponse("Demasiados intentos. Intente más tarde."));
+        }
+        if (!FICHA_PATTERN.matcher(ficha).matches() || !CURP_PATTERN.matcher(curp).matches()) {
+            loginAttemptLimiter.recordFailure(limiterKey);
+            throw new AuthenticationRejectedException();
+        }
+
+        try {
+            ApplicantPrincipal principal = authenticationService.authenticateApplicant(ficha, curp);
+            loginAttemptLimiter.reset(limiterKey);
+            request.changeSessionId();
+            session.setAttribute(PRINCIPAL_ATTRIBUTE, principal);
+            return ResponseEntity.ok(SessionResponse.authenticated(principal, csrfToken(session)));
+        } catch (AuthenticationRejectedException exception) {
+            loginAttemptLimiter.recordFailure(limiterKey);
+            throw exception;
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletRequest request) {
@@ -92,9 +142,24 @@ public class AuthController {
                 .body(new ErrorResponse("Autenticación temporalmente no disponible"));
     }
 
-    private AuthenticatedPrincipal principal(HttpSession session) {
+    private SessionPrincipal principal(HttpSession session) {
         Object value = session.getAttribute(PRINCIPAL_ATTRIBUTE);
-        return value instanceof AuthenticatedPrincipal ? (AuthenticatedPrincipal) value : null;
+        return value instanceof SessionPrincipal ? (SessionPrincipal) value : null;
+    }
+
+    private void clearPrincipal(HttpSession session) {
+        if (session != null) {
+            session.removeAttribute(PRINCIPAL_ATTRIBUTE);
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String limiterKey(HttpServletRequest request, String ficha) {
+        String origin = request.getRemoteAddr();
+        return (origin == null ? "unknown" : origin) + '|' + ficha;
     }
 
     private String csrfToken(HttpSession session) {
@@ -142,29 +207,54 @@ public class AuthController {
         }
     }
 
+    public static final class ApplicantLoginRequest {
+        private String ficha;
+        private String curp;
+
+        public String getFicha() {
+            return ficha;
+        }
+
+        public void setFicha(String ficha) {
+            this.ficha = ficha;
+        }
+
+        public String getCurp() {
+            return curp;
+        }
+
+        public void setCurp(String curp) {
+            this.curp = curp;
+        }
+    }
+
     public static final class SessionResponse {
         private final boolean authenticated;
         private final String username;
         private final String identity;
         private final String role;
+        private final Integer periodo;
+        private final Integer anio;
         private final String csrfToken;
 
         private SessionResponse(boolean authenticated, String username, String identity, String role,
-                String csrfToken) {
+                Integer periodo, Integer anio, String csrfToken) {
             this.authenticated = authenticated;
             this.username = username;
             this.identity = identity;
             this.role = role;
+            this.periodo = periodo;
+            this.anio = anio;
             this.csrfToken = csrfToken;
         }
 
         private static SessionResponse anonymous(String csrfToken) {
-            return new SessionResponse(false, null, null, null, csrfToken);
+            return new SessionResponse(false, null, null, null, null, null, csrfToken);
         }
 
-        private static SessionResponse authenticated(AuthenticatedPrincipal principal, String csrfToken) {
-            return new SessionResponse(true, principal.getOracleUsername(), principal.getProfileId(),
-                    principal.getRole().name(), csrfToken);
+        private static SessionResponse authenticated(SessionPrincipal principal, String csrfToken) {
+            return new SessionResponse(true, principal.getUsername(), principal.getIdentity(),
+                    principal.getRole().name(), principal.getPeriodo(), principal.getAnio(), csrfToken);
         }
 
         public boolean isAuthenticated() {
@@ -181,6 +271,14 @@ public class AuthController {
 
         public String getRole() {
             return role;
+        }
+
+        public Integer getPeriodo() {
+            return periodo;
+        }
+
+        public Integer getAnio() {
+            return anio;
         }
 
         public String getCsrfToken() {
