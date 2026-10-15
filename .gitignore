@@ -23,6 +23,7 @@ target/
 *.classpath
 *.settings/
 nbproject/
+.continue/
 
 # ── Docker ──────────────────────────────────────────────────
 # No ignorar docker-compose.yml (es parte del proyecto)
@@ -39,4 +40,11 @@ Desktop.ini
 logs/
 
 # ── Oracle backups (local only) ─────────────────────────────
-backups/oracle/
+# Los respaldos viven solo en el equipo anfitrión.
+backups/
+# Artefactos de Oracle Data Pump (nunca versionar)
+*.dmp
+*.exp.log
+*.imp.log
+expdp*.log
+impdp*.log
