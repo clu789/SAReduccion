@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 02-crear-estructura.sql
 -- Proyecto: SAReduccion - Oracle XE 21c / esquema SA_REDUCCION
--- Origen: 02-init-shema(1).sql (V5), conservando DDL y datos iniciales.
+-- Define la estructura y las reglas de integridad del sistema.
 --
 -- OBJETIVO
 --   Crear 21 tablas, 15 secuencias, triggers, índices y catálogos base.
@@ -53,23 +53,6 @@ BEGIN
 END;
 /
 
--- ==========================================================================
--- MODELO DE DATOS V5: sentencias originales conservadas.
--- ==========================================================================
-
--- ================================================================
--- VERSION V5: identidades Oracle sin tabla Usuarios y validacion de transiciones
--- 1. Eliminación definitiva de la tabla Usuarios y password_hash.
--- 2. Eliminación de las columnas id_usuario en Estudiantes y Administradores.
--- 3. Identidad de estudiantes basada directamente en Numero_Control
---    (patrón de usuario Oracle implícito: ALU_ + Numero_Control).
--- 4. Identidad de administradores basada directamente en idAdministrador.
--- 5. Renombrado de absolutamente todas las tablas al plural
---    (Estudiante -> Estudiantes, Aspirante -> Aspirantes, etc.).
--- 6. Actualización completa de claves foráneas, restricciones, índices,
---    secuencias, triggers y consultas PL/SQL a los nuevos nombres y reglas.
--- ================================================================
-
 -- ================================================================
 -- BASE DE DATOS: Servicio Administrativo de Reducción del monto
 --               de inscripción
@@ -82,7 +65,6 @@ END;
 
 -- ------------------------------------------------------------------------
 -- TABLA PERIODOS: Catálogo de periodos académicos utilizado por convocatorias y aspirantes.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Periodos (
     idPeriodo        NUMBER(2)     CONSTRAINT pk_periodos PRIMARY KEY,
@@ -92,7 +74,6 @@ CREATE TABLE Periodos (
 
 -- ------------------------------------------------------------------------
 -- TABLA TIPO_SOLICITUDES: Clasificación de los tipos de solicitud disponibles.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Tipo_Solicitudes (
     id_Tipo_Solicitud NUMBER(10)    CONSTRAINT pk_tipo_solicitudes PRIMARY KEY,
@@ -102,7 +83,6 @@ CREATE TABLE Tipo_Solicitudes (
 
 -- ------------------------------------------------------------------------
 -- TABLA TIPO_PREGUNTAS: Catálogo de modalidades de preguntas para formularios.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Tipo_Preguntas (
     id_Tipo_Pregunta NUMBER(10)    CONSTRAINT pk_tipo_preguntas PRIMARY KEY,
@@ -112,7 +92,6 @@ CREATE TABLE Tipo_Preguntas (
 
 -- ------------------------------------------------------------------------
 -- TABLA ESTATUS_SOLICITUDES: Estados posibles de una solicitud.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Estatus_Solicitudes (
     id_estatus_solicitud NUMBER(10)    CONSTRAINT pk_estatus_solicitudes PRIMARY KEY,
@@ -123,7 +102,6 @@ CREATE TABLE Estatus_Solicitudes (
 
 -- ------------------------------------------------------------------------
 -- TABLA ESTATUS_DEDUCCIONES: Estados posibles de una deducción autorizada.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Estatus_Deducciones (
     id_Estatus_Deducciones NUMBER(10)   CONSTRAINT pk_estatus_deducciones PRIMARY KEY,
@@ -138,10 +116,9 @@ CREATE TABLE Estatus_Deducciones (
 
 -- ------------------------------------------------------------------------
 -- TABLA ESTUDIANTES: Datos de estudiantes identificados por número de control.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Estudiantes (
-    Numero_Control   VARCHAR2(50)  CONSTRAINT pk_estudiantes PRIMARY KEY,
+    Numero_Control   VARCHAR2(10)  CONSTRAINT pk_estudiantes PRIMARY KEY,
     Nombre           VARCHAR2(50)  NOT NULL,
     PrimerAppellido  VARCHAR2(50)  NOT NULL,
     SegundoApellido  VARCHAR2(50),
@@ -152,13 +129,11 @@ CREATE TABLE Estudiantes (
 
 -- ------------------------------------------------------------------------
 -- TABLA ASPIRANTES: Datos de aspirantes identificados por ficha, periodo y año.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Aspirantes (
     ficha           VARCHAR2(18)  NOT NULL,
     periodo         NUMBER(2)     NOT NULL,
     anio            NUMBER(4)     NOT NULL,
-    claveControl    VARCHAR2(50),
     Nombre          VARCHAR2(50)  NOT NULL,
     PrimerApellido  VARCHAR2(50)  NOT NULL,
     SegundoApellido VARCHAR2(50),
@@ -168,17 +143,16 @@ CREATE TABLE Aspirantes (
     CONSTRAINT pk_aspirantes PRIMARY KEY (ficha, periodo, anio),
     CONSTRAINT fk_aspirante_periodo
         FOREIGN KEY (periodo) REFERENCES Periodos(idPeriodo),
-    CONSTRAINT ck_aspirantes_anio CHECK (anio BETWEEN 2000 AND 9999),
+    CONSTRAINT ck_aspirantes_anio CHECK (anio BETWEEN 2000 AND 2200),
     CONSTRAINT ck_aspirantes_curp CHECK (LENGTH(Curp) = 18),
     CONSTRAINT ck_aspirantes_semestre CHECK (Semestre IS NULL OR Semestre BETWEEN 1 AND 20)
 );
 
 -- ------------------------------------------------------------------------
 -- TABLA ADMINISTRADORES: Datos del personal administrador.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Administradores (
-    idAdministrador VARCHAR2(50) CONSTRAINT pk_administradores PRIMARY KEY,
+    idAdministrador VARCHAR2(10) CONSTRAINT pk_administradores PRIMARY KEY,
     Nombre          VARCHAR2(50) NOT NULL,
     PrimerApellido  VARCHAR2(50) NOT NULL,
     SegundoApellido VARCHAR2(50)
@@ -190,7 +164,6 @@ CREATE TABLE Administradores (
 
 -- ------------------------------------------------------------------------
 -- TABLA CONVOCATORIAS: Periodos de apertura y cierre de solicitudes.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Convocatorias (
     id_convocatoria NUMBER(10) CONSTRAINT pk_convocatorias PRIMARY KEY,
@@ -201,13 +174,12 @@ CREATE TABLE Convocatorias (
     CONSTRAINT fk_convocatoria_periodo
         FOREIGN KEY (id_periodo) REFERENCES Periodos(idPeriodo),
     CONSTRAINT ck_convocatoria_fechas CHECK (fecha_fin >= fecha_inicio),
-    CONSTRAINT ck_convocatoria_anio CHECK (anio BETWEEN 2000 AND 9999),
+    CONSTRAINT ck_convocatoria_anio CHECK (anio BETWEEN 2000 AND 2200),
     CONSTRAINT uk_convocatoria_periodo_anio UNIQUE (id_periodo, anio)
 );
 
 -- ------------------------------------------------------------------------
 -- TABLA CONVOCATORIAS_TIPOSOLICITUDES: Relación entre convocatorias y tipos de solicitudes.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Convocatorias_TipoSolicitudes (
     id_convocatoria         NUMBER(10)   NOT NULL,
@@ -228,7 +200,6 @@ CREATE TABLE Convocatorias_TipoSolicitudes (
 
 -- ------------------------------------------------------------------------
 -- TABLA FORMULARIOS: Formularios vinculados al proceso de solicitud.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Formularios (
     idFormulario      NUMBER(10)    CONSTRAINT pk_formularios PRIMARY KEY,
@@ -242,7 +213,6 @@ CREATE TABLE Formularios (
 
 -- ------------------------------------------------------------------------
 -- TABLA PREGUNTAS: Banco de preguntas que pueden formar parte de formularios.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Preguntas (
     idPregunta     NUMBER(10)     CONSTRAINT pk_preguntas PRIMARY KEY,
@@ -256,7 +226,6 @@ CREATE TABLE Preguntas (
 
 -- ------------------------------------------------------------------------
 -- TABLA FORMULARIO_PREGUNTAS: Relación de preguntas asignadas a formularios.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Formulario_Preguntas (
     idFormulario NUMBER(10) NOT NULL,
@@ -273,7 +242,6 @@ CREATE TABLE Formulario_Preguntas (
 
 -- ------------------------------------------------------------------------
 -- TABLA OPCIONES: Opciones de respuesta asociadas a preguntas.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Opciones (
     id_opcion    NUMBER(10)    CONSTRAINT pk_opciones PRIMARY KEY,
@@ -292,7 +260,6 @@ CREATE TABLE Opciones (
 
 -- ------------------------------------------------------------------------
 -- TABLA MONTO_INSCRIPCIONES: Importes asociados a inscripción.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Monto_Inscripciones (
     id_monto_inscripcion NUMBER(10) CONSTRAINT pk_monto_inscripciones PRIMARY KEY,
@@ -302,7 +269,6 @@ CREATE TABLE Monto_Inscripciones (
 
 -- ------------------------------------------------------------------------
 -- TABLA MONTO_REINSCRIPCIONES: Importes asociados a reinscripción.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Monto_Reinscripciones (
     id_monto_reinscripcion NUMBER(10) CONSTRAINT pk_monto_reinscripciones PRIMARY KEY,
@@ -313,16 +279,15 @@ CREATE TABLE Monto_Reinscripciones (
 -- ================================================================
 -- SOLICITUDES
 -- ================================================================
-
 -- ------------------------------------------------------------------------
 -- TABLA SOLICITUDES: Solicitudes presentadas por estudiantes o aspirantes.
--- Se conservan tipos, restricciones y relaciones del archivo original.
+-- Cada solicitud pertenece exclusivamente a un estudiante o aspirante.
 -- ------------------------------------------------------------------------
 CREATE TABLE Solicitudes (
     idSolicitud          NUMBER(10) CONSTRAINT pk_solicitudes PRIMARY KEY,
     id_estatus_solicitud NUMBER(10) NOT NULL,
     id_convocatoria      NUMBER(10) NOT NULL,
-    num_control          VARCHAR2(50),
+    num_control          VARCHAR2(10),
     ficha                VARCHAR2(18),
     periodo              NUMBER(2),
     anio                 NUMBER(4),
@@ -330,27 +295,74 @@ CREATE TABLE Solicitudes (
     fecha_actualizacion  DATE DEFAULT SYSDATE NOT NULL,
     id_Tipo_Solicitud    NUMBER(10) NOT NULL,
     idFormulario         NUMBER(10) NOT NULL,
+
     CONSTRAINT fk_solicitud_estatus
-        FOREIGN KEY (id_estatus_solicitud) REFERENCES Estatus_Solicitudes(id_estatus_solicitud),
+        FOREIGN KEY (id_estatus_solicitud)
+        REFERENCES Estatus_Solicitudes(id_estatus_solicitud),
+
     CONSTRAINT fk_solicitud_convocatoria
-        FOREIGN KEY (id_convocatoria) REFERENCES Convocatorias(id_convocatoria),
+        FOREIGN KEY (id_convocatoria)
+        REFERENCES Convocatorias(id_convocatoria),
+
     CONSTRAINT fk_solicitud_estudiante
-        FOREIGN KEY (num_control) REFERENCES Estudiantes(Numero_Control),
+        FOREIGN KEY (num_control)
+        REFERENCES Estudiantes(Numero_Control),
+
     CONSTRAINT fk_solicitud_aspirante
-        FOREIGN KEY (ficha, periodo, anio) REFERENCES Aspirantes(ficha, periodo, anio),
+        FOREIGN KEY (ficha, periodo, anio)
+        REFERENCES Aspirantes(ficha, periodo, anio),
+
     CONSTRAINT fk_solicitud_tipo
-        FOREIGN KEY (id_Tipo_Solicitud) REFERENCES Tipo_Solicitudes(id_Tipo_Solicitud),
+        FOREIGN KEY (id_Tipo_Solicitud)
+        REFERENCES Tipo_Solicitudes(id_Tipo_Solicitud),
+
     CONSTRAINT fk_solicitud_formulario
-        FOREIGN KEY (idFormulario) REFERENCES Formularios(idFormulario),
+        FOREIGN KEY (idFormulario)
+        REFERENCES Formularios(idFormulario),
+
+    -- Garantiza que la solicitud pertenezca a un estudiante o aspirante,
+    -- pero nunca a ambos simultáneamente.
     CONSTRAINT ck_solicitud_origen CHECK (
-        (num_control IS NOT NULL AND ficha IS NULL AND periodo IS NULL AND anio IS NULL)
+        (num_control IS NOT NULL
+         AND ficha IS NULL AND periodo IS NULL AND anio IS NULL)
         OR
-        (num_control IS NULL AND ficha IS NOT NULL AND periodo IS NOT NULL AND anio IS NOT NULL)
+        (num_control IS NULL
+         AND ficha IS NOT NULL AND periodo IS NOT NULL AND anio IS NOT NULL)
     ),
-    CONSTRAINT ck_solicitud_anio CHECK (anio IS NULL OR anio BETWEEN 2000 AND 9999),
-    CONSTRAINT uk_solicitud_estudiante_conv_tipo
-        UNIQUE (num_control, id_convocatoria, id_Tipo_Solicitud)
+
+    -- Limita el año del aspirante al rango permitido; es nulo para estudiantes.
+    CONSTRAINT ck_solicitud_anio
+        CHECK (anio IS NULL OR anio BETWEEN 2000 AND 2200)
 );
+
+
+-- ------------------------------------------------------------------------
+-- ÍNDICE ÚNICO: SOLICITUDES DE ESTUDIANTES
+-- Impide que un estudiante registre más de una solicitud en la misma
+-- convocatoria, independientemente del tipo de solicitud.
+-- Solo considera registros con número de control; excluye aspirantes.
+-- ------------------------------------------------------------------------
+CREATE UNIQUE INDEX uk_solicitud_estudiante_conv
+ON Solicitudes (
+    CASE WHEN num_control IS NOT NULL THEN num_control END,
+    CASE WHEN num_control IS NOT NULL THEN id_convocatoria END
+);
+
+
+-- ------------------------------------------------------------------------
+-- ÍNDICE ÚNICO: SOLICITUDES DE ASPIRANTES
+-- Impide que un aspirante registre más de una solicitud en la misma
+-- convocatoria, identificándolo mediante ficha, periodo y año.
+-- Solo considera registros con ficha; excluye estudiantes.
+-- ------------------------------------------------------------------------
+CREATE UNIQUE INDEX uk_solicitud_aspirante_conv
+ON Solicitudes (
+    CASE WHEN ficha IS NOT NULL THEN ficha END,
+    CASE WHEN ficha IS NOT NULL THEN periodo END,
+    CASE WHEN ficha IS NOT NULL THEN anio END,
+    CASE WHEN ficha IS NOT NULL THEN id_convocatoria END
+);
+
 
 -- ================================================================
 -- RESPUESTAS
@@ -358,7 +370,6 @@ CREATE TABLE Solicitudes (
 
 -- ------------------------------------------------------------------------
 -- TABLA RESPUESTAS: Respuestas registradas para preguntas de solicitudes.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Respuestas (
     id_respuesta    NUMBER(10) CONSTRAINT pk_respuestas PRIMARY KEY,
@@ -383,7 +394,6 @@ CREATE UNIQUE INDEX ux_respuesta_solicitud_pregunta
 
 -- ------------------------------------------------------------------------
 -- TABLA HISTORIAL_SOLICITUDES: Historial de cambios de estado de las solicitudes.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Historial_Solicitudes (
     id_historial       NUMBER(10) CONSTRAINT pk_historial_solicitudes PRIMARY KEY,
@@ -391,7 +401,7 @@ CREATE TABLE Historial_Solicitudes (
     fecha_Registro     DATE DEFAULT SYSDATE NOT NULL,
     id_solicitud       NUMBER(10) NOT NULL,
     id_estatus         NUMBER(10) NOT NULL,
-    id_administrador   VARCHAR2(50),
+    id_administrador   VARCHAR2(10),
     id_Tipo_solicitud  NUMBER(10) NOT NULL,
     CONSTRAINT fk_hs_solicitud
         FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(idSolicitud),
@@ -409,7 +419,6 @@ CREATE TABLE Historial_Solicitudes (
 
 -- ------------------------------------------------------------------------
 -- TABLA DEDUCCIONES_AUTORIZADAS: Deducciones autorizadas y su seguimiento.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Deducciones_autorizadas (
     id_deduccion_autorizada NUMBER(10) CONSTRAINT pk_deducciones_autorizadas PRIMARY KEY,
@@ -417,7 +426,7 @@ CREATE TABLE Deducciones_autorizadas (
     monto_final             NUMBER(10,2) NOT NULL,
     fecha_registro          DATE DEFAULT SYSDATE NOT NULL,
     id_solicitud            NUMBER(10) NOT NULL,
-    id_administrador        VARCHAR2(50),
+    id_administrador        VARCHAR2(10),
     fecha_autorizacion      DATE,
     id_convocatoria         NUMBER(10) NOT NULL,
     id_Tipo_Solicitud       NUMBER(10) NOT NULL,
@@ -456,13 +465,12 @@ CREATE TABLE Deducciones_autorizadas (
 
 -- ------------------------------------------------------------------------
 -- TABLA HISTORIAL_DEDUCCIONES: Historial de movimientos de las deducciones.
--- Se conservan tipos, restricciones y relaciones del archivo original.
 -- ------------------------------------------------------------------------
 CREATE TABLE Historial_Deducciones (
     id_Historial_Deduccion  NUMBER(10) CONSTRAINT pk_historial_deducciones PRIMARY KEY,
     id_deduccion_autorizada NUMBER(10) NOT NULL,
     id_estatus              NUMBER(10) NOT NULL,
-    id_administrador        VARCHAR2(50),
+    id_administrador        VARCHAR2(10),
     comentario              VARCHAR2(500),
     fecha_registro          DATE DEFAULT SYSDATE NOT NULL,
     CONSTRAINT fk_hd_deduccion
@@ -477,35 +485,35 @@ CREATE TABLE Historial_Deducciones (
 -- SECUENCIAS
 -- ================================================================
 
--- Secuencia seq_tipo_solicitudes: genera identificadores para su entidad asociada.
+-- Secuencia seq_tipo_solicitudes: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_tipo_solicitudes START WITH 1 INCREMENT BY 1;
--- Secuencia seq_tipo_preguntas: genera identificadores para su entidad asociada.
+-- Secuencia seq_tipo_preguntas: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_tipo_preguntas START WITH 4 INCREMENT BY 1;
--- Secuencia seq_estatus_solicitudes: genera identificadores para su entidad asociada.
+-- Secuencia seq_estatus_solicitudes: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_estatus_solicitudes START WITH 6 INCREMENT BY 1;
--- Secuencia seq_estatus_deducciones: genera identificadores para su entidad asociada.
+-- Secuencia seq_estatus_deducciones: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_estatus_deducciones START WITH 6 INCREMENT BY 1;
--- Secuencia seq_convocatorias: genera identificadores para su entidad asociada.
+-- Secuencia seq_convocatorias: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_convocatorias START WITH 1 INCREMENT BY 1;
--- Secuencia seq_formularios: genera identificadores para su entidad asociada.
+-- Secuencia seq_formularios: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_formularios START WITH 1 INCREMENT BY 1;
--- Secuencia seq_preguntas: genera identificadores para su entidad asociada.
+-- Secuencia seq_preguntas: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_preguntas START WITH 1 INCREMENT BY 1;
--- Secuencia seq_opciones: genera identificadores para su entidad asociada.
+-- Secuencia seq_opciones: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_opciones START WITH 1 INCREMENT BY 1;
--- Secuencia seq_monto_inscripciones: genera identificadores para su entidad asociada.
+-- Secuencia seq_monto_inscripciones: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_monto_inscripciones START WITH 1 INCREMENT BY 1;
--- Secuencia seq_monto_reinscripciones: genera identificadores para su entidad asociada.
+-- Secuencia seq_monto_reinscripciones: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_monto_reinscripciones START WITH 1 INCREMENT BY 1;
--- Secuencia seq_solicitudes: genera identificadores para su entidad asociada.
+-- Secuencia seq_solicitudes: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_solicitudes START WITH 1 INCREMENT BY 1;
--- Secuencia seq_respuestas: genera identificadores para su entidad asociada.
+-- Secuencia seq_respuestas: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_respuestas START WITH 1 INCREMENT BY 1;
--- Secuencia seq_historial_solicitudes: genera identificadores para su entidad asociada.
+-- Secuencia seq_historial_solicitudes: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_historial_solicitudes START WITH 1 INCREMENT BY 1;
--- Secuencia seq_deducciones_autorizadas: genera identificadores para su entidad asociada.
+-- Secuencia seq_deducciones_autorizadas: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_deducciones_autorizadas START WITH 1 INCREMENT BY 1;
--- Secuencia seq_historial_deducciones: genera identificadores para su entidad asociada.
+-- Secuencia seq_historial_deducciones: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_historial_deducciones START WITH 1 INCREMENT BY 1;
 
 -- ================================================================
@@ -513,8 +521,7 @@ CREATE SEQUENCE seq_historial_deducciones START WITH 1 INCREMENT BY 1;
 -- ================================================================
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_tipo_solicitudes_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_tipo_solicitudes_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_tipo_solicitudes_bi
 BEFORE INSERT ON Tipo_Solicitudes
@@ -526,8 +533,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_tipo_preguntas_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_tipo_preguntas_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_tipo_preguntas_bi
 BEFORE INSERT ON Tipo_Preguntas
@@ -539,8 +545,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_estatus_solicitudes_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_estatus_solicitudes_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_estatus_solicitudes_bi
 BEFORE INSERT ON Estatus_Solicitudes
@@ -552,8 +557,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_estatus_deducciones_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_estatus_deducciones_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_estatus_deducciones_bi
 BEFORE INSERT ON Estatus_Deducciones
@@ -565,8 +569,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_convocatorias_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_convocatorias_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_convocatorias_bi
 BEFORE INSERT ON Convocatorias
@@ -578,8 +581,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_formularios_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_formularios_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_formularios_bi
 BEFORE INSERT ON Formularios
@@ -591,8 +593,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_preguntas_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_preguntas_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_preguntas_bi
 BEFORE INSERT ON Preguntas
@@ -604,8 +605,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_opciones_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_opciones_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_opciones_bi
 BEFORE INSERT ON Opciones
@@ -617,8 +617,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_monto_inscripciones_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_monto_inscripciones_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_monto_inscripciones_bi
 BEFORE INSERT ON Monto_Inscripciones
@@ -630,8 +629,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_monto_reinscripcion_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_monto_reinscripcion_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_monto_reinscripcion_bi
 BEFORE INSERT ON Monto_Reinscripciones
@@ -643,8 +641,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_solicitudes_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_solicitudes_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_solicitudes_bi
 BEFORE INSERT ON Solicitudes
@@ -656,8 +653,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_respuestas_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_respuestas_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_respuestas_bi
 BEFORE INSERT ON Respuestas
@@ -669,8 +665,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_hist_solicitudes_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_hist_solicitudes_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_hist_solicitudes_bi
 BEFORE INSERT ON Historial_Solicitudes
@@ -682,8 +677,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_deducciones_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_deducciones_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_deducciones_bi
 BEFORE INSERT ON Deducciones_autorizadas
@@ -695,8 +689,7 @@ END;
 /
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_hist_deducciones_bi: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_hist_deducciones_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_hist_deducciones_bi
 BEFORE INSERT ON Historial_Deducciones
@@ -712,8 +705,7 @@ END;
 -- ================================================================
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_solicitudes_validacion: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_solicitudes_validacion: Comprueba que la convocatoria, el tipo de solicitud y el formulario sean compatibles con el solicitante.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_solicitudes_validacion
 BEFORE INSERT OR UPDATE ON Solicitudes
@@ -774,8 +766,7 @@ END;
 -- ================================================================
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_respuestas_validacion: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_respuestas_validacion: Verifica que cada respuesta corresponda a una pregunta válida del formulario y respete su modalidad.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_respuestas_validacion
 BEFORE INSERT OR UPDATE ON Respuestas
@@ -895,8 +886,7 @@ END;
 -- ================================================================
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_deducciones_calculo: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_deducciones_calculo: Valida los montos y estados de la deducción, calcula el importe final y controla los cambios permitidos.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_deducciones_calculo
 BEFORE INSERT OR UPDATE ON Deducciones_autorizadas
@@ -983,7 +973,7 @@ BEGIN
         END IF;
 
     ELSE
-        -- La fecha original de autorizacion y la fecha de registro no se reescriben.
+        -- Conserva las fechas de registro y autorización para mantener la trazabilidad.
         IF :NEW.fecha_registro <> :OLD.fecha_registro
            OR NVL(:NEW.fecha_autorizacion, DATE '1900-01-01') <>
               NVL(:OLD.fecha_autorizacion, DATE '1900-01-01') THEN
@@ -1052,8 +1042,7 @@ END;
 -- ================================================================
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_solicitudes_historial: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_solicitudes_historial: Registra los cambios de estatus de las solicitudes para su seguimiento.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_solicitudes_historial
 AFTER UPDATE OF id_estatus_solicitud ON Solicitudes
@@ -1083,8 +1072,7 @@ END;
 -- ================================================================
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_deducciones_historial: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_deducciones_historial: Registra los cambios de estatus de las deducciones para su seguimiento.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_deducciones_historial
 AFTER UPDATE OF estatus_deduccion ON Deducciones_autorizadas
@@ -1112,8 +1100,7 @@ END;
 -- ================================================================
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_deduccion_cancelacion: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_deduccion_cancelacion: Sincroniza el estado de la solicitud cuando cambia el estado de su deducción.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_deduccion_cancelacion
 AFTER UPDATE OF estatus_deduccion ON Deducciones_autorizadas
@@ -1147,8 +1134,7 @@ END;
 -- ================================================================
 
 -- ------------------------------------------------------------------------
--- TRIGGER trg_deducciones_fecha_update: automatización y reglas de negocio del esquema.
--- Se conserva íntegra la lógica de la versión V5 suministrada.
+-- TRIGGER trg_deducciones_fecha_update: Actualiza la fecha de modificación de una deducción.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_deducciones_fecha_update
 BEFORE UPDATE ON Deducciones_autorizadas
