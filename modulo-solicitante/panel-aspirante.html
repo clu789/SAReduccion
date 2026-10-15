@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bienvenido Aspirante | SAReducción ITT</title>
+  <meta name="description" content="Acceso de aspirantes al Sistema de Reducción de Monto de Inscripción del Instituto Tecnológico de Toluca." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="css/itt-base.css" />
+  <link rel="stylesheet" href="css/solicitante.css" />
+</head>
+<body id="pagina-panel-aspirante">
+
+  <!-- ═══ SPINNER ═══ -->
+  <div id="spinner-overlay" class="spinner-overlay">
+    <div class="spinner-ring"></div>
+  </div>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="itt-header">
+    <div class="itt-header-top">
+      <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" style="max-height:54px;" />
+    </div>
+    <nav class="itt-navbar" aria-label="Navegación principal">
+      <ul class="itt-navbar-links">
+        <li><a href="panel-aspirante.html" class="activo"><i class="fa fa-tachometer"></i> Inicio</a></li>
+      </ul>
+      <div class="itt-navbar-user">
+        <i class="fa fa-user-circle"></i>
+        <span id="nombre-usuario-nav">Aspirante</span>
+        <button class="btn-cerrar-sesion" data-auth-logout type="button">
+          <i class="fa fa-sign-out"></i> Salir
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
+  <main class="itt-main">
+    <h2><i class="fa fa-graduation-cap" style="color:var(--itt-azul-claro);"></i> Bienvenido Aspirante</h2>
+
+    <!-- Alertas -->
+    <div id="alerta-aspirante"></div>
+
+    <!-- Tarjeta de bienvenida con datos de sesión -->
+    <div class="card-itt" id="aspirante-datos">
+      <div class="card-itt-header">
+        <i class="fa fa-id-badge"></i> Datos de tu Registro
+      </div>
+      <div class="card-itt-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;">
+          <div>
+            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Ficha</div>
+            <div id="aspirante-ficha" style="font-weight:700;font-size:1rem;color:var(--itt-azul);">—</div>
+          </div>
+          <div>
+            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Periodo</div>
+            <div id="aspirante-periodo" style="font-weight:500;">—</div>
+          </div>
+          <div>
+            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Año</div>
+            <div id="aspirante-anio" style="font-weight:500;">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aviso de alcance -->
+    <div class="card-itt">
+      <div class="card-itt-header">
+        <i class="fa fa-info-circle"></i> Estado de tu Acceso
+      </div>
+      <div class="card-itt-body">
+        <div class="alerta alerta-info">
+          <i class="fa fa-info-circle"></i>
+          <span>Tu identidad como aspirante ha sido verificada. Las funciones de solicitud de reducción para aspirantes estarán disponibles próximamente.</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="itt-footer">
+    <p>© <span id="year"></span> Instituto Tecnológico de Toluca – Tecnológico Nacional de México</p>
+    <p>Subdirección Académica · Sistema de Reducción de Monto de Inscripción</p>
+  </footer>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="js/app.js"></script>
+</body>
+</html>

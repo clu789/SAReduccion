@@ -51,7 +51,8 @@ const Http = {
    */
   async post(endpoint, body) {
     const headers = { 'Content-Type': 'application/json' };
-    if (endpoint === '/auth/login' || endpoint === '/auth/logout') {
+    const csrfEndpoints = ['/auth/login', '/auth/login/aspirante', '/auth/logout'];
+    if (csrfEndpoints.includes(endpoint)) {
       if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
       headers['X-CSRF-TOKEN'] = this.csrfToken;
     }
@@ -97,7 +98,17 @@ const Http = {
 };
 
 const AuthSession = {
-  async requireRole(expectedRole, loginPath, otherProfileLoginPath) {
+  /** Ruta de la interfaz propia de cada rol. */
+  panelFor(role, fallback) {
+    switch (role) {
+      case 'STUDENT':   return 'panel-estatus.html';
+      case 'APPLICANT': return 'panel-aspirante.html';
+      case 'ADMIN':     return '/administrativo/panel-admin.html';
+      default:          return fallback;
+    }
+  },
+
+  async requireRole(expectedRole, loginPath) {
     try {
       const session = await Http.authSession();
       if (!session.authenticated) {
@@ -105,7 +116,7 @@ const AuthSession = {
         return false;
       }
       if (session.role !== expectedRole) {
-        window.location.replace(otherProfileLoginPath);
+        window.location.replace(this.panelFor(session.role, loginPath));
         return false;
       }
       return true;
@@ -115,15 +126,12 @@ const AuthSession = {
     }
   },
 
-  async loginPage(expectedRole, panelPath, alertId) {
+  /** Si ya hay sesión, envía al usuario a la interfaz de su rol. */
+  async redirectByRole(alertId) {
     try {
       const session = await Http.authSession();
-      if (session.authenticated && session.role === expectedRole) {
-        window.location.replace(panelPath);
-        return;
-      }
       if (session.authenticated) {
-        Alerta.mostrar(alertId, 'advertencia', 'Hay una sesión activa de otro perfil. Inicie sesión con la cuenta autorizada.');
+        window.location.replace(this.panelFor(session.role, 'login.html'));
       }
     } catch (error) {
       Alerta.mostrar(alertId, 'error', 'El servicio de autenticación no está disponible. Intente más tarde.');
@@ -148,6 +156,7 @@ const AuthSession = {
 };
 
 function mensajeLogin(error) {
+  if (error.status === 429) return 'Demasiados intentos. Espere unos minutos e intente de nuevo.';
   if (error.status === 503) return 'El servicio de autenticación no está disponible. Intente más tarde.';
   if (error.status === 403) return 'La sesión de seguridad expiró. Recargue la página e intente de nuevo.';
   return 'Credenciales o perfil no válidos.';
@@ -284,8 +293,12 @@ const TabsTipoUsuario = {
     const tabs = document.querySelectorAll('.tab-tipo');
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('activo'));
+        tabs.forEach(t => {
+          t.classList.remove('activo');
+          t.setAttribute('aria-selected', 'false');
+        });
         tab.classList.add('activo');
+        tab.setAttribute('aria-selected', 'true');
 
         // Ocultar/mostrar campos según tipo
         const tipo = tab.dataset.tipo; // 'alumno' | 'aspirante'
@@ -299,6 +312,13 @@ const TabsTipoUsuario = {
     const camposAspirante = document.getElementById('campos-aspirante');
     if (camposAlumno)    camposAlumno.style.display    = tipo === 'alumno'    ? 'block' : 'none';
     if (camposAspirante) camposAspirante.style.display = tipo === 'aspirante' ? 'block' : 'none';
+
+    // Al cambiar de pestaña se descartan datos sensibles y avisos previos.
+    const password = document.getElementById('password-alumno');
+    const curp     = document.getElementById('curp-aspirante');
+    if (password) password.value = '';
+    if (curp) curp.value = '';
+    Alerta.limpiar('alerta-login');
   },
 };
 
@@ -312,52 +332,80 @@ const LoginEstudiante = {
     if (!form) return;
 
     TabsTipoUsuario.init();
-    AuthSession.loginPage('STUDENT', 'panel-estatus.html', 'alerta-login');
+    // Si ya existe una sesión activa, dirigir a la interfaz de su rol.
+    AuthSession.redirectByRole('alerta-login');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const tipoActivo = document.querySelector('.tab-tipo.activo')?.dataset.tipo || 'alumno';
-      if (tipoActivo !== 'alumno') {
-        Alerta.mostrar('alerta-login', 'info', 'La autenticación de aspirantes aún no está disponible.');
-        return;
-      }
-      if (!this.validar()) return;
+      if (!this.validar(tipoActivo)) return;
 
       Spinner.show();
       try {
+        // Garantiza un token CSRF vigente para el POST.
         await Http.authSession();
-        const numeroControl = document.getElementById('numero-control').value.trim().toUpperCase();
-        const password = document.getElementById('password-alumno').value;
-        const session = await Http.post('/auth/login', {
-          username: `ALU_${numeroControl}`,
-          password,
-        });
-        if (session.role !== 'STUDENT' || session.identity !== numeroControl) {
-          await Http.post('/auth/logout', {});
-          throw new Error('Perfil no autorizado');
+        if (tipoActivo === 'aspirante') {
+          await this.ingresarAspirante();
+        } else {
+          await this.ingresarAlumno();
         }
-        document.getElementById('password-alumno').value = '';
-        window.location.href = 'panel-estatus.html';
       } catch (err) {
         Alerta.mostrar('alerta-login', 'error', mensajeLogin(err));
       } finally {
-        const password = document.getElementById('password-alumno');
-        if (password) password.value = '';
+        this.limpiarSensibles();
         Spinner.hide();
       }
     });
   },
 
-  validar() {
+  /** Login de alumno: ALU_<numero_control> + contrasena institucional. */
+  async ingresarAlumno() {
+    const numeroControl = document.getElementById('numero-control').value.trim().toUpperCase();
+    const password = document.getElementById('password-alumno').value;
+    const session = await Http.post('/auth/login', {
+      username: `ALU_${numeroControl}`,
+      password,
+    });
+    if (session.role !== 'STUDENT' || session.identity !== numeroControl) {
+      await Http.post('/auth/logout', {});
+      throw new Error('Perfil no autorizado');
+    }
+    window.location.href = 'panel-estatus.html';
+  },
+
+  /**
+   * Login provisional de aspirante: ficha + CURP. La validacion real (ficha,
+   * CURP y anio vigente) la realiza el backend con PKG_ASPIRANTE; aqui solo
+   * se envian los datos y se comprueba el rol devuelto.
+   */
+  async ingresarAspirante() {
+    const ficha = document.getElementById('folio-aspirante').value.trim().toUpperCase();
+    const curp = document.getElementById('curp-aspirante').value.trim().toUpperCase();
+    const session = await Http.post('/auth/login/aspirante', { ficha, curp });
+    if (session.role !== 'APPLICANT' || session.identity !== ficha) {
+      await Http.post('/auth/logout', {});
+      throw new Error('Perfil no autorizado');
+    }
+    window.location.href = 'panel-aspirante.html';
+  },
+
+  /** Limpia campos sensibles tras cualquier intento. */
+  limpiarSensibles() {
+    const password = document.getElementById('password-alumno');
+    const curp = document.getElementById('curp-aspirante');
+    if (password) password.value = '';
+    if (curp) curp.value = '';
+  },
+
+  validar(tipoActivo = 'alumno') {
     let valido = true;
-    const tipoActivo = document.querySelector('.tab-tipo.activo')?.dataset.tipo || 'alumno';
 
     if (tipoActivo === 'alumno') {
       const nc = document.getElementById('numero-control');
       const pw = document.getElementById('password-alumno');
 
       if (!nc || !Validacion.numeroControl(nc.value)) {
-        Validacion.marcarError(nc, 'Ingrese un número de control válido (8 dígitos).');
+        Validacion.marcarError(nc, 'Ingrese un número de control válido.');
         valido = false;
       } else Validacion.marcarValido(nc);
 
@@ -376,7 +424,7 @@ const LoginEstudiante = {
       } else Validacion.marcarValido(curp);
 
       if (!folio || !Validacion.requerido(folio)) {
-        Validacion.marcarError(folio, 'Ingrese su folio de aspirante.');
+        Validacion.marcarError(folio, 'Ingrese su ficha de registro.');
         valido = false;
       } else Validacion.marcarValido(folio);
     }
@@ -393,7 +441,7 @@ const PanelEstatus = {
   async init() {
     const timeline = document.getElementById('estatus-timeline');
     if (!timeline) return;
-    if (!await AuthSession.requireRole('STUDENT', 'login.html', '/administrativo/login.html')) return;
+    if (!await AuthSession.requireRole('STUDENT', 'login.html')) return;
     AuthSession.bindLogout('login.html', 'alerta-estatus');
 
     Spinner.show();
@@ -467,7 +515,7 @@ const FormularioSolicitud = {
   async init() {
     const form = document.getElementById('form-solicitud');
     if (!form) return;
-    if (!await AuthSession.requireRole('STUDENT', 'login.html', '/administrativo/login.html')) return;
+    if (!await AuthSession.requireRole('STUDENT', 'login.html')) return;
     AuthSession.bindLogout('login.html', 'alerta-formulario');
 
     await this.cargarFormulario();
@@ -618,6 +666,35 @@ const FormularioSolicitud = {
 };
 
 /* ─────────────────────────────────────────
+   MÓDULO: PANEL DE ASPIRANTE (vista mínima)
+   Autenticación provisional por ficha + CURP
+───────────────────────────────────────── */
+const PanelAspirante = {
+  async init() {
+    const contenedor = document.getElementById('aspirante-datos');
+    if (!contenedor) return;
+    if (!await AuthSession.requireRole('APPLICANT', 'login.html')) return;
+    AuthSession.bindLogout('login.html', 'alerta-aspirante');
+
+    try {
+      const session = await Http.authSession();
+      const nav = document.getElementById('nombre-usuario-nav');
+      if (nav) nav.textContent = session.identity || 'Aspirante';
+      this.setTexto('aspirante-ficha', session.identity);
+      this.setTexto('aspirante-periodo', session.periodo);
+      this.setTexto('aspirante-anio', session.anio);
+    } catch (error) {
+      Alerta.mostrar('alerta-aspirante', 'error', 'No se pudo cargar la información de la sesión.');
+    }
+  },
+
+  setTexto(id, valor) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = (valor === null || valor === undefined) ? '—' : String(valor);
+  },
+};
+
+/* ─────────────────────────────────────────
    INICIALIZACIÓN AUTOMÁTICA
 ───────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
@@ -629,6 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
   switch (pagina) {
     case 'pagina-login-estudiante': LoginEstudiante.init();   break;
     case 'pagina-panel-estatus':    PanelEstatus.init();      break;
+    case 'pagina-panel-aspirante':  PanelAspirante.init();    break;
     case 'pagina-formulario':       FormularioSolicitud.init(); break;
   }
 });
