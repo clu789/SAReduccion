@@ -1,6 +1,6 @@
 package com.itt.sareduccion.auth;
 
-public final class AuthenticatedPrincipal {
+public final class AuthenticatedPrincipal implements SessionPrincipal {
 
     private final String oracleUsername;
     private final String profileId;
@@ -20,7 +20,28 @@ public final class AuthenticatedPrincipal {
         return profileId;
     }
 
+    @Override
     public AuthRole getRole() {
         return role;
+    }
+
+    @Override
+    public String getUsername() {
+        return oracleUsername;
+    }
+
+    @Override
+    public String getIdentity() {
+        return profileId;
+    }
+
+    @Override
+    public Integer getPeriodo() {
+        return null;
+    }
+
+    @Override
+    public Integer getAnio() {
+        return null;
     }
 }

@@ -302,42 +302,42 @@ WHERE NOT EXISTS (SELECT 1 FROM Opciones WHERE id_opcion = 900007);
 PROMPT ===== ASPIRANTES =====
 
 INSERT INTO Aspirantes (ficha, periodo, anio, Nombre, PrimerApellido, SegundoApellido, Semestre, Curp, correo)
-SELECT 'F2026A001', 2, 2026, 'Andrea', 'Morales', 'Pineda', 1, 'MOPA080512MDFRNN01', 'andrea.demo@example.invalid' FROM dual
+SELECT 'F2026A001', 2, 2026, 'Andrea', 'Morales', 'Pineda', 1, 'MOPA080512MDFRNN01', 'andrea.morales.demo@gmail.com' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Aspirantes WHERE ficha = 'F2026A001' AND periodo = 2 AND anio = 2026);
 
 
 INSERT INTO Aspirantes (ficha, periodo, anio, Nombre, PrimerApellido, SegundoApellido, Semestre, Curp, correo)
-SELECT 'F2026A002', 2, 2026,'Emilio', 'Rojas', 'Lozano', 1, 'ROLE080921HDFJZM02', 'emilio.demo@example.invalid' FROM dual
+SELECT 'F2026A002', 2, 2026,'Emilio', 'Rojas', 'Lozano', 1, 'ROLE080921HDFJZM02', 'emilio.rojas.demo@hotmail.com' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Aspirantes WHERE ficha = 'F2026A002' AND periodo = 2 AND anio = 2026);
 
 
 INSERT INTO Aspirantes (ficha, periodo, anio, Nombre, PrimerApellido, SegundoApellido, Semestre, Curp, correo)
-SELECT 'F2026A003', 2, 2026, 'Paola', 'Vargas', 'Soto', 1, 'VASP080305MDFRTT03', 'paola.demo@example.invalid' FROM dual
+SELECT 'F2026A003', 2, 2026, 'Paola', 'Vargas', 'Soto', 1, 'VASP080305MDFRTT03', 'paola.vargas.demo@outlook.com' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Aspirantes WHERE ficha = 'F2026A003' AND periodo = 2 AND anio = 2026);
 
 
 INSERT INTO Aspirantes (ficha, periodo, anio, Nombre, PrimerApellido, SegundoApellido, Semestre, Curp, correo)
-SELECT 'F2026B004', 1, 2026,'Diego', 'Fuentes', 'Lara', 1, 'FULD080617HDFRRG04', 'diego.demo@example.invalid' FROM dual
+SELECT 'F2026B004', 1, 2026,'Diego', 'Fuentes', 'Lara', 1, 'FULD080617HDFRRG04', 'diego.fuentes.demo@live.com' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Aspirantes WHERE ficha = 'F2026B004' AND periodo = 1 AND anio = 2026);
 
 
 INSERT INTO Aspirantes (ficha, periodo, anio, Nombre, PrimerApellido, SegundoApellido, Semestre, Curp, correo)
-SELECT 'F2026B005', 1, 2026, 'Lucia', 'Mendoza', 'Gil', 1, 'MEGL080827MDFNLC05', 'lucia.demo@example.invalid' FROM dual
+SELECT 'F2026B005', 1, 2026, 'Lucia', 'Mendoza', 'Gil', 1, 'MEGL080827MDFNLC05', 'lucia.mendoza.demo@yahoo.com.mx' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Aspirantes WHERE ficha = 'F2026B005' AND periodo = 1 AND anio = 2026);
 
 
 INSERT INTO Aspirantes (ficha, periodo, anio, Nombre, PrimerApellido, SegundoApellido, Semestre, Curp, correo)
-SELECT 'F2026B006', 1, 2026, 'Mateo', 'Serrano', 'Reyes', 1, 'SERM080106HDFRYY06', 'mateo.demo@example.invalid' FROM dual
+SELECT 'F2026B006', 1, 2026, 'Mateo', 'Serrano', 'Reyes', 1, 'SERM080106HDFRYY06', 'mateo.serrano.demo@yahoo.com' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Aspirantes WHERE ficha = 'F2026B006' AND periodo = 1 AND anio = 2026);
 
 
 INSERT INTO Aspirantes (ficha, periodo, anio, Nombre, PrimerApellido, SegundoApellido, Semestre, Curp, correo)
-SELECT 'F2026B007', 1, 2026, 'Renata', 'Aguilar', 'Vega', 1, 'AUVR080214MDFGGT07', 'renata.demo@example.invalid' FROM dual
+SELECT 'F2026B007', 1, 2026, 'Renata', 'Aguilar', 'Vega', 1, 'AUVR080214MDFGGT07', 'renata.aguilar.demo@icloud.com' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Aspirantes WHERE ficha = 'F2026B007' AND periodo = 1 AND anio = 2026);
 
 
 INSERT INTO Aspirantes (ficha, periodo, anio, Nombre, PrimerApellido, SegundoApellido, Semestre, Curp, correo)
-SELECT 'F2026B008', 1, 2026, 'Hector', 'Campos', 'Nava', 1, 'CANH080725HDFMVT08', 'hector.demo@example.invalid' FROM dual
+SELECT 'F2026B008', 1, 2026, 'Hector', 'Campos', 'Nava', 1, 'CANH080725HDFMVT08', 'hector.campos.demo@gmail.com' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Aspirantes WHERE ficha = 'F2026B008' AND periodo = 1 AND anio = 2026);
 
 

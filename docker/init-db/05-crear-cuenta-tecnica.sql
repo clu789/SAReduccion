@@ -36,7 +36,7 @@ BEGIN
   SELECT COUNT(*) INTO n FROM DBA_TAB_PRIVS
    WHERE GRANTEE = '&&ORACLE_BACKEND_USER'
      AND NOT (OWNER = 'SA_REDUCCION'
-              AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR')
+              AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE')
               AND PRIVILEGE = 'EXECUTE');
   IF n <> 0 THEN
     RAISE_APPLICATION_ERROR(-20984, 'La cuenta tecnica tiene grants de objeto que requieren revision manual');
