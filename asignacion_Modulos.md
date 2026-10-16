@@ -141,7 +141,8 @@ Cada equipo funcional desarrolla su módulo de extremo a extremo: interfaz, vali
 **Integrantes:**
 - Nazly Huicochea Morales
 - Omar Martínez Rodríguez
-
+- Fabian Molina Villalva
+  
 **Responsabilidades:**
 - Desarrollar el servicio backend para enviar notificaciones por correo.
 - Preparar plantillas para cambios de estado, aprobación, rechazo y cancelación de solicitudes o deducciones, según los eventos definidos.
