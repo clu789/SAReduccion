@@ -1,9 +1,10 @@
--- SAReduccion - Seed integral para desarrollo (Oracle XE 21c / XEPDB1)
--- Unifica los 9 estudiantes y 2 administradores del seed previo y agrega
--- aspirantes, convocatorias, formularios, solicitudes, respuestas, historiales
--- y deducciones. NO crea cuentas Oracle, NO altera esquema ni borra filas.
+-- SAReduccion - Datos ficticios de desarrollo (Oracle XE 21c / XEPDB1)
+-- Carga 9 estudiantes, 2 administradores, 8 aspirantes, convocatorias,
+-- formularios, solicitudes, respuestas, historiales y deducciones de ejemplo.
+-- NO crea cuentas Oracle, NO altera el esquema y NO borra filas.
 -- Ejecutar SOLO como SA_REDUCCION en XEPDB1.
--- IDs 900001+ reservados para este seed; no se modifican las secuencias.
+-- Se carga unicamente cuando SAR_LOAD_DEV_SEED esta activo (entorno de desarrollo).
+-- IDs 900001+ reservados para estos datos; no se modifican las secuencias.
 SET DEFINE OFF
 SET SERVEROUTPUT ON
 SET SQLBLANKLINES ON
