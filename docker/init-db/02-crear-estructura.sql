@@ -15,14 +15,12 @@
 --   La contraseña debe proporcionarse de forma segura (no incluirla en scripts).
 --
 -- ADVERTENCIAS
---   * SOLO para un esquema vacío. No es una migración ni un script repetible.
---   * No ejecutarlo sobre la base actual que ya contiene las 21 tablas.
---   * No incluye DROP ni TRUNCATE; aborta si detecta tablas existentes.
+--   * SOLO para un esquema vacío: no es repetible y aborta si detecta tablas.
 --   * En Oracle, el DDL confirma transacciones implícitamente: un fallo a mitad
 --     de ejecución NO revierte las tablas creadas previamente.
---   * Ejecutar manualmente y revisar errores de compilación de triggers.
---   * No montar directamente como inicialización automática sin adaptar el
---     mecanismo de ejecución y la conexión del usuario correcto.
+--   * Revisar los errores de compilación de triggers en la salida.
+--   * Requiere ejecutarse con SET SQLBLANKLINES ON (lo aplica init-db.sh),
+--     porque el archivo contiene líneas en blanco dentro de bloques PL/SQL.
 -- ============================================================================
 
 SET ECHO OFF

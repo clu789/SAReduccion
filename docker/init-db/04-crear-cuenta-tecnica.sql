@@ -1,6 +1,6 @@
 -- ============================================================================
--- 05-crear-cuenta-tecnica.sql
--- Migracion no destructiva: crear/verificar SAR_BACKEND en XEPDB1.
+-- 04-crear-cuenta-tecnica.sql
+-- Crear/verificar SAR_BACKEND en XEPDB1.
 -- Ejecutar como SYSDBA con ORACLE_BACKEND_USER y ORACLE_BACKEND_PASSWORD
 -- definidos en SQL*Plus. La cuenta existente nunca cambia de contrasena.
 -- ============================================================================

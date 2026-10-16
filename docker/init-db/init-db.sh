@@ -1,4 +1,31 @@
 #!/usr/bin/env bash
+# ============================================================================
+# init-db.sh - Inicializacion automatica de Oracle para SAReduccion.
+#
+# FINALIDAD
+#   Orquestar la creacion del esquema, los roles, las cuentas, los paquetes
+#   PL/SQL y (opcionalmente) los datos de desarrollo en un volumen vacio.
+#
+# POR QUE ES NECESARIO
+#   La imagen gvenzl/oracle-xe ejecuta los archivos de
+#   /container-entrypoint-initdb.d como SYS y SIN variables de sustitucion.
+#   Los scripts SQL requieren variables (usuarios y contrasenas) y algunos
+#   deben ejecutarse como SA_REDUCCION, no como SYS. Este orquestador resuelve
+#   ambas cosas: define las variables y aplica cada script con el usuario que
+#   corresponde.
+#
+# REQUISITOS
+#   * Solo se ejecuta con un volumen vacio. Si Oracle ya inicializo la base,
+#     la imagen no vuelve a invocarlo.
+#   * Las variables de .env llegan al contenedor via docker-compose.yml.
+#   * SAR_LOAD_DEV_SEED controla la carga de datos ficticios (false en produccion).
+#
+# ADVERTENCIAS
+#   * Un error detiene el arranque del contenedor a proposito: es preferible
+#     fallar de forma visible a dejar una base a medias.
+#   * El DDL de Oracle confirma transacciones implicitamente, asi que un fallo
+#     a mitad de ejecucion no revierte lo ya creado.
+# ============================================================================
 set -Eeuo pipefail
 set +x
 
@@ -49,6 +76,13 @@ for variable in ORACLE_APP_PASSWORD ORACLE_BACKEND_PASSWORD ORACLE_ALUMNO_PASSWO
   fi
 done
 
+# Datos ficticios de desarrollo: se cargan solo si SAR_LOAD_DEV_SEED esta activo.
+# En produccion debe quedar desactivado.
+sar_seed_activo=false
+case "${SAR_LOAD_DEV_SEED:-false}" in
+  true|TRUE|True|1|yes|YES|Yes) sar_seed_activo=true ;;
+esac
+
 run_as_sys() {
   local script=$1
   sqlplus -L -s / as sysdba <<SQL
@@ -57,6 +91,9 @@ WHENEVER SQLERROR EXIT SQL.SQLCODE
 SET ECHO OFF
 SET VERIFY OFF
 SET DEFINE ON
+-- Necesario: los scripts contienen lineas en blanco dentro de bloques PL/SQL
+-- y de sentencias DDL; sin esto SQL*Plus corta la sentencia en la linea vacia.
+SET SQLBLANKLINES ON
 ALTER SESSION SET CONTAINER = ${oracle_pdb};
 DEFINE ORACLE_APP_USER = ${ORACLE_APP_USER}
 DEFINE ORACLE_APP_PASSWORD = ${ORACLE_APP_PASSWORD}
@@ -77,18 +114,29 @@ WHENEVER OSERROR EXIT FAILURE
 WHENEVER SQLERROR EXIT SQL.SQLCODE
 SET ECHO OFF
 SET VERIFY OFF
+-- Necesario: los scripts contienen lineas en blanco dentro de bloques PL/SQL
+-- y de sentencias DDL; sin esto SQL*Plus corta la sentencia en la linea vacia.
+SET SQLBLANKLINES ON
 CONNECT ${ORACLE_APP_USER}/"${ORACLE_APP_PASSWORD}"@//localhost:1521/${oracle_pdb}
 DEFINE ORACLE_BACKEND_USER = ${ORACLE_BACKEND_USER}
 @${init_dir}/${script}
 SQL
 }
 
+# El numero de cada archivo indica su orden real de ejecucion.
 printf 'Inicializando el esquema SAReduccion en %s.\n' "$oracle_pdb"
 run_as_sys 01-configurar-esquema.sql
 run_as_app 02-crear-estructura.sql
 run_as_sys 03-crear-identidades-roles.sql
-run_as_sys 05-crear-cuenta-tecnica.sql
-run_as_app 04-crear-paquetes-permisos.sql
+run_as_sys 04-crear-cuenta-tecnica.sql
+run_as_app 05-crear-paquetes-permisos.sql
+
+if [[ "$sar_seed_activo" == true ]]; then
+  printf 'Cargando datos de desarrollo (SAR_LOAD_DEV_SEED activo).\n'
+  run_as_app 06-seed-desarrollo.sql
+else
+  printf 'Omitiendo datos de desarrollo (SAR_LOAD_DEV_SEED desactivado).\n'
+fi
 
 printf 'Verificando tablas, paquetes, usuarios y roles...\n'
 sqlplus -L -s / as sysdba <<SQL
@@ -97,13 +145,22 @@ WHENEVER SQLERROR EXIT SQL.SQLCODE
 SET ECHO OFF
 SET VERIFY OFF
 SET SERVEROUTPUT ON
+SET SQLBLANKLINES ON
 ALTER SESSION SET CONTAINER = ${oracle_pdb};
+DEFINE SAR_SEED_ACTIVO = ${sar_seed_activo}
 DECLARE
   n NUMBER;
   PROCEDURE assert_count(p_actual NUMBER, p_expected NUMBER, p_name VARCHAR2) IS
   BEGIN
     IF p_actual <> p_expected THEN
       RAISE_APPLICATION_ERROR(-20990, 'Validacion fallida: ' || p_name);
+    END IF;
+    DBMS_OUTPUT.PUT_LINE('OK: ' || p_name);
+  END;
+  PROCEDURE assert_min(p_actual NUMBER, p_min NUMBER, p_name VARCHAR2) IS
+  BEGIN
+    IF p_actual < p_min THEN
+      RAISE_APPLICATION_ERROR(-20992, 'Validacion fallida: ' || p_name);
     END IF;
     DBMS_OUTPUT.PUT_LINE('OK: ' || p_name);
   END;
@@ -159,6 +216,16 @@ BEGIN
   SELECT COUNT(*) INTO n FROM DBA_ROLE_PRIVS
    WHERE GRANTEE = '${ORACLE_APP_USER}' AND GRANTED_ROLE = 'DBA';
   assert_count(n, 0, 'SA_REDUCCION sin rol DBA');
+
+  -- Datos de aplicacion: deben existir solo si el seed de desarrollo esta activo.
+  SELECT COUNT(*) INTO n FROM ${ORACLE_APP_USER}.Estudiantes;
+  IF '&&SAR_SEED_ACTIVO' = 'true' THEN
+    assert_min(n, 1, 'datos de desarrollo cargados (Estudiantes)');
+    SELECT COUNT(*) INTO n FROM ${ORACLE_APP_USER}.Aspirantes;
+    assert_min(n, 1, 'datos de desarrollo cargados (Aspirantes)');
+  ELSE
+    assert_count(n, 0, 'sin datos de desarrollo (Estudiantes)');
+  END IF;
 END;
 /
 EXIT SUCCESS
