@@ -55,6 +55,31 @@ END;
 GRANT CREATE SESSION, CREATE TABLE, CREATE SEQUENCE, CREATE TRIGGER, CREATE PROCEDURE TO &&ORACLE_APP_USER;
 ALTER USER &&ORACLE_APP_USER QUOTA UNLIMITED ON USERS;
 
+-- 4. Directorio de Oracle Data Pump para los respaldos logicos del esquema.
+-- Se crea como SYS porque CREATE DIRECTORY es un privilegio de instancia.
+-- La ruta corresponde al bind mount definido en docker-compose.yml, de modo
+-- que expdp/impdp escriben y leen directamente en el equipo anfitrion.
+-- Requiere el privilegio de sistema CREATE ANY DIRECTORY (incluido en SYSDBA).
+DECLARE
+    v_existe NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_existe
+      FROM DBA_DIRECTORIES WHERE DIRECTORY_NAME = 'SAR_BACKUP_DIR';
+
+    IF v_existe = 0 THEN
+        EXECUTE IMMEDIATE
+            'CREATE DIRECTORY SAR_BACKUP_DIR AS ''/opt/sareduccion/backups''';
+        DBMS_OUTPUT.PUT_LINE('Directorio de respaldo creado.');
+    ELSE
+        EXECUTE IMMEDIATE
+            'CREATE OR REPLACE DIRECTORY SAR_BACKUP_DIR AS ''/opt/sareduccion/backups''';
+        DBMS_OUTPUT.PUT_LINE('Directorio de respaldo configurado.');
+    END IF;
+END;
+/
+
+GRANT READ, WRITE ON DIRECTORY SAR_BACKUP_DIR TO &&ORACLE_APP_USER;
+
 PROMPT Configuracion del esquema completada.
 
 EXIT SUCCESS

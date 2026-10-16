@@ -3,11 +3,16 @@
 #
 # Requisitos:
 #   - Archivo .env local (NO subirlo a Git)
-#   - Scripts SQL de inicializacion validados en docker/init-db/
+#
+# La base de datos se inicializa sola la primera vez que se crea el volumen:
+# la imagen ejecuta docker/init-db/init-db.sh desde
+# /container-entrypoint-initdb.d, y ese orquestador aplica en orden los
+# scripts 01..05 y, si SAR_LOAD_DEV_SEED esta activo, el 06 (datos de
+# desarrollo).
 #
 # Comandos habituales (desde la raiz del proyecto):
 #   docker compose up -d oracle-db
-#   docker compose --profile full-stack up -d
+#   docker compose --profile full-stack up -d --build
 #   docker compose ps
 #   docker compose down            # Conserva el volumen de Oracle
 #
@@ -33,6 +38,9 @@ services:
       ORACLE_ALUMNO_PASSWORD: ${ORACLE_ALUMNO_PASSWORD:?Define ORACLE_ALUMNO_PASSWORD en .env}
       ORACLE_ADMIN_USER: ${ORACLE_ADMIN_USER:?Define ORACLE_ADMIN_USER en .env}
       ORACLE_ADMIN_PASSWORD: ${ORACLE_ADMIN_PASSWORD:?Define ORACLE_ADMIN_PASSWORD en .env}
+      # Datos ficticios de desarrollo (estudiantes, administradores y aspirantes).
+      # En produccion debe valer false.
+      SAR_LOAD_DEV_SEED: ${SAR_LOAD_DEV_SEED:-true}
 
     ports:
       # Puerto local : puerto dentro del contenedor
@@ -41,9 +49,14 @@ services:
     volumes:
       # Datos persistentes: NO eliminar este volumen.
       - oracle_data:/opt/oracle/oradata
-      # Only the orchestrator runs automatically; SQL scripts are connected explicitly.
+      # Unico inicializador automatico; los SQL se montan aparte en solo lectura
+      # y el orquestador los aplica con el usuario y el orden correctos.
       - ./docker/init-db/init-db.sh:/container-entrypoint-initdb.d/00-init-db.sh:ro
       - ./docker/init-db:/opt/sareduccion/init-db:ro
+      # Respaldos de Data Pump. Coincide con el directorio Oracle SAR_BACKUP_DIR
+      # y deja los .dmp en el anfitrion, fuera del contenedor y del volumen de
+      # datos. No sustituye al volumen: es una copia logica independiente.
+      - ./backups/oracle:/opt/sareduccion/backups
 
     healthcheck:
       # Comprueba la disponibilidad de Oracle sin incluir contrasenas.
@@ -85,7 +98,8 @@ services:
     restart: unless-stopped
 
     ports:
-      - "8081:80"
+      # Puerto local del frontend : puerto dentro del contenedor
+      - "${FRONTEND_PORT:-8081}:80"
 
     volumes:
       - ./modulo-administrativo:/usr/share/nginx/html/administrativo:ro

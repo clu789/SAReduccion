@@ -1,10 +1,11 @@
 -- ============================================================================
--- SAReduccion | 04-crear-paquetes-permisos.sql
--- Objetivo: definir la API PL/SQL para estudiantes y administradores.
+-- SAReduccion | 05-crear-paquetes-permisos.sql
+-- Objetivo: definir la API PL/SQL para estudiantes, administradores y aspirantes.
 -- Dependencias:
 --   01-configurar-esquema.sql    (usuario propietario y privilegios)
 --   02-crear-estructura.sql     (tablas y secuencias)
 --   03-crear-identidades-roles.sql (roles Oracle)
+--   04-crear-cuenta-tecnica.sql  (cuenta tecnica que recibe EXECUTE)
 -- Ejecutar con SQL*Plus o SQLcl como SA_REDUCCION conectado a XEPDB1.
 -- NO ejecutar como SYS: los paquetes deben pertenecer a SA_REDUCCION.
 --

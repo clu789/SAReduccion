@@ -7,16 +7,16 @@
 --
 -- EJECUCION: SQL*Plus o SQLcl, conectado como SYSDBA en XEPDB1.
 --   Ejecutar DESPUES de 02-crear-estructura.sql y ANTES de
---   04-crear-paquetes-permisos.sql.
+--   05-crear-paquetes-permisos.sql.
 --
 -- SEGURIDAD Y REPETIBILIDAD
 --   * No contiene DROP USER, DROP ROLE, TRUNCATE ni DELETE.
 --   * Si una cuenta existe, NO cambia su contrasena ni su estado.
 --   * Si un rol existe, se conserva y se aseguran los GRANT necesarios.
 --   * NO concede acceso directo a las tablas de SA_REDUCCION.
---   * Los permisos EXECUTE a los paquetes se otorgan en el script 04.
+--   * Los permisos EXECUTE a los paquetes se otorgan en 05-crear-paquetes-permisos.sql.
 --   * Las cuentas y claves se reciben como variables SQL*Plus desde init-db.sh.
---   * La cuenta tecnica SAR_BACKEND se crea en 05-crear-cuenta-tecnica.sql.
+--   * La cuenta tecnica SAR_BACKEND se crea en 04-crear-cuenta-tecnica.sql.
 --
 -- IMPORTANTE: los usuarios Oracle no equivalen a los registros de las tablas
 -- ESTUDIANTES y ADMINISTRADORES. Este script NO inserta filas de prueba.
@@ -29,7 +29,7 @@ SET SERVEROUTPUT ON SIZE UNLIMITED
 WHENEVER OSERROR EXIT FAILURE
 WHENEVER SQLERROR EXIT SQL.SQLCODE
 
-PROMPT ===== 03/04: IDENTIDADES Y ROLES ORACLE =====
+PROMPT ===== 03: IDENTIDADES Y ROLES ORACLE =====
 
 -- 1. Verificar la sesion privilegiada, la PDB y el esquema del proyecto.
 DECLARE
@@ -105,7 +105,7 @@ GRANT ROL_SAR_ADMIN_SIM TO &&ORACLE_ADMIN_USER;
 ALTER USER &&ORACLE_ALUMNO_USER DEFAULT ROLE ROL_SAR_ESTUDIANTE_SIM;
 ALTER USER &&ORACLE_ADMIN_USER DEFAULT ROLE ROL_SAR_ADMIN_SIM;
 
--- 7. Verificacion de cuentas, roles y permisos de inicio de sesion.
+-- 6. Verificacion de cuentas, roles y permisos de inicio de sesion.
 COLUMN USERNAME FORMAT A20
 COLUMN ACCOUNT_STATUS FORMAT A20
 SELECT USERNAME, ACCOUNT_STATUS FROM DBA_USERS
@@ -123,5 +123,5 @@ SELECT GRANTEE, PRIVILEGE FROM DBA_SYS_PRIVS
    AND PRIVILEGE = 'CREATE SESSION'
  ORDER BY GRANTEE;
 
-PROMPT Script 03 finalizado. Siguiente: 04-crear-paquetes-permisos.sql.
+PROMPT Script 03 finalizado. Siguiente: 04-crear-cuenta-tecnica.sql.
 EXIT SUCCESS
