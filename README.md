@@ -144,5 +144,6 @@ El volumen persistente **no sustituye a un respaldo**. Consulta [BaseDeDatos.md]
 
 ## Documentación adicional
 
+- [Docker.md](Docker.md): contenido de Docker, servicios, construcción, inicialización y operación.
 - [ARQUITECTURA.md](ARQUITECTURA.md): componentes, tecnologías, comunicación y estructura del sistema.
 - [BaseDeDatos.md](BaseDeDatos.md): modelo de datos, usuarios, permisos, inicialización y procedimientos de respaldo y restauración.
