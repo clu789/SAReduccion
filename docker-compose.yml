@@ -63,9 +63,9 @@ services:
       # Script de comprobacion provisto por gvenzl/oracle-xe.
       test: ["CMD-SHELL", "healthcheck.sh && test -f /opt/oracle/oradata/.sareduccion-init.complete"]
       interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 120s
+      timeout: 30s
+      retries: 20
+      start_period: 900s
 
   backend:
     build:
