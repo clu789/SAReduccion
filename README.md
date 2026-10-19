@@ -26,30 +26,38 @@ git clone <URL_DEL_REPOSITORIO>
 cd SAReduccion
 ```
 
-Si el archivo `.env` todavía no existe, créalo a partir de `.env.example`:
+### Crear el archivo `.env`
 
-**Linux, macOS o Git Bash:**
+1. Copia la plantilla (el archivo `.env` nunca se versiona):
 
-```bash
-cp .env.example .env
-```
+   **Linux, macOS o Git Bash:**
 
-**Windows PowerShell:**
+   ```bash
+   cp .env.example .env
+   ```
 
-```powershell
-Copy-Item .env.example .env
-```
+   **Windows PowerShell:**
 
-Revisa las variables de `.env` antes de iniciar el sistema. En particular:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
 
-- `ORACLE_PASSWORD`: contraseña de administración de Oracle.
-- `ORACLE_APP_USER` y `ORACLE_APP_PASSWORD`: propietario del esquema.
-- `ORACLE_BACKEND_USER` y `ORACLE_BACKEND_PASSWORD`: cuenta de conexión del backend.
-- `ORACLE_ALUMNO_USER` y `ORACLE_ALUMNO_PASSWORD`: cuenta de estudiante de prueba.
-- `ORACLE_ADMIN_USER` y `ORACLE_ADMIN_PASSWORD`: cuenta administrativa de prueba.
-- `SAR_LOAD_DEV_SEED`: controla la carga inicial de datos de desarrollo (`true` o `false`).
+2. Abre `.env` y asigna las contraseñas de Oracle. En particular:
 
-Con `SAR_LOAD_DEV_SEED=true`, una instalación nueva incorpora usuarios y solicitudes de ejemplo. Con `false`, se inicializa el esquema sin esos datos de aplicación. Para un entorno de producción, utiliza `false`.
+   - `ORACLE_PASSWORD`: contraseña de administración de Oracle.
+   - `ORACLE_APP_USER` y `ORACLE_APP_PASSWORD`: propietario del esquema.
+   - `ORACLE_BACKEND_USER` y `ORACLE_BACKEND_PASSWORD`: cuenta de conexión del backend.
+   - `ORACLE_ALUMNO_USER` y `ORACLE_ALUMNO_PASSWORD`: cuenta de estudiante de prueba.
+   - `ORACLE_ADMIN_USER` y `ORACLE_ADMIN_PASSWORD`: cuenta administrativa de prueba.
+   - `SAR_LOAD_DEV_SEED`: controla la carga inicial de datos de desarrollo (`true` o `false`).
+
+3. Verifica que Git lo ignore antes de iniciar el sistema:
+
+   ```bash
+   git check-ignore -v .env
+   ```
+
+**Datos de ejemplo:** con `SAR_LOAD_DEV_SEED=true`, una instalación nueva incorpora usuarios y solicitudes de ejemplo. Con `false`, se inicializa el esquema sin esos datos de aplicación. Para un entorno de producción, utiliza `false`.
 
 **Importante:** la carga inicial se ejecuta únicamente cuando se crea una base de datos nueva. Cambiar esta variable después no elimina ni vuelve a cargar los registros existentes. Evita compartir contraseñas reales o reutilizarlas fuera del entorno de desarrollo.
 
@@ -141,6 +149,21 @@ La base de datos utiliza el volumen Docker `sareduccion_oracle_data`, que permit
 Además, se pueden generar respaldos independientes mediante **Oracle Data Pump** (`expdp`) y restaurarlos con `impdp`. Los archivos se almacenan en `backups/oracle/` del equipo anfitrión, mediante un directorio montado en el contenedor. Esta carpeta está excluida de Git.
 
 El volumen persistente **no sustituye a un respaldo**. Consulta [BaseDeDatos.md](BaseDeDatos.md) para los comandos completos de exportación, verificación y restauración, así como sus precauciones.
+
+## Actualizar un clon tras reescribir el historial
+
+Si tu copia se clonó antes del `2026-10-19`, los identificadores de commit cambiaron. Guarda o confirma tus cambios locales y ejecuta:
+
+```bash
+git fetch origin --prune --force
+git switch -C main origin/main
+git switch -C Prueba_1 origin/Prueba_1
+git switch -C equipo_2 origin/equipo_2
+```
+
+`git switch -C` crea la rama si no existe o la mueve a `origin/<rama>`. **Descarta los cambios sin confirmar** de la rama actual; si los necesitas, usa antes `git stash` o `git commit`. Los commits antiguos (`65c183d`, `39fb851`, `57d2935`) ya no existen en el remoto.
+
+Alternativa: re-clonar el repositorio.
 
 ## Documentación adicional
 
