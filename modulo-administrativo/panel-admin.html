@@ -60,18 +60,18 @@
           <div class="stat-etiqueta">Pendientes</div>
         </div>
       </div>
-      <div class="stat-card correccion">
-        <div class="stat-icono"><i class="fa fa-pencil"></i></div>
-        <div class="stat-info">
-          <div class="stat-valor" id="stat-correccion">—</div>
-          <div class="stat-etiqueta">En corrección</div>
-        </div>
-      </div>
       <div class="stat-card aprobado">
         <div class="stat-icono"><i class="fa fa-check-circle"></i></div>
         <div class="stat-info">
-          <div class="stat-valor" id="stat-aprobado">—</div>
-          <div class="stat-etiqueta">Aprobadas</div>
+          <div class="stat-valor" id="stat-autorizado">—</div>
+          <div class="stat-etiqueta">Autorizadas</div>
+        </div>
+      </div>
+      <div class="stat-card rechazado">
+        <div class="stat-icono"><i class="fa fa-times-circle"></i></div>
+        <div class="stat-info">
+          <div class="stat-valor" id="stat-rechazado">—</div>
+          <div class="stat-etiqueta">Rechazadas</div>
         </div>
       </div>
     </div>
@@ -82,10 +82,19 @@
     <!-- ── Filtros ── -->
     <div class="bandeja-filtros">
       <span style="font-weight:600;font-size:.85rem;color:var(--itt-texto-claro);">Filtrar:</span>
-      <button class="filtro-chip todos activo"   data-estatus="todos"       id="filtro-todos">Todas</button>
-      <button class="filtro-chip pendiente"       data-estatus="PENDIENTE"  id="filtro-pendiente">Pendientes</button>
-      <button class="filtro-chip correccion"      data-estatus="CORRECCION" id="filtro-correccion">En corrección</button>
-      <button class="filtro-chip aprobado"        data-estatus="APROBADO"   id="filtro-aprobado">Aprobadas</button>
+      <button class="filtro-chip todos activo"   data-estatus="todos" id="filtro-todos">Todas</button>
+      <button class="filtro-chip pendiente"       data-estatus="1"     id="filtro-pendiente">Pendientes</button>
+      <button class="filtro-chip aprobado"        data-estatus="2"     id="filtro-autorizado">Autorizadas</button>
+      <button class="filtro-chip correccion"      data-estatus="3"     id="filtro-rechazado">Rechazadas</button>
+      <button class="filtro-chip cancelado"       data-estatus="4"     id="filtro-cancelado">Canceladas</button>
+      <button class="filtro-chip aplicado"        data-estatus="5"     id="filtro-aplicado">Aplicadas</button>
+
+      <!-- Filtro por convocatoria -->
+      <select id="filtro-convocatoria" class="form-control-itt" style="width:170px;height:34px;">
+        <option value="">Convocatoria: todas</option>
+        <option value="900001">900001</option>
+        <option value="900002">900002</option>
+      </select>
 
       <!-- Búsqueda rápida -->
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
@@ -96,7 +105,7 @@
             id="buscador"
             class="form-control-itt"
             style="padding-left:32px;width:200px;height:34px;"
-            placeholder="Buscar folio o nombre..."
+            placeholder="Buscar folio o solicitante..."
           />
         </div>
       </div>
@@ -115,7 +124,7 @@
                 <th>Folio</th>
                 <th>Solicitante</th>
                 <th>Tipo</th>
-                <th>Fecha</th>
+                <th>Convocatoria</th>
                 <th>Estatus</th>
                 <th style="width:70px;">Acción</th>
               </tr>
@@ -165,8 +174,8 @@
             <div class="valor" id="det-tipo">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Fecha de solicitud</label>
-            <div class="valor" id="det-fecha">—</div>
+            <label>Convocatoria</label>
+            <div class="valor" id="det-convocatoria">—</div>
           </div>
         </div>
 
@@ -179,6 +188,16 @@
             <div id="lista-respuestas" class="detalle-grid">
               <p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>
             </div>
+          </div>
+        </div>
+
+        <!-- Deducción autorizada (se oculta si no existe) -->
+        <div class="card-itt" id="det-deduccion" style="margin-bottom:16px;display:none;">
+          <div class="card-itt-header" style="font-size:.85rem;">
+            <i class="fa fa-money"></i> Deducción Autorizada
+          </div>
+          <div class="card-itt-body">
+            <div id="det-deduccion-contenido" class="detalle-grid"></div>
           </div>
         </div>
 
@@ -207,14 +226,14 @@
           <div class="form-group" id="grupo-comentario">
             <label for="comentario-correccion">
               Comentario para el solicitante
-              <span style="font-weight:400;color:var(--itt-texto-claro);">(requerido al solicitar corrección)</span>
+              <span style="font-weight:400;color:var(--itt-texto-claro);">(requerido al rechazar o cancelar)</span>
             </label>
             <textarea
               id="comentario-correccion"
               name="comentario_correccion"
               class="form-control-itt"
               rows="3"
-              placeholder="Indique al solicitante qué debe corregir..."
+              placeholder="Indique al solicitante qué debe corregir o el motivo de la cancelación..."
             ></textarea>
           </div>
 
@@ -223,7 +242,10 @@
               <i class="fa fa-check"></i> Aprobar Solicitud
             </button>
             <button type="button" id="btn-rechazar" class="btn-rechazar" onclick="PanelAdmin.solicitarCorreccion()">
-              <i class="fa fa-pencil"></i> Solicitar Corrección
+              <i class="fa fa-times"></i> Rechazar / Solicitar Corrección
+            </button>
+            <button type="button" id="btn-cancelar-deduccion" class="btn-cancelar" onclick="PanelAdmin.cancelarDeduccion()">
+              <i class="fa fa-ban"></i> Cancelar Deducción
             </button>
           </div>
         </div>
