@@ -569,7 +569,13 @@ Los archivos de datos de Oracle no viven dentro del contenedor. `docker-compose.
 | Política de reinicio | `unless-stopped`. |
 | Montajes adicionales | `docker/init-db/init-db.sh` y `docker/init-db/` en modo solo lectura; no contienen datos. |
 | Directorio de respaldos | `./backups/oracle` del repositorio montado en `/opt/sareduccion/backups`, que es la ruta de `SAR_BACKUP_DIR`. Independiente del volumen de datos. |
+<<<<<<< HEAD
 | Healthcheck | `healthcheck.sh` de la imagen más la existencia de `/opt/oracle/oradata/.sareduccion-init.complete`. |
+=======
+| Healthcheck | `healthcheck.sh` de la imagen más la existencia de `/opt/oracle/oradata/.sareduccion-init.complete`. Intervalo 30 s, timeout 30 s, 20 reintentos y `start_period` de 900 s. |
+
+El `start_period` de 900 s es intencional: la primera inicialización (crear la base y aplicar `docker/init-db/`) puede tardar 8-10 minutos en equipos con poca memoria o con intercambio a disco activo. Durante ese periodo los fallos del healthcheck no consumen reintentos, de modo que Compose no cancela el servicio `backend` con `dependency failed to start` antes de que Oracle termine.
+>>>>>>> 2ec3c504996abec9bae6eb5525599e2c2c197b2e
 
 El volumen es un recurso independiente del contenedor y de la imagen: sobrevive a que el contenedor se elimine o a que la imagen se reconstruya. Esta separación es la que permite recrear los contenedores sin perder la base.
 
