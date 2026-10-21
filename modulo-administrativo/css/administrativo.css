@@ -78,6 +78,7 @@
 .stat-card.pendiente  { border-color: #ffc107; }
 .stat-card.correccion { border-color: var(--itt-naranja); }
 .stat-card.aprobado   { border-color: var(--itt-verde); }
+.stat-card.rechazado  { border-color: var(--itt-rojo); }
 .stat-card.total      { border-color: var(--itt-azul-claro); }
 
 .stat-icono {
@@ -93,6 +94,7 @@
 .stat-card.pendiente  .stat-icono { background: #fff8e1; color: #e6a800; }
 .stat-card.correccion .stat-icono { background: #fff0e0; color: var(--itt-naranja); }
 .stat-card.aprobado   .stat-icono { background: #eaf7ee; color: var(--itt-verde); }
+.stat-card.rechazado  .stat-icono { background: #fdecea; color: var(--itt-rojo); }
 .stat-card.total      .stat-icono { background: #e8f4fd; color: var(--itt-azul-medio); }
 
 .stat-info .stat-valor {
@@ -138,6 +140,8 @@
 .filtro-chip.pendiente    { background: #fff8e1; color: #856404; border-color: #ffc107; }
 .filtro-chip.correccion   { background: #fff0e0; color: #8a3e00; border-color: var(--itt-naranja); }
 .filtro-chip.aprobado     { background: #d4edda; color: #155724; border-color: var(--itt-verde); }
+.filtro-chip.cancelado    { background: #e2e3e5; color: #383d41; border-color: #adb5bd; }
+.filtro-chip.aplicado     { background: #cce5ff; color: #004085; border-color: #4a90d9; }
 
 .filtro-chip:hover,
 .filtro-chip.activo {
@@ -227,6 +231,22 @@
 }
 .btn-rechazar:hover { filter: brightness(1.08); transform: translateY(-1px); }
 
+.btn-cancelar {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: #fff;
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--radio-btn);
+  font-weight: 700;
+  font-size: .9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: filter var(--transition), transform var(--transition);
+}
+.btn-cancelar:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
 /* ── Historial de cambios ── */
 .historial-lista { list-style: none; padding: 0; margin: 0; }
 
@@ -249,9 +269,12 @@
 }
 
 .historial-icono.pendiente  { background: #fff8e1; color: #e6a800; }
+.historial-icono.autorizado { background: #eaf7ee; color: var(--itt-verde); }
 .historial-icono.aprobado   { background: #eaf7ee; color: var(--itt-verde); }
 .historial-icono.rechazado  { background: #fdecea; color: var(--itt-rojo); }
 .historial-icono.correccion { background: #fff0e0; color: var(--itt-naranja); }
+.historial-icono.cancelado  { background: #e2e3e5; color: #383d41; }
+.historial-icono.aplicado   { background: #cce5ff; color: #004085; }
 
 .historial-info .hist-titulo {
   font-weight: 700;
