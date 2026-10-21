@@ -1,7 +1,5 @@
 package com.itt.sareduccion.controller;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Locale;
@@ -26,15 +24,16 @@ import com.itt.sareduccion.auth.AuthenticationService;
 import com.itt.sareduccion.auth.LoginAttemptLimiter;
 import com.itt.sareduccion.auth.OracleCredentialValidator.AuthenticationRejectedException;
 import com.itt.sareduccion.auth.OracleCredentialValidator.AuthenticationUnavailableException;
+import com.itt.sareduccion.auth.SessionAttributes;
 import com.itt.sareduccion.auth.SessionPrincipal;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private static final String PRINCIPAL_ATTRIBUTE = AuthController.class.getName() + ".principal";
-    private static final String CSRF_ATTRIBUTE = AuthController.class.getName() + ".csrf";
-    private static final String CSRF_HEADER = "X-CSRF-TOKEN";
+    private static final String PRINCIPAL_ATTRIBUTE = SessionAttributes.PRINCIPAL_ATTRIBUTE;
+    private static final String CSRF_ATTRIBUTE = SessionAttributes.CSRF_ATTRIBUTE;
+    private static final String CSRF_HEADER = SessionAttributes.CSRF_HEADER;
     private static final Pattern FICHA_PATTERN = Pattern.compile("^[A-Z0-9]{1,18}$");
     private static final Pattern CURP_PATTERN = Pattern.compile("^[A-Z0-9]{18}$");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -143,8 +142,7 @@ public class AuthController {
     }
 
     private SessionPrincipal principal(HttpSession session) {
-        Object value = session.getAttribute(PRINCIPAL_ATTRIBUTE);
-        return value instanceof SessionPrincipal ? (SessionPrincipal) value : null;
+        return SessionAttributes.principal(session);
     }
 
     private void clearPrincipal(HttpSession session) {
@@ -175,15 +173,7 @@ public class AuthController {
     }
 
     private boolean validCsrf(HttpSession session, String suppliedToken) {
-        if (session == null || suppliedToken == null) {
-            return false;
-        }
-        Object expectedToken = session.getAttribute(CSRF_ATTRIBUTE);
-        if (!(expectedToken instanceof String)) {
-            return false;
-        }
-        return MessageDigest.isEqual(((String) expectedToken).getBytes(StandardCharsets.UTF_8),
-                suppliedToken.getBytes(StandardCharsets.UTF_8));
+        return SessionAttributes.validCsrf(session, suppliedToken);
     }
 
     public static final class LoginRequest {

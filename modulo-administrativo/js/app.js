@@ -72,14 +72,24 @@ const Http = {
   },
 
   async put(endpoint, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
+    headers['X-CSRF-TOKEN'] = this.csrfToken;
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'same-origin',
       body: JSON.stringify(body),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    return resp.json();
+    const data = resp.status === 204 ? null : await resp.json().catch(() => ({}));
+    if (data?.csrfToken) this.csrfToken = data.csrfToken;
+    if (!resp.ok) {
+      const error = new Error(data?.error || 'No se pudo completar la solicitud.');
+      error.status = resp.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
   },
 };
 
@@ -263,9 +273,28 @@ const LoginAdmin = {
    MÓDULO: PANEL DE ADMINISTRACIÓN / BANDEJA
    Equipo 2
 ───────────────────────────────────────── */
+const ESTATUS_BADGE = {
+  PENDIENTE:  'badge-pendiente',
+  AUTORIZADO: 'badge-autorizado',
+  RECHAZADO:  'badge-rechazado',
+  CANCELADO:  'badge-cancelado',
+  APLICADO:   'badge-aplicado',
+};
+
+const ESTATUS_ICONO = {
+  PENDIENTE:  { clase: 'pendiente',  icon: 'fa-clock-o' },
+  AUTORIZADO: { clase: 'autorizado', icon: 'fa-check' },
+  RECHAZADO:  { clase: 'rechazado',  icon: 'fa-times' },
+  CANCELADO:  { clase: 'cancelado',  icon: 'fa-ban' },
+  APLICADO:   { clase: 'aplicado',   icon: 'fa-flag-checkered' },
+};
+
 const PanelAdmin = {
   solicitudes: [],      // Datos cargados desde la API
   filtroActual: 'todos',
+  filtroConvocatoria: '',
+  filtroSolicitante: '',
+  _solicitudActual: null,
 
   async init() {
     const bandeja = document.getElementById('tabla-solicitudes');
@@ -276,6 +305,7 @@ const PanelAdmin = {
     await this.cargarEstadisticas();
     await this.cargarSolicitudes();
     this.iniciarFiltros();
+    this.iniciarBuscador();
     Modal.iniciarCierre();
   },
 
@@ -285,8 +315,8 @@ const PanelAdmin = {
       const stats = await Http.get('/solicitudes/estadisticas');
       this.actualizarContador('stat-total',      stats.total      ?? 0);
       this.actualizarContador('stat-pendiente',  stats.pendiente  ?? 0);
-      this.actualizarContador('stat-correccion', stats.correccion ?? 0);
-      this.actualizarContador('stat-aprobado',   stats.aprobado   ?? 0);
+      this.actualizarContador('stat-autorizado', stats.autorizado ?? 0);
+      this.actualizarContador('stat-rechazado',  stats.rechazado  ?? 0);
     } catch (err) {
       console.warn('No se pudieron cargar estadísticas:', err.message);
     }
@@ -297,18 +327,24 @@ const PanelAdmin = {
     if (el) el.textContent = valor;
   },
 
-  /* ── Carga la lista de solicitudes ── */
-  async cargarSolicitudes(estatus = null) {
+  /* ── Carga la lista de solicitudes con filtros combinados ── */
+  async cargarSolicitudes() {
     Spinner.show();
     try {
-      const endpoint = estatus && estatus !== 'todos'
-        ? `/solicitudes?estatus=${estatus}`
-        : '/solicitudes';
+      const params = new URLSearchParams();
+      if (this.filtroActual && this.filtroActual !== 'todos') {
+        params.set('estatus', this.filtroActual);
+      }
+      if (this.filtroConvocatoria) params.set('convocatoria', this.filtroConvocatoria);
+      if (this.filtroSolicitante)  params.set('solicitante',  this.filtroSolicitante);
+
+      const query = params.toString();
+      const endpoint = query ? `/solicitudes?${query}` : '/solicitudes';
 
       this.solicitudes = await Http.get(endpoint);
       this.renderTabla(this.solicitudes);
     } catch (err) {
-      Alerta.mostrar('alerta-bandeja', 'error', 'No se pudieron cargar las solicitudes.');
+      Alerta.mostrar('alerta-bandeja', 'error', err.message || 'No se pudieron cargar las solicitudes.');
     } finally {
       Spinner.hide();
     }
@@ -327,18 +363,13 @@ const PanelAdmin = {
     }
 
     tbody.innerHTML = solicitudes.map(s => {
-      const badgeClass = {
-        PENDIENTE:  'badge-pendiente',
-        CORRECCION: 'badge-correccion',
-        APROBADO:   'badge-aprobado',
-        RECHAZADO:  'badge-rechazado',
-      }[s.estatus] || 'badge-revision';
+      const badgeClass = ESTATUS_BADGE[s.estatus] || 'badge-revision';
 
       return `<tr>
         <td>${s.idSolicitud}</td>
-        <td>${s.nombreSolicitante || '—'}</td>
+        <td>${s.solicitante || s.nombreSolicitante || '—'}</td>
         <td>${s.tipoSolicitante   || '—'}</td>
-        <td>${s.fechaSolicitud    || '—'}</td>
+        <td>${s.idConvocatoria    ?? '—'}</td>
         <td><span class="badge-estatus ${badgeClass}">${s.estatus}</span></td>
         <td>
           <button class="btn-itt btn-primario" onclick="PanelAdmin.verDetalle(${s.idSolicitud})" title="Ver detalle">
@@ -355,10 +386,31 @@ const PanelAdmin = {
       chip.addEventListener('click', () => {
         document.querySelectorAll('.filtro-chip').forEach(c => c.classList.remove('activo'));
         chip.classList.add('activo');
-        const estatus = chip.dataset.estatus;
-        this.filtroActual = estatus;
-        this.cargarSolicitudes(estatus);
+        this.filtroActual = chip.dataset.estatus;
+        this.cargarSolicitudes();
       });
+    });
+
+    const selectConvocatoria = document.getElementById('filtro-convocatoria');
+    if (selectConvocatoria) {
+      selectConvocatoria.addEventListener('change', () => {
+        this.filtroConvocatoria = selectConvocatoria.value;
+        this.cargarSolicitudes();
+      });
+    }
+  },
+
+  /* ── Buscador por folio o solicitante ── */
+  iniciarBuscador() {
+    const input = document.getElementById('buscador');
+    if (!input) return;
+    let temporizador = null;
+    input.addEventListener('input', () => {
+      clearTimeout(temporizador);
+      temporizador = setTimeout(() => {
+        this.filtroSolicitante = input.value.trim();
+        this.cargarSolicitudes();
+      }, 350);
     });
   },
 
@@ -370,19 +422,21 @@ const PanelAdmin = {
       this.renderDetalle(solicitud);
       Modal.abrir('modal-detalle');
     } catch (err) {
-      Alerta.mostrar('alerta-bandeja', 'error', 'No se pudo cargar el detalle de la solicitud.');
+      Alerta.mostrar('alerta-bandeja', 'error', err.message || 'No se pudo cargar el detalle de la solicitud.');
     } finally {
       Spinner.hide();
     }
   },
 
   renderDetalle(solicitud) {
+    this._solicitudActual = solicitud;
+
     // Datos generales
     const campos = {
       'det-folio':      solicitud.idSolicitud,
-      'det-nombre':     solicitud.nombreSolicitante,
+      'det-nombre':     solicitud.solicitante || solicitud.nombreSolicitante,
       'det-tipo':       solicitud.tipoSolicitante,
-      'det-fecha':      solicitud.fechaSolicitud,
+      'det-convocatoria': solicitud.idConvocatoria,
       'det-estatus':    solicitud.estatus,
     };
     Object.entries(campos).forEach(([id, val]) => {
@@ -393,80 +447,141 @@ const PanelAdmin = {
     // Badge de estatus
     const badgeEl = document.getElementById('det-badge-estatus');
     if (badgeEl) {
-      const badgeClass = {
-        PENDIENTE:  'badge-pendiente',
-        CORRECCION: 'badge-correccion',
-        APROBADO:   'badge-aprobado',
-        RECHAZADO:  'badge-rechazado',
-      }[solicitud.estatus] || 'badge-revision';
+      const badgeClass = ESTATUS_BADGE[solicitud.estatus] || 'badge-revision';
       badgeEl.className = `badge-estatus ${badgeClass}`;
       badgeEl.textContent = solicitud.estatus;
     }
 
     // Respuestas del formulario
     const listaRespuestas = document.getElementById('lista-respuestas');
-    if (listaRespuestas && solicitud.respuestas) {
-      listaRespuestas.innerHTML = solicitud.respuestas.map(r =>
-        `<div class="detalle-campo">
-          <label>${r.pregunta}</label>
-          <div class="valor">${r.respuesta || '—'}</div>
-        </div>`
-      ).join('');
+    if (listaRespuestas) {
+      if (solicitud.respuestas && solicitud.respuestas.length) {
+        listaRespuestas.innerHTML = solicitud.respuestas.map(r =>
+          `<div class="detalle-campo">
+            <label>Pregunta #${r.idPregunta}</label>
+            <div class="valor">${r.respuesta || '—'}</div>
+          </div>`
+        ).join('');
+      } else {
+        listaRespuestas.innerHTML =
+          '<p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>';
+      }
     }
 
-    // Historial
+    // Deducción (solo si existe)
+    this.renderDeduccion(solicitud.deduccion);
+
+    // Historial (pendiente de endpoint en Fase 3)
     const historialEl = document.getElementById('historial-lista');
-    if (historialEl && solicitud.historial) {
-      const iconosHistorial = {
-        PENDIENTE:  { clase: 'pendiente',  icon: 'fa-clock-o' },
-        APROBADO:   { clase: 'aprobado',   icon: 'fa-check' },
-        RECHAZADO:  { clase: 'rechazado',  icon: 'fa-times' },
-        CORRECCION: { clase: 'correccion', icon: 'fa-pencil' },
-      };
-
-      historialEl.innerHTML = solicitud.historial.map(h => {
-        const { clase, icon } = iconosHistorial[h.estatus] || { clase: 'pendiente', icon: 'fa-info' };
-        const comentarioHtml = h.comentario
-          ? `<div class="hist-comentario"><i class="fa fa-quote-left"></i> ${h.comentario}</div>`
-          : '';
-        return `
-          <li class="historial-item">
-            <div class="historial-icono ${clase}"><i class="fa ${icon}"></i></div>
-            <div class="historial-info">
-              <div class="hist-titulo">${h.estatusNombre || h.estatus}</div>
-              <div class="hist-meta">${h.fecha || ''} ${h.administrador ? '· ' + h.administrador : ''}</div>
-              ${comentarioHtml}
-            </div>
-          </li>`;
-      }).join('');
+    if (historialEl) {
+      if (solicitud.historial && solicitud.historial.length) {
+        historialEl.innerHTML = solicitud.historial.map(h => {
+          const { clase, icon } = ESTATUS_ICONO[h.estatus] || { clase: 'pendiente', icon: 'fa-info' };
+          const comentarioHtml = h.comentario
+            ? `<div class="hist-comentario"><i class="fa fa-quote-left"></i> ${h.comentario}</div>`
+            : '';
+          return `
+            <li class="historial-item">
+              <div class="historial-icono ${clase}"><i class="fa ${icon}"></i></div>
+              <div class="historial-info">
+                <div class="hist-titulo">${h.estatusNombre || h.estatus}</div>
+                <div class="hist-meta">${h.fecha || ''} ${h.administrador ? '· ' + h.administrador : ''}</div>
+                ${comentarioHtml}
+              </div>
+            </li>`;
+        }).join('');
+      } else {
+        historialEl.innerHTML =
+          '<li style="color:var(--itt-texto-claro);font-style:italic;padding:8px 0;">Sin historial registrado.</li>';
+      }
     }
 
-    // Guardar ID actual para las acciones de decisión
-    this._idActual = solicitud.idSolicitud;
+    // Acciones disponibles segun el estatus
+    this.ajustarAcciones(solicitud);
+  },
+
+  renderDeduccion(deduccion) {
+    const bloque = document.getElementById('det-deduccion');
+    const contenido = document.getElementById('det-deduccion-contenido');
+    if (!bloque || !contenido) return;
+
+    if (!deduccion) {
+      bloque.style.display = 'none';
+      return;
+    }
+    bloque.style.display = '';
+
+    const monto = (valor) => valor == null ? '—' : `$${Number(valor).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+    contenido.innerHTML = `
+      <div class="detalle-campo">
+        <label>Monto de pago</label>
+        <div class="valor">${monto(deduccion.montoPago)}</div>
+      </div>
+      <div class="detalle-campo">
+        <label>Deducción</label>
+        <div class="valor">${monto(deduccion.montoDeduccion)}</div>
+      </div>
+      <div class="detalle-campo">
+        <label>Monto final</label>
+        <div class="valor">${monto(deduccion.montoFinal)}</div>
+      </div>
+      <div class="detalle-campo">
+        <label>Estatus deducción</label>
+        <div class="valor">${deduccion.estatus || '—'}</div>
+      </div>`;
+  },
+
+  /* ── Muestra u oculta botones según el estatus de la solicitud ── */
+  ajustarAcciones(solicitud) {
+    const botones = {
+      aprobar:  document.getElementById('btn-aprobar'),
+      rechazar: document.getElementById('btn-rechazar'),
+      cancelar: document.getElementById('btn-cancelar-deduccion'),
+    };
+    const grupoComentario = document.getElementById('grupo-comentario');
+    const areaDecision = document.getElementById('area-decision');
+
+    const esPendiente  = solicitud.estatus === 'PENDIENTE';
+    const esAutorizado = solicitud.estatus === 'AUTORIZADO' && solicitud.deduccion;
+
+    Object.values(botones).forEach(b => { if (b) b.style.display = 'none'; });
+    if (grupoComentario) grupoComentario.style.display = 'none';
+    if (areaDecision) areaDecision.style.display = (esPendiente || esAutorizado) ? '' : 'none';
+
+    if (esPendiente) {
+      if (botones.aprobar)  botones.aprobar.style.display = '';
+      if (botones.rechazar) botones.rechazar.style.display = '';
+      if (grupoComentario)  grupoComentario.style.display = '';
+    }
+    if (esAutorizado && botones.cancelar) {
+      botones.cancelar.style.display = '';
+      if (grupoComentario) grupoComentario.style.display = '';
+    }
   },
 
   /* ── Decisión: Aprobar ── */
   async aprobar() {
-    if (!this._idActual) return;
-    if (!confirm('¿Confirma la aprobación de esta solicitud?')) return;
+    if (!this._solicitudActual) return;
+    if (!confirm('¿Confirma la aprobación de esta solicitud? Se autorizará la deducción.')) return;
 
     Spinner.show();
     try {
-      await Http.put(`/solicitudes/${this._idActual}/aprobar`, {});
+      const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
+      await Http.put(`/solicitudes/${this._solicitudActual.idSolicitud}/aprobar`, { comentario });
       Alerta.mostrar('alerta-bandeja', 'exito', 'Solicitud aprobada correctamente.', 4000);
       Modal.cerrar('modal-detalle');
-      await this.cargarSolicitudes(this.filtroActual);
+      await this.cargarSolicitudes();
       await this.cargarEstadisticas();
     } catch (err) {
-      Alerta.mostrar('alerta-bandeja', 'error', 'No se pudo aprobar la solicitud.');
+      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo aprobar la solicitud.');
     } finally {
       Spinner.hide();
     }
   },
 
-  /* ── Decisión: Enviar a corrección ── */
+  /* ── Decisión: Rechazar / solicitar corrección ── */
   async solicitarCorreccion() {
-    if (!this._idActual) return;
+    if (!this._solicitudActual) return;
     const comentario = document.getElementById('comentario-correccion')?.value?.trim();
     if (!comentario) {
       Alerta.mostrar('alerta-decision', 'advertencia', 'Escriba un comentario indicando la corrección requerida.');
@@ -475,13 +590,37 @@ const PanelAdmin = {
 
     Spinner.show();
     try {
-      await Http.put(`/solicitudes/${this._idActual}/correccion`, { comentario });
-      Alerta.mostrar('alerta-bandeja', 'advertencia', 'Solicitud devuelta para corrección.', 4000);
+      await Http.put(`/solicitudes/${this._solicitudActual.idSolicitud}/rechazar`, { comentario });
+      Alerta.mostrar('alerta-bandeja', 'advertencia', 'Solicitud rechazada / devuelta para corrección.', 4000);
       Modal.cerrar('modal-detalle');
-      await this.cargarSolicitudes(this.filtroActual);
+      await this.cargarSolicitudes();
       await this.cargarEstadisticas();
     } catch (err) {
-      Alerta.mostrar('alerta-decision', 'error', 'No se pudo registrar la corrección.');
+      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo registrar la corrección.');
+    } finally {
+      Spinner.hide();
+    }
+  },
+
+  /* ── Decisión: Cancelar deducción de una solicitud AUTORIZADA ── */
+  async cancelarDeduccion() {
+    if (!this._solicitudActual || !this._solicitudActual.deduccion) return;
+    const comentario = document.getElementById('comentario-correccion')?.value?.trim();
+    if (!comentario) {
+      Alerta.mostrar('alerta-decision', 'advertencia', 'Escriba un comentario para cancelar la deducción.');
+      return;
+    }
+    if (!confirm('¿Confirma cancelar la deducción autorizada? La solicitud pasará a CANCELADO.')) return;
+
+    Spinner.show();
+    try {
+      await Http.put(`/deducciones/${this._solicitudActual.deduccion.idDeduccion}/cancelar`, { comentario });
+      Alerta.mostrar('alerta-bandeja', 'advertencia', 'Deducción cancelada correctamente.', 4000);
+      Modal.cerrar('modal-detalle');
+      await this.cargarSolicitudes();
+      await this.cargarEstadisticas();
+    } catch (err) {
+      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo cancelar la deducción.');
     } finally {
       Spinner.hide();
     }

@@ -323,6 +323,9 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 .badge-aprobado     { background: #d4edda; color: #155724; border: 1px solid var(--itt-verde); }
 .badge-rechazado    { background: #f8d7da; color: #721c24; border: 1px solid var(--itt-rojo); }
 .badge-revision     { background: #d1ecf1; color: #0c5460; border: 1px solid var(--itt-azul-claro); }
+.badge-autorizado   { background: #d4edda; color: #155724; border: 1px solid var(--itt-verde); }
+.badge-cancelado    { background: #e2e3e5; color: #383d41; border: 1px solid #adb5bd; }
+.badge-aplicado     { background: #cce5ff; color: #004085; border: 1px solid #4a90d9; }
 
 /* ──────────────────────────────────────────
    TABLA
