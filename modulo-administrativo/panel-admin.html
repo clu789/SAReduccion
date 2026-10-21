@@ -26,6 +26,12 @@
     <nav class="itt-navbar" aria-label="Navegación administrativa">
       <ul class="itt-navbar-links">
         <li><a href="panel-admin.html" class="activo"><i class="fa fa-tachometer"></i> Bandeja de Solicitudes</a></li>
+        <li>
+          <a href="#" class="nav-opcion-deshabilitada" aria-disabled="true" tabindex="-1"
+             title="Disponible próximamente" onclick="return false;">
+            <i class="fa fa-plus-circle"></i> Nueva Solicitud
+          </a>
+        </li>
       </ul>
       <div class="itt-navbar-user">
         <span class="badge-admin" style="font-size:.72rem;padding:4px 10px;">
@@ -117,16 +123,16 @@
         <i class="fa fa-list"></i> Solicitudes
       </div>
       <div class="card-itt-body" style="padding:0;">
-        <div style="overflow-x:auto;">
+        <div class="tabla-solicitudes-scroll">
           <table class="tabla-itt" id="tabla-solicitudes">
             <thead>
               <tr>
-                <th>Folio</th>
-                <th>Solicitante</th>
-                <th>Tipo</th>
-                <th>Convocatoria</th>
-                <th>Estatus</th>
-                <th style="width:70px;">Acción</th>
+                <th class="th-ordenable" data-col="idSolicitud">Folio <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="solicitante">Solicitante <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="tipoSolicitante">Tipo <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="fechaActualizacion">Actualizado <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="estatus">Estatus <i class="fa fa-sort"></i></th>
+                <th style="width:110px;">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -149,7 +155,7 @@
     <div class="modal-box" style="max-width:680px;">
       <div class="modal-header">
         <h3 id="modal-detalle-titulo"><i class="fa fa-file-text-o"></i> Detalle de Solicitud</h3>
-        <button class="modal-cerrar" onclick="Modal.cerrar('modal-detalle')" aria-label="Cerrar">&times;</button>
+        <button class="modal-cerrar" onclick="PanelAdmin.cerrarDetalle()" aria-label="Cerrar">&times;</button>
       </div>
       <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
 
@@ -176,18 +182,6 @@
           <div class="detalle-campo">
             <label>Convocatoria</label>
             <div class="valor" id="det-convocatoria">—</div>
-          </div>
-        </div>
-
-        <!-- Respuestas del formulario -->
-        <div class="card-itt" style="margin-bottom:16px;">
-          <div class="card-itt-header" style="font-size:.85rem;">
-            <i class="fa fa-list-alt"></i> Respuestas del Formulario
-          </div>
-          <div class="card-itt-body">
-            <div id="lista-respuestas" class="detalle-grid">
-              <p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>
-            </div>
           </div>
         </div>
 
@@ -251,7 +245,30 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-itt btn-secundario" onclick="Modal.cerrar('modal-detalle')">
+        <button type="button" class="btn-itt btn-secundario" onclick="PanelAdmin.cerrarDetalle()">
+          <i class="fa fa-times"></i> Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MODAL: RESPUESTAS DEL FORMULARIO ═══ -->
+  <div id="modal-respuestas" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-respuestas-titulo">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="modal-header">
+        <h3 id="modal-respuestas-titulo"><i class="fa fa-list-alt"></i> Respuestas del Formulario</h3>
+        <button class="modal-cerrar" onclick="Modal.cerrar('modal-respuestas')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+        <p style="margin:0 0 12px;font-size:.82rem;color:var(--itt-texto-claro);">
+          Folio <strong id="resp-folio">—</strong> · <span id="resp-solicitante">—</span>
+        </p>
+        <div id="lista-respuestas" class="detalle-grid">
+          <p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-itt btn-secundario" onclick="Modal.cerrar('modal-respuestas')">
           <i class="fa fa-times"></i> Cerrar
         </button>
       </div>

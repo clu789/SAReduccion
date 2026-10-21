@@ -149,6 +149,58 @@
   box-shadow: 0 3px 8px rgba(0,0,0,.12);
 }
 
+/* ── Tabla de solicitudes: altura fija con scroll interno ── */
+.tabla-solicitudes-scroll {
+  max-height: 60vh;
+  min-height: 340px;
+  overflow: auto;
+}
+
+.tabla-solicitudes-scroll .tabla-itt thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--itt-azul, #1a3a6b);
+  color: #fff;
+}
+
+/* ── Encabezados ordenables ── */
+.th-ordenable {
+  user-select: none;
+}
+
+.cursor-ordenable {
+  cursor: pointer;
+}
+
+.cursor-ordenable:hover {
+  background: var(--itt-azul-medio, #24508f) !important;
+}
+
+.th-ordenable i {
+  margin-left: 4px;
+  opacity: .75;
+  font-size: .85em;
+}
+
+/* ── Celda de acciones en la tabla ── */
+.acciones-celda {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-accion-icono {
+  padding: 5px 9px !important;
+  font-size: .8rem;
+}
+
+/* ── Opción de navbar deshabilitada (Nueva Solicitud) ── */
+.nav-opcion-deshabilitada {
+  opacity: .5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ── Detalle de Solicitud (admin) ── */
 .detalle-grid {
   display: grid;
