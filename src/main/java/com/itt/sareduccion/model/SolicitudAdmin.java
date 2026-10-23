@@ -1,5 +1,7 @@
 package com.itt.sareduccion.model;
 
+import java.time.LocalDateTime;
+
 public final class SolicitudAdmin {
 
     private final Long idSolicitud;
@@ -10,9 +12,12 @@ public final class SolicitudAdmin {
     private final Long idConvocatoria;
     private final Integer idEstatusSolicitud;
     private final Integer idTipoSolicitud;
+    private final LocalDateTime fechaActualizacion;
+    private final String tipoSolicitudNombre;
 
     public SolicitudAdmin(Long idSolicitud, String numControl, String ficha, Integer periodo,
-            Integer anio, Long idConvocatoria, Integer idEstatusSolicitud, Integer idTipoSolicitud) {
+            Integer anio, Long idConvocatoria, Integer idEstatusSolicitud, Integer idTipoSolicitud,
+            LocalDateTime fechaActualizacion, String tipoSolicitudNombre) {
         this.idSolicitud = idSolicitud;
         this.numControl = numControl;
         this.ficha = ficha;
@@ -21,6 +26,8 @@ public final class SolicitudAdmin {
         this.idConvocatoria = idConvocatoria;
         this.idEstatusSolicitud = idEstatusSolicitud;
         this.idTipoSolicitud = idTipoSolicitud;
+        this.fechaActualizacion = fechaActualizacion;
+        this.tipoSolicitudNombre = tipoSolicitudNombre;
     }
 
     public Long getIdSolicitud() {
@@ -53,6 +60,14 @@ public final class SolicitudAdmin {
 
     public Integer getIdTipoSolicitud() {
         return idTipoSolicitud;
+    }
+
+    public LocalDateTime getFechaActualizacion() {
+        return fechaActualizacion;
+    }
+
+    public String getTipoSolicitudNombre() {
+        return tipoSolicitudNombre;
     }
 
     /** Identificador visible del solicitante: control de estudiante o ficha de aspirante. */

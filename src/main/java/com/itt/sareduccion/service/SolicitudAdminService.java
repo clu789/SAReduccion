@@ -10,6 +10,7 @@ import java.util.Map;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
+import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.DeduccionAdmin;
 import com.itt.sareduccion.model.RespuestaSolicitud;
 import com.itt.sareduccion.model.SolicitudAdmin;
@@ -43,9 +44,8 @@ public class SolicitudAdminService {
         ESTATUS_NOMBRES = estatus;
 
         Map<Integer, String> tipos = new LinkedHashMap<Integer, String>();
-        tipos.put(1, "Beca");
-        tipos.put(2, "Credito");
-        tipos.put(3, "Deduccion de inscripcion");
+        tipos.put(900001, "Hijos de trabajadores");
+        tipos.put(900002, "Hijos de homologados");
         TIPO_SOLICITUD_NOMBRES = tipos;
     }
 
@@ -81,8 +81,22 @@ public class SolicitudAdminService {
         return resultado;
     }
 
+    public List<ConvocatoriaAdmin> listarConvocatorias(String idAdministrador) {
+        return administradorRepository.listarConvocatorias(idAdministrador);
+    }
+
     public Map<String, Object> estadisticas(String idAdministrador) {
-        List<SolicitudAdmin> solicitudes = administradorRepository.listarSolicitudes(idAdministrador);
+        return estadisticas(idAdministrador, null);
+    }
+
+    public Map<String, Object> estadisticas(String idAdministrador, Long convocatoria) {
+        List<SolicitudAdmin> todas = administradorRepository.listarSolicitudes(idAdministrador);
+        List<SolicitudAdmin> solicitudes = new ArrayList<SolicitudAdmin>();
+        for (SolicitudAdmin solicitud : todas) {
+            if (convocatoria == null || convocatoria.equals(solicitud.getIdConvocatoria())) {
+                solicitudes.add(solicitud);
+            }
+        }
         Map<Integer, Integer> conteos = new LinkedHashMap<Integer, Integer>();
         for (Integer key : ESTATUS_NOMBRES.keySet()) {
             conteos.put(key, 0);

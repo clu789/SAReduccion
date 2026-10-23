@@ -2,6 +2,7 @@ package com.itt.sareduccion.service;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.SolicitudAdmin;
 
 /**
@@ -64,6 +66,23 @@ class SolicitudAdminServiceIntegrationTest {
                 + ((Number) estadisticas.get("cancelado")).intValue()
                 + ((Number) estadisticas.get("aplicado")).intValue();
         assertEquals(((Number) estadisticas.get("total")).intValue(), suma);
+    }
+
+    @Test
+    void convocatoriasYEstadisticasFiltradasCuadran() {
+        String idAdministrador = System.getenv("SAR_JDBC_TEST_ADMIN_ID").trim();
+
+        List<ConvocatoriaAdmin> convocatorias = solicitudAdminService.listarConvocatorias(idAdministrador);
+        assertNotNull(convocatorias);
+        assertFalse(convocatorias.isEmpty());
+
+        for (ConvocatoriaAdmin convocatoria : convocatorias) {
+            List<SolicitudAdmin> solicitudes = solicitudAdminService
+                    .listar(idAdministrador, null, convocatoria.getIdConvocatoria(), null);
+            Map<String, Object> estadisticas = solicitudAdminService
+                    .estadisticas(idAdministrador, convocatoria.getIdConvocatoria());
+            assertEquals(solicitudes.size(), ((Number) estadisticas.get("total")).intValue());
+        }
     }
 
     @Test

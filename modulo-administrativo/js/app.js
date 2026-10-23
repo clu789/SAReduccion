@@ -294,6 +294,9 @@ const PanelAdmin = {
   filtroActual: 'todos',
   filtroConvocatoria: '',
   filtroSolicitante: '',
+  hayFiltroConvocatoria: false,
+  ordenColumna: null,
+  ordenDireccion: 'asc',
   _solicitudActual: null,
 
   async init() {
@@ -302,17 +305,63 @@ const PanelAdmin = {
     if (!await AuthSession.requireRole('ADMIN', 'login.html', '/solicitante/login.html')) return;
     AuthSession.bindLogout('login.html', 'alerta-admin');
 
-    await this.cargarEstadisticas();
-    await this.cargarSolicitudes();
+    await this.cargarConvocatorias();
+    await Promise.all([this.cargarEstadisticas(), this.cargarSolicitudes()]);
     this.iniciarFiltros();
     this.iniciarBuscador();
+    this.iniciarOrdenamiento();
     Modal.iniciarCierre();
+  },
+
+  /* ── Catálogo de convocatorias y selección inicial ── */
+  async cargarConvocatorias() {
+    const select = document.getElementById('filtro-convocatoria');
+    try {
+      const convocatorias = await Http.get('/convocatorias');
+      const lista = Array.isArray(convocatorias) ? convocatorias : [];
+      if (!select) return;
+
+      select.innerHTML = '';
+      lista.forEach(c => {
+        const option = document.createElement('option');
+        option.value = String(c.idConvocatoria);
+        option.textContent = this.etiquetaConvocatoria(c);
+        select.appendChild(option);
+      });
+
+      const todas = document.createElement('option');
+      todas.value = '';
+      todas.textContent = 'Todas las convocatorias';
+      select.appendChild(todas);
+
+      const activa = lista.find(c => c.activa) || null;
+      this.filtroConvocatoria = activa ? String(activa.idConvocatoria) : '';
+      select.value = this.filtroConvocatoria;
+      select.disabled = false;
+    } catch (err) {
+      if (select) {
+        select.innerHTML = '<option value="">Convocatorias no disponibles</option>';
+        select.disabled = true;
+      }
+      console.warn('No se pudieron cargar las convocatorias:', err.message);
+    }
+  },
+
+  etiquetaConvocatoria(convocatoria) {
+    const partes = [String(convocatoria.idConvocatoria)];
+    if (convocatoria.periodo) partes.push(`Periodo ${convocatoria.periodo}`);
+    if (convocatoria.anio) partes.push(String(convocatoria.anio));
+    const etiqueta = partes.join(' · ');
+    return convocatoria.activa ? `${etiqueta} · Activa` : etiqueta;
   },
 
   /* ── Estadísticas de la barra superior ── */
   async cargarEstadisticas() {
     try {
-      const stats = await Http.get('/solicitudes/estadisticas');
+      const params = new URLSearchParams();
+      if (this.filtroConvocatoria) params.set('convocatoria', this.filtroConvocatoria);
+      const query = params.toString();
+      const stats = await Http.get(query ? `/solicitudes/estadisticas?${query}` : '/solicitudes/estadisticas');
       this.actualizarContador('stat-total',      stats.total      ?? 0);
       this.actualizarContador('stat-pendiente',  stats.pendiente  ?? 0);
       this.actualizarContador('stat-autorizado', stats.autorizado ?? 0);
@@ -342,11 +391,76 @@ const PanelAdmin = {
       const endpoint = query ? `/solicitudes?${query}` : '/solicitudes';
 
       this.solicitudes = await Http.get(endpoint);
-      this.renderTabla(this.solicitudes);
+      this.hayFiltroConvocatoria = !!this.filtroConvocatoria;
+      this.aplicarOrden();
     } catch (err) {
       Alerta.mostrar('alerta-bandeja', 'error', err.message || 'No se pudieron cargar las solicitudes.');
     } finally {
       Spinner.hide();
+    }
+  },
+
+  /* ── Ordenamiento por columna (en memoria, sin tocar el backend) ── */
+  iniciarOrdenamiento() {
+    document.querySelectorAll('#tabla-solicitudes th.th-ordenable').forEach(th => {
+      th.classList.add('cursor-ordenable');
+      th.addEventListener('click', () => {
+        const columna = th.dataset.col;
+        if (!columna) return;
+        if (this.ordenColumna === columna) {
+          this.ordenDireccion = this.ordenDireccion === 'asc' ? 'desc' : 'asc';
+        } else {
+          this.ordenColumna = columna;
+          this.ordenDireccion = 'asc';
+        }
+        this.aplicarOrden();
+        this.actualizarIndicadoresOrden();
+      });
+    });
+  },
+
+  actualizarIndicadoresOrden() {
+    document.querySelectorAll('#tabla-solicitudes th.th-ordenable').forEach(th => {
+      const icono = th.querySelector('i');
+      if (!icono) return;
+      const activo = th.dataset.col === this.ordenColumna;
+      icono.className = activo
+        ? `fa fa-sort-${this.ordenDireccion === 'asc' ? 'asc' : 'desc'}`
+        : 'fa fa-sort';
+    });
+  },
+
+  aplicarOrden() {
+    if (!this.ordenColumna) {
+      this.renderTabla(this.solicitudes);
+      return;
+    }
+    const col = this.ordenColumna;
+    const dir = this.ordenDireccion === 'asc' ? 1 : -1;
+    const ordenadas = [...this.solicitudes].sort((a, b) => {
+      const va = this.valorOrden(a, col);
+      const vb = this.valorOrden(b, col);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'es', { numeric: true }) * dir;
+    });
+    this.renderTabla(ordenadas);
+  },
+
+  valorOrden(solicitud, columna) {
+    switch (columna) {
+      case 'idSolicitud':        return Number(solicitud.idSolicitud);
+      case 'solicitante':        return (solicitud.solicitante || solicitud.nombreSolicitante || '').toUpperCase();
+      case 'tipoSolicitante':    return (solicitud.tipoSolicitante || '').toUpperCase();
+      case 'tipoSolicitud':      return (solicitud.tipoSolicitud || '').toUpperCase();
+      case 'estatus':            return (solicitud.estatus || '').toUpperCase();
+      case 'fechaActualizacion': {
+        const valor = solicitud.fechaActualizacion ?? solicitud.fecha_actualizacion;
+        return valor ? new Date(valor).getTime() : null;
+      }
+      default: return null;
     }
   },
 
@@ -356,28 +470,47 @@ const PanelAdmin = {
     if (!tbody) return;
 
     if (!solicitudes.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:24px;color:var(--itt-texto-claro)">
+      const motivo = this.hayFiltroConvocatoria
+        ? 'No hay solicitudes para la convocatoria seleccionada.'
+        : 'No hay solicitudes que mostrar.';
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:24px;color:var(--itt-texto-claro)">
         <i class="fa fa-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
-        No hay solicitudes que mostrar.</td></tr>`;
+        ${motivo}</td></tr>`;
       return;
     }
 
     tbody.innerHTML = solicitudes.map(s => {
       const badgeClass = ESTATUS_BADGE[s.estatus] || 'badge-revision';
+      const actualizado = this.formatearFecha(s.fechaActualizacion ?? s.fecha_actualizacion);
 
       return `<tr>
         <td>${s.idSolicitud}</td>
         <td>${s.solicitante || s.nombreSolicitante || '—'}</td>
         <td>${s.tipoSolicitante   || '—'}</td>
-        <td>${s.idConvocatoria    ?? '—'}</td>
+        <td>${s.tipoSolicitud      || '—'}</td>
+        <td>${actualizado}</td>
         <td><span class="badge-estatus ${badgeClass}">${s.estatus}</span></td>
-        <td>
-          <button class="btn-itt btn-primario" onclick="PanelAdmin.verDetalle(${s.idSolicitud})" title="Ver detalle">
+        <td class="acciones-celda">
+          <button class="btn-itt btn-primario btn-accion-icono" onclick="PanelAdmin.verDetalle(${s.idSolicitud})" title="Ver detalle">
             <i class="fa fa-eye"></i>
+          </button>
+          <button class="btn-itt btn-secundario btn-accion-icono" onclick="PanelAdmin.verRespuestas(${s.idSolicitud})" title="Ver respuestas del formulario">
+            <i class="fa fa-list-alt"></i>
           </button>
         </td>
       </tr>`;
     }).join('');
+  },
+
+  /* ── Formatea una fecha ISO/Date para mostrarla en la tabla ── */
+  formatearFecha(valor) {
+    if (!valor) return '—';
+    const fecha = new Date(valor);
+    if (isNaN(fecha.getTime())) return valor;
+    return fecha.toLocaleString('es-MX', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
   },
 
   /* ── Chips de filtro ── */
@@ -395,6 +528,7 @@ const PanelAdmin = {
     if (selectConvocatoria) {
       selectConvocatoria.addEventListener('change', () => {
         this.filtroConvocatoria = selectConvocatoria.value;
+        this.cargarEstadisticas();
         this.cargarSolicitudes();
       });
     }
@@ -428,6 +562,41 @@ const PanelAdmin = {
     }
   },
 
+  /* ── Ver respuestas del formulario en ventana emergente ── */
+  async verRespuestas(idSolicitud) {
+    Spinner.show();
+    try {
+      const solicitud = await Http.get(`/solicitudes/${idSolicitud}`);
+      this.renderRespuestas(solicitud);
+      Modal.abrir('modal-respuestas');
+    } catch (err) {
+      Alerta.mostrar('alerta-bandeja', 'error', err.message || 'No se pudieron cargar las respuestas.');
+    } finally {
+      Spinner.hide();
+    }
+  },
+
+  renderRespuestas(solicitud) {
+    const folio = document.getElementById('resp-folio');
+    const solicitante = document.getElementById('resp-solicitante');
+    if (folio) folio.textContent = solicitud.idSolicitud ?? '—';
+    if (solicitante) solicitante.textContent = solicitud.solicitante || solicitud.nombreSolicitante || '—';
+
+    const lista = document.getElementById('lista-respuestas');
+    if (!lista) return;
+    if (solicitud.respuestas && solicitud.respuestas.length) {
+      lista.innerHTML = solicitud.respuestas.map(r =>
+        `<div class="detalle-campo">
+          <label>Pregunta #${r.idPregunta}</label>
+          <div class="valor">${r.respuesta || '—'}</div>
+        </div>`
+      ).join('');
+    } else {
+      lista.innerHTML =
+        '<p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>';
+    }
+  },
+
   renderDetalle(solicitud) {
     this._solicitudActual = solicitud;
 
@@ -436,7 +605,9 @@ const PanelAdmin = {
       'det-folio':      solicitud.idSolicitud,
       'det-nombre':     solicitud.solicitante || solicitud.nombreSolicitante,
       'det-tipo':       solicitud.tipoSolicitante,
+      'det-tipo-solicitud': solicitud.tipoSolicitud,
       'det-convocatoria': solicitud.idConvocatoria,
+      'det-fecha-actualizacion': this.formatearFecha(solicitud.fechaActualizacion),
       'det-estatus':    solicitud.estatus,
     };
     Object.entries(campos).forEach(([id, val]) => {
@@ -450,22 +621,6 @@ const PanelAdmin = {
       const badgeClass = ESTATUS_BADGE[solicitud.estatus] || 'badge-revision';
       badgeEl.className = `badge-estatus ${badgeClass}`;
       badgeEl.textContent = solicitud.estatus;
-    }
-
-    // Respuestas del formulario
-    const listaRespuestas = document.getElementById('lista-respuestas');
-    if (listaRespuestas) {
-      if (solicitud.respuestas && solicitud.respuestas.length) {
-        listaRespuestas.innerHTML = solicitud.respuestas.map(r =>
-          `<div class="detalle-campo">
-            <label>Pregunta #${r.idPregunta}</label>
-            <div class="valor">${r.respuesta || '—'}</div>
-          </div>`
-        ).join('');
-      } else {
-        listaRespuestas.innerHTML =
-          '<p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>';
-      }
     }
 
     // Deducción (solo si existe)
@@ -559,17 +714,27 @@ const PanelAdmin = {
     }
   },
 
+  /* ── Cierra el detalle limpiando el estado para no arrastrar datos viejos ── */
+  cerrarDetalle() {
+    Modal.cerrar('modal-detalle');
+    this._solicitudActual = null;
+    const comentario = document.getElementById('comentario-correccion');
+    if (comentario) comentario.value = '';
+    Alerta.limpiar('alerta-decision');
+  },
+
   /* ── Decisión: Aprobar ── */
   async aprobar() {
     if (!this._solicitudActual) return;
     if (!confirm('¿Confirma la aprobación de esta solicitud? Se autorizará la deducción.')) return;
 
+    const idActual = this._solicitudActual.idSolicitud;
     Spinner.show();
     try {
       const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
-      await Http.put(`/solicitudes/${this._solicitudActual.idSolicitud}/aprobar`, { comentario });
+      await Http.put(`/solicitudes/${idActual}/aprobar`, { comentario });
+      this.cerrarDetalle();
       Alerta.mostrar('alerta-bandeja', 'exito', 'Solicitud aprobada correctamente.', 4000);
-      Modal.cerrar('modal-detalle');
       await this.cargarSolicitudes();
       await this.cargarEstadisticas();
     } catch (err) {
@@ -588,11 +753,12 @@ const PanelAdmin = {
       return;
     }
 
+    const idActual = this._solicitudActual.idSolicitud;
     Spinner.show();
     try {
-      await Http.put(`/solicitudes/${this._solicitudActual.idSolicitud}/rechazar`, { comentario });
+      await Http.put(`/solicitudes/${idActual}/rechazar`, { comentario });
+      this.cerrarDetalle();
       Alerta.mostrar('alerta-bandeja', 'advertencia', 'Solicitud rechazada / devuelta para corrección.', 4000);
-      Modal.cerrar('modal-detalle');
       await this.cargarSolicitudes();
       await this.cargarEstadisticas();
     } catch (err) {
@@ -612,11 +778,12 @@ const PanelAdmin = {
     }
     if (!confirm('¿Confirma cancelar la deducción autorizada? La solicitud pasará a CANCELADO.')) return;
 
+    const idDeduccion = this._solicitudActual.deduccion.idDeduccion;
     Spinner.show();
     try {
-      await Http.put(`/deducciones/${this._solicitudActual.deduccion.idDeduccion}/cancelar`, { comentario });
+      await Http.put(`/deducciones/${idDeduccion}/cancelar`, { comentario });
+      this.cerrarDetalle();
       Alerta.mostrar('alerta-bandeja', 'advertencia', 'Deducción cancelada correctamente.', 4000);
-      Modal.cerrar('modal-detalle');
       await this.cargarSolicitudes();
       await this.cargarEstadisticas();
     } catch (err) {
