@@ -26,6 +26,12 @@
     <nav class="itt-navbar" aria-label="Navegación administrativa">
       <ul class="itt-navbar-links">
         <li><a href="panel-admin.html" class="activo"><i class="fa fa-tachometer"></i> Bandeja de Solicitudes</a></li>
+        <li>
+          <a href="#" class="nav-opcion-deshabilitada" aria-disabled="true" tabindex="-1"
+             title="Disponible próximamente" onclick="return false;">
+            <i class="fa fa-plus-circle"></i> Nueva Solicitud
+          </a>
+        </li>
       </ul>
       <div class="itt-navbar-user">
         <span class="badge-admin" style="font-size:.72rem;padding:4px 10px;">
@@ -60,18 +66,18 @@
           <div class="stat-etiqueta">Pendientes</div>
         </div>
       </div>
-      <div class="stat-card correccion">
-        <div class="stat-icono"><i class="fa fa-pencil"></i></div>
-        <div class="stat-info">
-          <div class="stat-valor" id="stat-correccion">—</div>
-          <div class="stat-etiqueta">En corrección</div>
-        </div>
-      </div>
       <div class="stat-card aprobado">
         <div class="stat-icono"><i class="fa fa-check-circle"></i></div>
         <div class="stat-info">
-          <div class="stat-valor" id="stat-aprobado">—</div>
-          <div class="stat-etiqueta">Aprobadas</div>
+          <div class="stat-valor" id="stat-autorizado">—</div>
+          <div class="stat-etiqueta">Autorizadas</div>
+        </div>
+      </div>
+      <div class="stat-card rechazado">
+        <div class="stat-icono"><i class="fa fa-times-circle"></i></div>
+        <div class="stat-info">
+          <div class="stat-valor" id="stat-rechazado">—</div>
+          <div class="stat-etiqueta">Rechazadas</div>
         </div>
       </div>
     </div>
@@ -79,27 +85,34 @@
     <!-- ── Alertas bandeja ── -->
     <div id="alerta-bandeja"></div>
 
+    <!-- ── Búsqueda rápida (arriba, sobre los filtros) ── -->
+    <div class="bandeja-buscador-top">
+      <div class="buscador-itt">
+        <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
+        <input
+          type="text"
+          id="buscador"
+          class="form-control-itt"
+          style="padding-left:32px;width:260px;height:34px;"
+          placeholder="Buscar folio o solicitante..."
+        />
+      </div>
+    </div>
+
     <!-- ── Filtros ── -->
     <div class="bandeja-filtros">
       <span style="font-weight:600;font-size:.85rem;color:var(--itt-texto-claro);">Filtrar:</span>
-      <button class="filtro-chip todos activo"   data-estatus="todos"       id="filtro-todos">Todas</button>
-      <button class="filtro-chip pendiente"       data-estatus="PENDIENTE"  id="filtro-pendiente">Pendientes</button>
-      <button class="filtro-chip correccion"      data-estatus="CORRECCION" id="filtro-correccion">En corrección</button>
-      <button class="filtro-chip aprobado"        data-estatus="APROBADO"   id="filtro-aprobado">Aprobadas</button>
+      <button class="filtro-chip todos activo"   data-estatus="todos" id="filtro-todos">Todas</button>
+      <button class="filtro-chip pendiente"       data-estatus="1"     id="filtro-pendiente">Pendientes</button>
+      <button class="filtro-chip aprobado"        data-estatus="2"     id="filtro-autorizado">Autorizadas</button>
+      <button class="filtro-chip correccion"      data-estatus="3"     id="filtro-rechazado">Rechazadas</button>
+      <button class="filtro-chip cancelado"       data-estatus="4"     id="filtro-cancelado">Canceladas</button>
+      <button class="filtro-chip aplicado"        data-estatus="5"     id="filtro-aplicado">Aplicadas</button>
 
-      <!-- Búsqueda rápida -->
-      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-        <div style="position:relative;">
-          <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
-          <input
-            type="text"
-            id="buscador"
-            class="form-control-itt"
-            style="padding-left:32px;width:200px;height:34px;"
-            placeholder="Buscar folio o nombre..."
-          />
-        </div>
-      </div>
+      <!-- Filtro por convocatoria (llenado desde la API) -->
+      <select id="filtro-convocatoria" class="form-control-itt" style="width:250px;height:34px;" disabled>
+        <option value="">Cargando convocatorias...</option>
+      </select>
     </div>
 
     <!-- ── Tabla de solicitudes ── -->
@@ -108,22 +121,23 @@
         <i class="fa fa-list"></i> Solicitudes
       </div>
       <div class="card-itt-body" style="padding:0;">
-        <div style="overflow-x:auto;">
+        <div class="tabla-solicitudes-scroll">
           <table class="tabla-itt" id="tabla-solicitudes">
             <thead>
               <tr>
-                <th>Folio</th>
-                <th>Solicitante</th>
-                <th>Tipo</th>
-                <th>Fecha</th>
-                <th>Estatus</th>
-                <th style="width:70px;">Acción</th>
+                <th class="th-ordenable" data-col="idSolicitud">Folio <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="solicitante">Solicitante <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="tipoSolicitante">Tipo solicitante <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="tipoSolicitud">Tipo de solicitud <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="fechaActualizacion">Actualizado <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="estatus">Estatus <i class="fa fa-sort"></i></th>
+                <th style="width:110px;">Acciones</th>
               </tr>
             </thead>
             <tbody>
               <!-- Renderizado por PanelAdmin.renderTabla() -->
               <tr>
-                <td colspan="6" class="text-center" style="padding:32px;color:var(--itt-texto-claro);">
+                <td colspan="7" class="text-center" style="padding:32px;color:var(--itt-texto-claro);">
                   <i class="fa fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:8px;"></i>
                   Cargando solicitudes...
                 </td>
@@ -140,7 +154,7 @@
     <div class="modal-box" style="max-width:680px;">
       <div class="modal-header">
         <h3 id="modal-detalle-titulo"><i class="fa fa-file-text-o"></i> Detalle de Solicitud</h3>
-        <button class="modal-cerrar" onclick="Modal.cerrar('modal-detalle')" aria-label="Cerrar">&times;</button>
+        <button class="modal-cerrar" onclick="PanelAdmin.cerrarDetalle()" aria-label="Cerrar">&times;</button>
       </div>
       <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
 
@@ -161,24 +175,30 @@
             <div class="valor" id="det-nombre">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Tipo</label>
+            <label>Tipo solicitante</label>
             <div class="valor" id="det-tipo">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Fecha de solicitud</label>
-            <div class="valor" id="det-fecha">—</div>
+            <label>Tipo de solicitud</label>
+            <div class="valor" id="det-tipo-solicitud">—</div>
+          </div>
+          <div class="detalle-campo">
+            <label>Convocatoria</label>
+            <div class="valor" id="det-convocatoria">—</div>
+          </div>
+          <div class="detalle-campo">
+            <label>Actualizado</label>
+            <div class="valor" id="det-fecha-actualizacion">—</div>
           </div>
         </div>
 
-        <!-- Respuestas del formulario -->
-        <div class="card-itt" style="margin-bottom:16px;">
+        <!-- Deducción autorizada (se oculta si no existe) -->
+        <div class="card-itt" id="det-deduccion" style="margin-bottom:16px;display:none;">
           <div class="card-itt-header" style="font-size:.85rem;">
-            <i class="fa fa-list-alt"></i> Respuestas del Formulario
+            <i class="fa fa-money"></i> Deducción Autorizada
           </div>
           <div class="card-itt-body">
-            <div id="lista-respuestas" class="detalle-grid">
-              <p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>
-            </div>
+            <div id="det-deduccion-contenido" class="detalle-grid"></div>
           </div>
         </div>
 
@@ -207,14 +227,14 @@
           <div class="form-group" id="grupo-comentario">
             <label for="comentario-correccion">
               Comentario para el solicitante
-              <span style="font-weight:400;color:var(--itt-texto-claro);">(requerido al solicitar corrección)</span>
+              <span style="font-weight:400;color:var(--itt-texto-claro);">(requerido al rechazar o cancelar)</span>
             </label>
             <textarea
               id="comentario-correccion"
               name="comentario_correccion"
               class="form-control-itt"
               rows="3"
-              placeholder="Indique al solicitante qué debe corregir..."
+              placeholder="Indique al solicitante qué debe corregir o el motivo de la cancelación..."
             ></textarea>
           </div>
 
@@ -223,13 +243,39 @@
               <i class="fa fa-check"></i> Aprobar Solicitud
             </button>
             <button type="button" id="btn-rechazar" class="btn-rechazar" onclick="PanelAdmin.solicitarCorreccion()">
-              <i class="fa fa-pencil"></i> Solicitar Corrección
+              <i class="fa fa-times"></i> Rechazar / Solicitar Corrección
+            </button>
+            <button type="button" id="btn-cancelar-deduccion" class="btn-cancelar" onclick="PanelAdmin.cancelarDeduccion()">
+              <i class="fa fa-ban"></i> Cancelar Deducción
             </button>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-itt btn-secundario" onclick="Modal.cerrar('modal-detalle')">
+        <button type="button" class="btn-itt btn-secundario" onclick="PanelAdmin.cerrarDetalle()">
+          <i class="fa fa-times"></i> Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MODAL: RESPUESTAS DEL FORMULARIO ═══ -->
+  <div id="modal-respuestas" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-respuestas-titulo">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="modal-header">
+        <h3 id="modal-respuestas-titulo"><i class="fa fa-list-alt"></i> Respuestas del Formulario</h3>
+        <button class="modal-cerrar" onclick="Modal.cerrar('modal-respuestas')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+        <p style="margin:0 0 12px;font-size:.82rem;color:var(--itt-texto-claro);">
+          Folio <strong id="resp-folio">—</strong> · <span id="resp-solicitante">—</span>
+        </p>
+        <div id="lista-respuestas" class="detalle-grid">
+          <p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-itt btn-secundario" onclick="Modal.cerrar('modal-respuestas')">
           <i class="fa fa-times"></i> Cerrar
         </button>
       </div>

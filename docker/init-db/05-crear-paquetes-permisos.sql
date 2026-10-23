@@ -103,6 +103,7 @@ PROMPT ===== 03 PAQUETE ADMINISTRADOR =====
 CREATE OR REPLACE PACKAGE PKG_ADMINISTRADOR AUTHID DEFINER AS
  PROCEDURE listar_estudiantes(p_id_administrador IN VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE listar_solicitudes(p_id_administrador IN VARCHAR2,p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE listar_convocatorias(p_id_administrador IN VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE listar_respuestas(p_id_administrador IN VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE listar_deducciones(p_id_administrador IN VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE crear_solicitud_estudiante(p_id_administrador IN VARCHAR2,p_control VARCHAR2,p_convocatoria NUMBER,p_tipo NUMBER,p_formulario NUMBER,p_id OUT NUMBER);
@@ -124,7 +125,14 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
   OPEN p_resultado FOR SELECT Numero_Control,Nombre,PrimerAppellido,SegundoApellido,Carrera,Semestre FROM Estudiantes;
  END;
  PROCEDURE listar_solicitudes(p_id_administrador IN VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS u VARCHAR2(50):=validar_administrador(p_id_administrador); BEGIN
-  OPEN p_resultado FOR SELECT idSolicitud,num_control,ficha,periodo,anio,id_convocatoria,id_estatus_solicitud,id_Tipo_Solicitud FROM Solicitudes;
+  OPEN p_resultado FOR SELECT s.idSolicitud,s.num_control,s.ficha,s.periodo,s.anio,s.id_convocatoria,
+    s.id_estatus_solicitud,s.id_Tipo_Solicitud,s.fecha_actualizacion,t.Nombre
+    FROM Solicitudes s LEFT JOIN Tipo_Solicitudes t ON t.id_Tipo_Solicitud=s.id_Tipo_Solicitud;
+ END;
+ PROCEDURE listar_convocatorias(p_id_administrador IN VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS u VARCHAR2(50):=validar_administrador(p_id_administrador); BEGIN
+  OPEN p_resultado FOR SELECT c.id_convocatoria,c.fecha_inicio,c.fecha_fin,c.id_periodo,c.anio,
+    CASE WHEN TRUNC(SYSDATE) BETWEEN TRUNC(c.fecha_inicio) AND TRUNC(c.fecha_fin) THEN 1 ELSE 0 END
+    FROM Convocatorias c ORDER BY c.anio DESC,c.id_periodo DESC,c.id_convocatoria DESC;
  END;
  PROCEDURE listar_respuestas(p_id_administrador IN VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS u VARCHAR2(50):=validar_administrador(p_id_administrador); BEGIN
   OPEN p_resultado FOR SELECT id_respuesta,id_solicitud,id_pregunta,id_opcion,texto_respuesta FROM Respuestas;

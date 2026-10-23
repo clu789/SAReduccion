@@ -1,6 +1,9 @@
 -- SAReduccion - Datos ficticios de desarrollo (Oracle XE 21c / XEPDB1)
 -- Carga 9 estudiantes, 2 administradores, 8 aspirantes, convocatorias,
 -- formularios, solicitudes, respuestas, historiales y deducciones de ejemplo.
+-- Tipos de solicitud validos (catalogo cerrado):
+--   900001 Hijos de trabajadores
+--   900002 Hijos de homologados
 -- NO crea cuentas Oracle, NO altera el esquema y NO borra filas.
 -- Ejecutar SOLO como SA_REDUCCION en XEPDB1.
 -- Se carga unicamente cuando SAR_LOAD_DEV_SEED esta activo (entorno de desarrollo).
@@ -85,19 +88,15 @@ WHERE NOT EXISTS (SELECT 1 FROM Administradores WHERE idAdministrador = 'SA02');
 
 PROMPT ===== CATALOGOS COMPLEMENTARIOS =====
 
+-- Catalogo cerrado: unicamente son validos estos dos tipos de solicitud.
 INSERT INTO Tipo_Solicitudes (id_Tipo_Solicitud, Nombre, Descripcion)
 SELECT 900001, 'Hijos de trabajadores', 'Apoyo a hijos de trabajadores' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Tipo_Solicitudes WHERE id_Tipo_Solicitud = 900001);
 
 
 INSERT INTO Tipo_Solicitudes (id_Tipo_Solicitud, Nombre, Descripcion)
-SELECT 900002, 'Situacion economica', 'Apoyo por situacion socioeconomica' FROM dual
+SELECT 900002, 'Hijos de homologados', 'Apoyo a hijos de personal homologado' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Tipo_Solicitudes WHERE id_Tipo_Solicitud = 900002);
-
-
-INSERT INTO Tipo_Solicitudes (id_Tipo_Solicitud, Nombre, Descripcion)
-SELECT 900003, 'Merito academico', 'Apoyo por desempeno academico' FROM dual
-WHERE NOT EXISTS (SELECT 1 FROM Tipo_Solicitudes WHERE id_Tipo_Solicitud = 900003);
 
 
 INSERT INTO Monto_Inscripciones (id_monto_inscripcion, monto_pago)
@@ -141,11 +140,6 @@ WHERE NOT EXISTS (SELECT 1 FROM Convocatorias_TipoSolicitudes WHERE id_convocato
 
 
 INSERT INTO Convocatorias_TipoSolicitudes (id_convocatoria, id_Tipo_Solicitud, monto_deduccion, fecha_asignacion_montos)
-SELECT 900001, 900003, 350, DATE '2026-01-05' FROM dual
-WHERE NOT EXISTS (SELECT 1 FROM Convocatorias_TipoSolicitudes WHERE id_convocatoria = 900001 AND id_Tipo_Solicitud = 900003);
-
-
-INSERT INTO Convocatorias_TipoSolicitudes (id_convocatoria, id_Tipo_Solicitud, monto_deduccion, fecha_asignacion_montos)
 SELECT 900002, 900001, 500, DATE '2026-08-01' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Convocatorias_TipoSolicitudes WHERE id_convocatoria = 900002 AND id_Tipo_Solicitud = 900001);
 
@@ -155,24 +149,14 @@ SELECT 900002, 900002, 650, DATE '2026-08-01' FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Convocatorias_TipoSolicitudes WHERE id_convocatoria = 900002 AND id_Tipo_Solicitud = 900002);
 
 
-INSERT INTO Convocatorias_TipoSolicitudes (id_convocatoria, id_Tipo_Solicitud, monto_deduccion, fecha_asignacion_montos)
-SELECT 900002, 900003, 350, DATE '2026-08-01' FROM dual
-WHERE NOT EXISTS (SELECT 1 FROM Convocatorias_TipoSolicitudes WHERE id_convocatoria = 900002 AND id_Tipo_Solicitud = 900003);
-
-
 INSERT INTO Formularios (idFormulario, Nombre, Descripcion, id_Tipo_Solicitud)
-SELECT 900001, 'Solicitud de apoyo familiar', 'Formulario ficticio para pruebas', 900001 FROM dual
+SELECT 900001, 'Solicitud para hijos de trabajadores', 'Formulario ficticio para pruebas', 900001 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Formularios WHERE idFormulario = 900001);
 
 
 INSERT INTO Formularios (idFormulario, Nombre, Descripcion, id_Tipo_Solicitud)
-SELECT 900002, 'Solicitud de apoyo economico', 'Formulario ficticio para pruebas', 900002 FROM dual
+SELECT 900002, 'Solicitud para hijos de homologados', 'Formulario ficticio para pruebas', 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Formularios WHERE idFormulario = 900002);
-
-
-INSERT INTO Formularios (idFormulario, Nombre, Descripcion, id_Tipo_Solicitud)
-SELECT 900003, 'Solicitud de merito academico', 'Formulario ficticio para pruebas', 900003 FROM dual
-WHERE NOT EXISTS (SELECT 1 FROM Formularios WHERE idFormulario = 900003);
 
 
 INSERT INTO Preguntas (idPregunta, texto_Pregunta, tipo_pregunta)
@@ -238,26 +222,6 @@ WHERE NOT EXISTS (SELECT 1 FROM Formulario_Preguntas WHERE idFormulario = 900002
 INSERT INTO Formulario_Preguntas (idFormulario, idPregunta, orden)
 SELECT 900002, 900005, 4 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Formulario_Preguntas WHERE idFormulario = 900002 AND idPregunta = 900005);
-
-
-INSERT INTO Formulario_Preguntas (idFormulario, idPregunta, orden)
-SELECT 900003, 900001, 1 FROM dual
-WHERE NOT EXISTS (SELECT 1 FROM Formulario_Preguntas WHERE idFormulario = 900003 AND idPregunta = 900001);
-
-
-INSERT INTO Formulario_Preguntas (idFormulario, idPregunta, orden)
-SELECT 900003, 900002, 2 FROM dual
-WHERE NOT EXISTS (SELECT 1 FROM Formulario_Preguntas WHERE idFormulario = 900003 AND idPregunta = 900002);
-
-
-INSERT INTO Formulario_Preguntas (idFormulario, idPregunta, orden)
-SELECT 900003, 900003, 3 FROM dual
-WHERE NOT EXISTS (SELECT 1 FROM Formulario_Preguntas WHERE idFormulario = 900003 AND idPregunta = 900003);
-
-
-INSERT INTO Formulario_Preguntas (idFormulario, idPregunta, orden)
-SELECT 900003, 900005, 4 FROM dual
-WHERE NOT EXISTS (SELECT 1 FROM Formulario_Preguntas WHERE idFormulario = 900003 AND idPregunta = 900005);
 
 
 INSERT INTO Formulario_Preguntas (idFormulario, idPregunta, orden)
@@ -355,7 +319,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900002);
 
 
 INSERT INTO Solicitudes (idSolicitud, id_estatus_solicitud, id_convocatoria, num_control, ficha, periodo, anio, fecha_Solicitud, fecha_actualizacion, id_Tipo_Solicitud, idFormulario)
-SELECT 900003, 3, 900002, 'B21281183', NULL, NULL, NULL, DATE '2026-10-01', DATE '2026-10-01', 900003, 900003 FROM dual
+SELECT 900003, 3, 900002, 'B21281183', NULL, NULL, NULL, DATE '2026-10-01', DATE '2026-10-01', 900002, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900003);
 
 
@@ -370,7 +334,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900005);
 
 
 INSERT INTO Solicitudes (idSolicitud, id_estatus_solicitud, id_convocatoria, num_control, ficha, periodo, anio, fecha_Solicitud, fecha_actualizacion, id_Tipo_Solicitud, idFormulario)
-SELECT 900006, 2, 900002, '21281186', NULL, NULL, NULL, DATE '2026-10-01', DATE '2026-10-01', 900003, 900003 FROM dual
+SELECT 900006, 2, 900002, '21281186', NULL, NULL, NULL, DATE '2026-10-01', DATE '2026-10-01', 900002, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900006);
 
 
@@ -385,7 +349,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900008);
 
 
 INSERT INTO Solicitudes (idSolicitud, id_estatus_solicitud, id_convocatoria, num_control, ficha, periodo, anio, fecha_Solicitud, fecha_actualizacion, id_Tipo_Solicitud, idFormulario)
-SELECT 900009, 2, 900002, '21281189', NULL, NULL, NULL, DATE '2026-10-01', DATE '2026-10-01', 900003, 900003 FROM dual
+SELECT 900009, 2, 900002, '21281189', NULL, NULL, NULL, DATE '2026-10-01', DATE '2026-10-01', 900002, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900009);
 
 
@@ -400,7 +364,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900011);
 
 
 INSERT INTO Solicitudes (idSolicitud, id_estatus_solicitud, id_convocatoria, num_control, ficha, periodo, anio, fecha_Solicitud, fecha_actualizacion, id_Tipo_Solicitud, idFormulario)
-SELECT 900012, 3, 900001, NULL, 'F2026A003', 2, 2026, DATE '2026-02-10', DATE '2026-02-10', 900003, 900003 FROM dual
+SELECT 900012, 3, 900001, NULL, 'F2026A003', 2, 2026, DATE '2026-02-10', DATE '2026-02-10', 900002, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900012);
 
 
@@ -415,7 +379,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900014);
 
 
 INSERT INTO Solicitudes (idSolicitud, id_estatus_solicitud, id_convocatoria, num_control, ficha, periodo, anio, fecha_Solicitud, fecha_actualizacion, id_Tipo_Solicitud, idFormulario)
-SELECT 900015, 1, 900002, NULL, 'F2026B006', 1, 2026, DATE '2026-10-01', DATE '2026-10-01', 900003, 900003 FROM dual
+SELECT 900015, 1, 900002, NULL, 'F2026B006', 1, 2026, DATE '2026-10-01', DATE '2026-10-01', 900002, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Solicitudes WHERE idSolicitud = 900015);
 
 
@@ -789,12 +753,12 @@ WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 90000
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000031, 'Recepcion de solicitud de prueba', DATE '2026-10-01', 900003, 1, NULL, 900003 FROM dual
+SELECT 9000031, 'Recepcion de solicitud de prueba', DATE '2026-10-01', 900003, 1, NULL, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000031);
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000032, 'Resolucion de solicitud ficticia', DATE '2026-10-08', 900003, 3, 'SA01', 900003 FROM dual
+SELECT 9000032, 'Resolucion de solicitud ficticia', DATE '2026-10-08', 900003, 3, 'SA01', 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000032);
 
 
@@ -814,12 +778,12 @@ WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 90000
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000061, 'Recepcion de solicitud de prueba', DATE '2026-10-01', 900006, 1, NULL, 900003 FROM dual
+SELECT 9000061, 'Recepcion de solicitud de prueba', DATE '2026-10-01', 900006, 1, NULL, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000061);
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000062, 'Resolucion de solicitud ficticia', DATE '2026-10-08', 900006, 2, 'SA01', 900003 FROM dual
+SELECT 9000062, 'Resolucion de solicitud ficticia', DATE '2026-10-08', 900006, 2, 'SA01', 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000062);
 
 
@@ -839,12 +803,12 @@ WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 90000
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000091, 'Recepcion de solicitud de prueba', DATE '2026-10-01', 900009, 1, NULL, 900003 FROM dual
+SELECT 9000091, 'Recepcion de solicitud de prueba', DATE '2026-10-01', 900009, 1, NULL, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000091);
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000092, 'Resolucion de solicitud ficticia', DATE '2026-10-08', 900009, 2, 'SA01', 900003 FROM dual
+SELECT 9000092, 'Resolucion de solicitud ficticia', DATE '2026-10-08', 900009, 2, 'SA01', 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000092);
 
 
@@ -864,12 +828,12 @@ WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 90001
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000121, 'Recepcion de solicitud de prueba', DATE '2026-02-10', 900012, 1, NULL, 900003 FROM dual
+SELECT 9000121, 'Recepcion de solicitud de prueba', DATE '2026-02-10', 900012, 1, NULL, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000121);
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000122, 'Resolucion de solicitud ficticia', DATE '2026-02-18', 900012, 3, 'SA01', 900003 FROM dual
+SELECT 9000122, 'Resolucion de solicitud ficticia', DATE '2026-02-18', 900012, 3, 'SA01', 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000122);
 
 
@@ -894,7 +858,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 90001
 
 
 INSERT INTO Historial_Solicitudes (id_historial, comentario, fecha_Registro, id_solicitud, id_estatus, id_administrador, id_Tipo_solicitud)
-SELECT 9000151, 'Recepcion de solicitud de prueba', DATE '2026-10-01', 900015, 1, NULL, 900003 FROM dual
+SELECT 9000151, 'Recepcion de solicitud de prueba', DATE '2026-10-01', 900015, 1, NULL, 900002 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Historial_Solicitudes WHERE id_historial = 9000151);
 
 
@@ -941,7 +905,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Historial_Deducciones WHERE id_Historial_Deducci
 
 
 INSERT INTO Deducciones_autorizadas (id_deduccion_autorizada, estatus_deduccion, monto_final, fecha_registro, id_solicitud, id_administrador, fecha_autorizacion, id_convocatoria, id_Tipo_Solicitud, fecha_actualizacion, comentario, id_monto_inscripcion, id_monto_reinscripcion, monto_pago, monto_deduccion)
-SELECT 900006, 2, 1100, DATE '2026-10-09', 900006, 'SA01', DATE '2026-10-09', 900002, 900003, DATE '2026-10-09', 'Autorizacion ficticia para desarrollo', NULL, 900001, 1450, 350 FROM dual
+SELECT 900006, 2, 800, DATE '2026-10-09', 900006, 'SA01', DATE '2026-10-09', 900002, 900002, DATE '2026-10-09', 'Autorizacion ficticia para desarrollo', NULL, 900001, 1450, 650 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Deducciones_autorizadas WHERE id_deduccion_autorizada = 900006);
 
 
@@ -951,7 +915,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Historial_Deducciones WHERE id_Historial_Deducci
 
 
 INSERT INTO Deducciones_autorizadas (id_deduccion_autorizada, estatus_deduccion, monto_final, fecha_registro, id_solicitud, id_administrador, fecha_autorizacion, id_convocatoria, id_Tipo_Solicitud, fecha_actualizacion, comentario, id_monto_inscripcion, id_monto_reinscripcion, monto_pago, monto_deduccion)
-SELECT 900009, 2, 1100, DATE '2026-10-09', 900009, 'SA01', DATE '2026-10-09', 900002, 900003, DATE '2026-10-09', 'Autorizacion ficticia para desarrollo', NULL, 900001, 1450, 350 FROM dual
+SELECT 900009, 2, 800, DATE '2026-10-09', 900009, 'SA01', DATE '2026-10-09', 900002, 900002, DATE '2026-10-09', 'Autorizacion ficticia para desarrollo', NULL, 900001, 1450, 650 FROM dual
 WHERE NOT EXISTS (SELECT 1 FROM Deducciones_autorizadas WHERE id_deduccion_autorizada = 900009);
 
 
@@ -1012,6 +976,36 @@ BEGIN
   WHERE d.id_deduccion_autorizada BETWEEN 900001 AND 900017
     AND d.monto_final <> d.monto_pago-d.monto_deduccion;
   IF v_count<>0 THEN RAISE_APPLICATION_ERROR(-20971,'Montos de deduccion inconsistentes'); END IF;
+  -- Solo pueden existir los dos tipos de solicitud validos.
+  SELECT COUNT(*) INTO v_count FROM Tipo_Solicitudes
+  WHERE id_Tipo_Solicitud NOT IN (900001,900002);
+  IF v_count<>0 THEN RAISE_APPLICATION_ERROR(-20972,'Tipos de solicitud no permitidos'); END IF;
+  SELECT COUNT(*) INTO v_count FROM Solicitudes
+  WHERE idSolicitud BETWEEN 900001 AND 900017
+    AND id_Tipo_Solicitud NOT IN (900001,900002);
+  IF v_count<>0 THEN RAISE_APPLICATION_ERROR(-20973,'Solicitudes con tipo no permitido'); END IF;
+  -- Toda solicitud debe tener configurado su monto en la convocatoria.
+  SELECT COUNT(*) INTO v_count FROM Solicitudes s
+  WHERE s.idSolicitud BETWEEN 900001 AND 900017
+    AND NOT EXISTS (
+      SELECT 1 FROM Convocatorias_TipoSolicitudes c
+      WHERE c.id_convocatoria = s.id_convocatoria
+        AND c.id_Tipo_Solicitud = s.id_Tipo_Solicitud);
+  IF v_count<>0 THEN RAISE_APPLICATION_ERROR(-20974,'Solicitudes sin configuracion de monto'); END IF;
+  -- La deduccion debe coincidir con el monto configurado en la convocatoria.
+  SELECT COUNT(*) INTO v_count FROM Deducciones_autorizadas d
+  JOIN Convocatorias_TipoSolicitudes c
+    ON c.id_convocatoria = d.id_convocatoria
+   AND c.id_Tipo_Solicitud = d.id_Tipo_Solicitud
+  WHERE d.id_deduccion_autorizada BETWEEN 900001 AND 900017
+    AND d.monto_deduccion <> c.monto_deduccion;
+  IF v_count<>0 THEN RAISE_APPLICATION_ERROR(-20975,'Deducciones no coinciden con el monto configurado'); END IF;
+  -- El historial debe conservar el tipo de solicitud vigente.
+  SELECT COUNT(*) INTO v_count FROM Historial_Solicitudes h
+  JOIN Solicitudes s ON s.idSolicitud = h.id_solicitud
+  WHERE h.id_solicitud BETWEEN 900001 AND 900017
+    AND h.id_Tipo_solicitud <> s.id_Tipo_Solicitud;
+  IF v_count<>0 THEN RAISE_APPLICATION_ERROR(-20976,'Historial con tipo de solicitud inconsistente'); END IF;
 END;
 /
 COMMIT;
@@ -1019,6 +1013,7 @@ PROMPT ===== RESUMEN DEL SEED (EXISTENTES + NUEVOS) =====
 SELECT 'Estudiantes' entidad, COUNT(*) total FROM Estudiantes WHERE Numero_Control IN
  ('21281181','C21281182','B21281183','BC21281184','21281185','21281186','21281187','21281188','21281189')
 UNION ALL SELECT 'Administradores', COUNT(*) FROM Administradores WHERE idAdministrador IN ('SA01','SA02')
+UNION ALL SELECT 'Tipos de solicitud', COUNT(*) FROM Tipo_Solicitudes WHERE id_Tipo_Solicitud IN (900001,900002)
 UNION ALL SELECT 'Aspirantes', COUNT(*) FROM Aspirantes WHERE ficha LIKE 'F2026%'
 UNION ALL SELECT 'Solicitudes', COUNT(*) FROM Solicitudes WHERE idSolicitud BETWEEN 900001 AND 900017
 UNION ALL SELECT 'Respuestas', COUNT(*) FROM Respuestas WHERE id_solicitud BETWEEN 900001 AND 900017
