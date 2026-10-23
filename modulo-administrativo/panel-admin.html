@@ -85,6 +85,20 @@
     <!-- ── Alertas bandeja ── -->
     <div id="alerta-bandeja"></div>
 
+    <!-- ── Búsqueda rápida (arriba, sobre los filtros) ── -->
+    <div class="bandeja-buscador-top">
+      <div class="buscador-itt">
+        <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
+        <input
+          type="text"
+          id="buscador"
+          class="form-control-itt"
+          style="padding-left:32px;width:260px;height:34px;"
+          placeholder="Buscar folio o solicitante..."
+        />
+      </div>
+    </div>
+
     <!-- ── Filtros ── -->
     <div class="bandeja-filtros">
       <span style="font-weight:600;font-size:.85rem;color:var(--itt-texto-claro);">Filtrar:</span>
@@ -95,26 +109,10 @@
       <button class="filtro-chip cancelado"       data-estatus="4"     id="filtro-cancelado">Canceladas</button>
       <button class="filtro-chip aplicado"        data-estatus="5"     id="filtro-aplicado">Aplicadas</button>
 
-      <!-- Filtro por convocatoria -->
-      <select id="filtro-convocatoria" class="form-control-itt" style="width:170px;height:34px;">
-        <option value="">Convocatoria: todas</option>
-        <option value="900001">900001</option>
-        <option value="900002">900002</option>
+      <!-- Filtro por convocatoria (llenado desde la API) -->
+      <select id="filtro-convocatoria" class="form-control-itt" style="width:250px;height:34px;" disabled>
+        <option value="">Cargando convocatorias...</option>
       </select>
-
-      <!-- Búsqueda rápida -->
-      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
-        <div style="position:relative;">
-          <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
-          <input
-            type="text"
-            id="buscador"
-            class="form-control-itt"
-            style="padding-left:32px;width:200px;height:34px;"
-            placeholder="Buscar folio o solicitante..."
-          />
-        </div>
-      </div>
     </div>
 
     <!-- ── Tabla de solicitudes ── -->
@@ -129,7 +127,8 @@
               <tr>
                 <th class="th-ordenable" data-col="idSolicitud">Folio <i class="fa fa-sort"></i></th>
                 <th class="th-ordenable" data-col="solicitante">Solicitante <i class="fa fa-sort"></i></th>
-                <th class="th-ordenable" data-col="tipoSolicitante">Tipo <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="tipoSolicitante">Tipo solicitante <i class="fa fa-sort"></i></th>
+                <th class="th-ordenable" data-col="tipoSolicitud">Tipo de solicitud <i class="fa fa-sort"></i></th>
                 <th class="th-ordenable" data-col="fechaActualizacion">Actualizado <i class="fa fa-sort"></i></th>
                 <th class="th-ordenable" data-col="estatus">Estatus <i class="fa fa-sort"></i></th>
                 <th style="width:110px;">Acciones</th>
@@ -138,7 +137,7 @@
             <tbody>
               <!-- Renderizado por PanelAdmin.renderTabla() -->
               <tr>
-                <td colspan="6" class="text-center" style="padding:32px;color:var(--itt-texto-claro);">
+                <td colspan="7" class="text-center" style="padding:32px;color:var(--itt-texto-claro);">
                   <i class="fa fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:8px;"></i>
                   Cargando solicitudes...
                 </td>
@@ -176,12 +175,20 @@
             <div class="valor" id="det-nombre">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Tipo</label>
+            <label>Tipo solicitante</label>
             <div class="valor" id="det-tipo">—</div>
+          </div>
+          <div class="detalle-campo">
+            <label>Tipo de solicitud</label>
+            <div class="valor" id="det-tipo-solicitud">—</div>
           </div>
           <div class="detalle-campo">
             <label>Convocatoria</label>
             <div class="valor" id="det-convocatoria">—</div>
+          </div>
+          <div class="detalle-campo">
+            <label>Actualizado</label>
+            <div class="valor" id="det-fecha-actualizacion">—</div>
           </div>
         </div>
 

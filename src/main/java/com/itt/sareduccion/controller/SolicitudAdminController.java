@@ -1,5 +1,6 @@
 package com.itt.sareduccion.controller;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.itt.sareduccion.auth.AuthRole;
 import com.itt.sareduccion.auth.SessionAttributes;
 import com.itt.sareduccion.auth.SessionPrincipal;
+import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.DeduccionAdmin;
 import com.itt.sareduccion.model.RespuestaSolicitud;
 import com.itt.sareduccion.model.SolicitudAdmin;
@@ -65,12 +67,36 @@ public class SolicitudAdminController {
     }
 
     @GetMapping("/solicitudes/estadisticas")
-    public ResponseEntity<?> estadisticas(HttpServletRequest request) {
+    public ResponseEntity<?> estadisticas(
+            @RequestParam(value = "convocatoria", required = false) Long convocatoria,
+            HttpServletRequest request) {
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
             return noAutorizado();
         }
-        return ResponseEntity.ok(solicitudAdminService.estadisticas(principal.getIdentity()));
+        return ResponseEntity.ok(solicitudAdminService.estadisticas(principal.getIdentity(), convocatoria));
+    }
+
+    @GetMapping("/convocatorias")
+    public ResponseEntity<?> convocatorias(HttpServletRequest request) {
+        SessionPrincipal principal = administrador(request);
+        if (principal == null) {
+            return noAutorizado();
+        }
+        List<ConvocatoriaAdmin> convocatorias = solicitudAdminService
+                .listarConvocatorias(principal.getIdentity());
+        List<Map<String, Object>> respuesta = new ArrayList<Map<String, Object>>();
+        for (ConvocatoriaAdmin convocatoria : convocatorias) {
+            Map<String, Object> fila = new LinkedHashMap<String, Object>();
+            fila.put("idConvocatoria", convocatoria.getIdConvocatoria());
+            fila.put("fechaInicio", convocatoria.getFechaInicio());
+            fila.put("fechaFin", convocatoria.getFechaFin());
+            fila.put("periodo", convocatoria.getPeriodo());
+            fila.put("anio", convocatoria.getAnio());
+            fila.put("activa", convocatoria.isActiva());
+            respuesta.add(fila);
+        }
+        return ResponseEntity.ok(respuesta);
     }
 
     @GetMapping("/solicitudes/{id}")
@@ -90,7 +116,9 @@ public class SolicitudAdminController {
         respuesta.put("ficha", solicitud.getFicha());
         respuesta.put("idConvocatoria", solicitud.getIdConvocatoria());
         respuesta.put("idTipoSolicitud", solicitud.getIdTipoSolicitud());
+        respuesta.put("tipoSolicitud", tipoSolicitud(solicitud));
         respuesta.put("tipoSolicitante", solicitud.getTipoSolicitante());
+        respuesta.put("fechaActualizacion", solicitud.getFechaActualizacion());
         respuesta.put("estatus", solicitudAdminService.nombreEstatus(solicitud.getIdEstatusSolicitud()));
         respuesta.put("idEstatus", solicitud.getIdEstatusSolicitud());
 
@@ -197,6 +225,14 @@ public class SolicitudAdminController {
         return ResponseEntity.ok(mensaje("Solicitud rechazada correctamente."));
     }
 
+    private String tipoSolicitud(SolicitudAdmin solicitud) {
+        String nombre = solicitud.getTipoSolicitudNombre();
+        if (nombre != null && !nombre.trim().isEmpty()) {
+            return nombre;
+        }
+        return solicitudAdminService.nombreTipo(solicitud.getIdTipoSolicitud());
+    }
+
     /** Principal de sesion solo si es un administrador autenticado. */
     private SessionPrincipal administrador(HttpServletRequest request) {
         SessionPrincipal principal = SessionAttributes.principal(request.getSession(false));
@@ -241,7 +277,9 @@ public class SolicitudAdminController {
         private final String ficha;
         private final Long idConvocatoria;
         private final Integer idTipoSolicitud;
+        private final String tipoSolicitud;
         private final String tipoSolicitante;
+        private final LocalDateTime fechaActualizacion;
         private final String estatus;
         private final Integer idEstatus;
 
@@ -253,7 +291,12 @@ public class SolicitudAdminController {
             this.ficha = solicitud.getFicha();
             this.idConvocatoria = solicitud.getIdConvocatoria();
             this.idTipoSolicitud = solicitud.getIdTipoSolicitud();
+            this.tipoSolicitud = solicitud.getTipoSolicitudNombre() != null
+                    && !solicitud.getTipoSolicitudNombre().trim().isEmpty()
+                            ? solicitud.getTipoSolicitudNombre()
+                            : service.nombreTipo(solicitud.getIdTipoSolicitud());
             this.tipoSolicitante = solicitud.getTipoSolicitante();
+            this.fechaActualizacion = solicitud.getFechaActualizacion();
             this.estatus = service.nombreEstatus(solicitud.getIdEstatusSolicitud());
             this.idEstatus = solicitud.getIdEstatusSolicitud();
         }
@@ -290,8 +333,16 @@ public class SolicitudAdminController {
             return idTipoSolicitud;
         }
 
+        public String getTipoSolicitud() {
+            return tipoSolicitud;
+        }
+
         public String getTipoSolicitante() {
             return tipoSolicitante;
+        }
+
+        public LocalDateTime getFechaActualizacion() {
+            return fechaActualizacion;
         }
 
         public String getEstatus() {

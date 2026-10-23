@@ -114,6 +114,16 @@
 }
 
 /* ── Panel de Bandeja ── */
+.bandeja-buscador-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.buscador-itt {
+  position: relative;
+}
+
 .bandeja-filtros {
   background: var(--itt-blanco);
   border-radius: 6px;

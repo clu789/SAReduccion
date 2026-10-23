@@ -305,18 +305,63 @@ const PanelAdmin = {
     if (!await AuthSession.requireRole('ADMIN', 'login.html', '/solicitante/login.html')) return;
     AuthSession.bindLogout('login.html', 'alerta-admin');
 
-    await this.cargarEstadisticas();
-    await this.cargarSolicitudes();
+    await this.cargarConvocatorias();
+    await Promise.all([this.cargarEstadisticas(), this.cargarSolicitudes()]);
     this.iniciarFiltros();
     this.iniciarBuscador();
     this.iniciarOrdenamiento();
     Modal.iniciarCierre();
   },
 
+  /* ── Catálogo de convocatorias y selección inicial ── */
+  async cargarConvocatorias() {
+    const select = document.getElementById('filtro-convocatoria');
+    try {
+      const convocatorias = await Http.get('/convocatorias');
+      const lista = Array.isArray(convocatorias) ? convocatorias : [];
+      if (!select) return;
+
+      select.innerHTML = '';
+      lista.forEach(c => {
+        const option = document.createElement('option');
+        option.value = String(c.idConvocatoria);
+        option.textContent = this.etiquetaConvocatoria(c);
+        select.appendChild(option);
+      });
+
+      const todas = document.createElement('option');
+      todas.value = '';
+      todas.textContent = 'Todas las convocatorias';
+      select.appendChild(todas);
+
+      const activa = lista.find(c => c.activa) || null;
+      this.filtroConvocatoria = activa ? String(activa.idConvocatoria) : '';
+      select.value = this.filtroConvocatoria;
+      select.disabled = false;
+    } catch (err) {
+      if (select) {
+        select.innerHTML = '<option value="">Convocatorias no disponibles</option>';
+        select.disabled = true;
+      }
+      console.warn('No se pudieron cargar las convocatorias:', err.message);
+    }
+  },
+
+  etiquetaConvocatoria(convocatoria) {
+    const partes = [String(convocatoria.idConvocatoria)];
+    if (convocatoria.periodo) partes.push(`Periodo ${convocatoria.periodo}`);
+    if (convocatoria.anio) partes.push(String(convocatoria.anio));
+    const etiqueta = partes.join(' · ');
+    return convocatoria.activa ? `${etiqueta} · Activa` : etiqueta;
+  },
+
   /* ── Estadísticas de la barra superior ── */
   async cargarEstadisticas() {
     try {
-      const stats = await Http.get('/solicitudes/estadisticas');
+      const params = new URLSearchParams();
+      if (this.filtroConvocatoria) params.set('convocatoria', this.filtroConvocatoria);
+      const query = params.toString();
+      const stats = await Http.get(query ? `/solicitudes/estadisticas?${query}` : '/solicitudes/estadisticas');
       this.actualizarContador('stat-total',      stats.total      ?? 0);
       this.actualizarContador('stat-pendiente',  stats.pendiente  ?? 0);
       this.actualizarContador('stat-autorizado', stats.autorizado ?? 0);
@@ -409,6 +454,7 @@ const PanelAdmin = {
       case 'idSolicitud':        return Number(solicitud.idSolicitud);
       case 'solicitante':        return (solicitud.solicitante || solicitud.nombreSolicitante || '').toUpperCase();
       case 'tipoSolicitante':    return (solicitud.tipoSolicitante || '').toUpperCase();
+      case 'tipoSolicitud':      return (solicitud.tipoSolicitud || '').toUpperCase();
       case 'estatus':            return (solicitud.estatus || '').toUpperCase();
       case 'fechaActualizacion': {
         const valor = solicitud.fechaActualizacion ?? solicitud.fecha_actualizacion;
@@ -427,7 +473,7 @@ const PanelAdmin = {
       const motivo = this.hayFiltroConvocatoria
         ? 'No hay solicitudes para la convocatoria seleccionada.'
         : 'No hay solicitudes que mostrar.';
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:24px;color:var(--itt-texto-claro)">
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:24px;color:var(--itt-texto-claro)">
         <i class="fa fa-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
         ${motivo}</td></tr>`;
       return;
@@ -441,6 +487,7 @@ const PanelAdmin = {
         <td>${s.idSolicitud}</td>
         <td>${s.solicitante || s.nombreSolicitante || '—'}</td>
         <td>${s.tipoSolicitante   || '—'}</td>
+        <td>${s.tipoSolicitud      || '—'}</td>
         <td>${actualizado}</td>
         <td><span class="badge-estatus ${badgeClass}">${s.estatus}</span></td>
         <td class="acciones-celda">
@@ -481,6 +528,7 @@ const PanelAdmin = {
     if (selectConvocatoria) {
       selectConvocatoria.addEventListener('change', () => {
         this.filtroConvocatoria = selectConvocatoria.value;
+        this.cargarEstadisticas();
         this.cargarSolicitudes();
       });
     }
@@ -557,7 +605,9 @@ const PanelAdmin = {
       'det-folio':      solicitud.idSolicitud,
       'det-nombre':     solicitud.solicitante || solicitud.nombreSolicitante,
       'det-tipo':       solicitud.tipoSolicitante,
+      'det-tipo-solicitud': solicitud.tipoSolicitud,
       'det-convocatoria': solicitud.idConvocatoria,
+      'det-fecha-actualizacion': this.formatearFecha(solicitud.fechaActualizacion),
       'det-estatus':    solicitud.estatus,
     };
     Object.entries(campos).forEach(([id, val]) => {

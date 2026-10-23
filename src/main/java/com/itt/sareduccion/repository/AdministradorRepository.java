@@ -5,7 +5,9 @@ import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +15,7 @@ import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.DeduccionAdmin;
 import com.itt.sareduccion.model.RespuestaSolicitud;
 import com.itt.sareduccion.model.SolicitudAdmin;
@@ -30,6 +33,8 @@ public class AdministradorRepository {
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_estudiantes(?, ?)}";
     private static final String LISTAR_SOLICITUDES_CALL =
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_solicitudes(?, ?)}";
+    private static final String LISTAR_CONVOCATORIAS_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_convocatorias(?, ?)}";
     private static final String LISTAR_RESPUESTAS_CALL =
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_respuestas(?, ?)}";
     private static final String LISTAR_DEDUCCIONES_CALL =
@@ -57,6 +62,11 @@ public class AdministradorRepository {
     public List<SolicitudAdmin> listarSolicitudes(String idAdministrador) {
         return jdbcTemplate.execute((ConnectionCallback<List<SolicitudAdmin>>) connection ->
                 listarSolicitudes(connection, idAdministrador));
+    }
+
+    public List<ConvocatoriaAdmin> listarConvocatorias(String idAdministrador) {
+        return jdbcTemplate.execute((ConnectionCallback<List<ConvocatoriaAdmin>>) connection ->
+                listarConvocatorias(connection, idAdministrador));
     }
 
     public List<RespuestaSolicitud> listarRespuestas(String idAdministrador) {
@@ -190,6 +200,9 @@ public class AdministradorRepository {
 
             try (ResultSet resultSet = (ResultSet) cursor) {
                 while (resultSet.next()) {
+                    Timestamp actualizacion = resultSet.getTimestamp(9);
+                    LocalDateTime fechaActualizacion = actualizacion == null
+                            ? null : actualizacion.toLocalDateTime();
                     solicitudes.add(new SolicitudAdmin(
                             longOrNull(resultSet.getObject(1)),
                             resultSet.getString(2),
@@ -198,11 +211,43 @@ public class AdministradorRepository {
                             intOrNull(resultSet.getObject(5)),
                             longOrNull(resultSet.getObject(6)),
                             intOrNull(resultSet.getObject(7)),
-                            intOrNull(resultSet.getObject(8))));
+                            intOrNull(resultSet.getObject(8)),
+                            fechaActualizacion,
+                            resultSet.getString(10)));
                 }
             }
         }
         return solicitudes;
+    }
+
+    private List<ConvocatoriaAdmin> listarConvocatorias(Connection connection, String idAdministrador)
+            throws SQLException {
+        List<ConvocatoriaAdmin> convocatorias = new ArrayList<ConvocatoriaAdmin>();
+        try (CallableStatement statement = connection.prepareCall(LISTAR_CONVOCATORIAS_CALL)) {
+            statement.setString(1, idAdministrador);
+            statement.registerOutParameter(2, Types.REF_CURSOR);
+            statement.execute();
+
+            Object cursor = statement.getObject(2);
+            if (!(cursor instanceof ResultSet)) {
+                throw new SQLException("PKG_ADMINISTRADOR.listar_convocatorias no devolvio un cursor JDBC");
+            }
+
+            try (ResultSet resultSet = (ResultSet) cursor) {
+                while (resultSet.next()) {
+                    java.sql.Date inicio = resultSet.getDate(2);
+                    java.sql.Date fin = resultSet.getDate(3);
+                    convocatorias.add(new ConvocatoriaAdmin(
+                            longOrNull(resultSet.getObject(1)),
+                            inicio == null ? null : inicio.toLocalDate(),
+                            fin == null ? null : fin.toLocalDate(),
+                            intOrNull(resultSet.getObject(4)),
+                            intOrNull(resultSet.getObject(5)),
+                            Integer.valueOf(1).equals(intOrNull(resultSet.getObject(6)))));
+                }
+            }
+        }
+        return convocatorias;
     }
 
     private List<RespuestaSolicitud> listarRespuestas(Connection connection, String idAdministrador)
