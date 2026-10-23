@@ -66,7 +66,16 @@ No usa secuencia: los identificadores se insertan explícitamente (1 y 2).
 
 #### Tabla: `Tipo_Solicitudes`
 
-Clasificación de las solicitudes: inscripción y reinscripción, entre otras.
+Clasificación de las solicitudes. El catálogo es cerrado y solo admite dos valores, ambos cargados por el seed: `900001` **Hijos de trabajadores** y `900002` **Hijos de homologados**.
+
+Estos dos tipos corresponden a las categorías de personal que define `asignacion_Modulos.md` para configurar la reducción por convocatoria:
+
+| `id_Tipo_Solicitud` | `Nombre` | Categoría de `asignacion_Modulos.md` |
+| ---: | --- | --- |
+| `900001` | Hijos de trabajadores | Personal **interno**. |
+| `900002` | Hijos de homologados | Personal **homologado**. |
+
+No existen otros tipos válidos. El seed rechaza con rollback cualquier fila adicional en la tabla y cualquier solicitud, historial o deducción que use un identificador distinto de estos dos. Los identificadores `900001` y `900002` están reservados para datos de desarrollo; las secuencias de la tabla no se modifican.
 
 | Atributo | Tipo | Restricciones | Descripción |
 | --- | --- | --- | --- |
@@ -177,12 +186,14 @@ Periodos de apertura y cierre durante los que se admiten solicitudes.
 
 #### Tabla: `Convocatorias_TipoSolicitudes`
 
-Relaciona cada convocatoria con los tipos de solicitud que ofrece y fija el monto de deducción aplicable.
+Relaciona cada convocatoria con los tipos de solicitud que ofrece y fija el monto de deducción aplicable. Es la tabla donde el administrador configura la **cantidad de reducción por categoría de personal**: una fila para personal interno (`900001`) y otra para personal homologado (`900002`), tal como se acordó en `asignacion_Modulos.md`.
+
+El monto es único por tipo y convocatoria: no se distingue entre inscripción y reinscripción. Esa diferencia no se configura aquí, sino que se resuelve al calcular la deducción con `Monto_Inscripciones` (aspirante) o `Monto_Reinscripciones` (estudiante).
 
 | Atributo | Tipo | Restricciones | Descripción |
 | --- | --- | --- | --- |
 | `id_convocatoria` | `NUMBER(10)` | PK (1), FK `fk_cts_convocatoria` -> `Convocatorias` | Convocatoria. |
-| `id_Tipo_Solicitud` | `NUMBER(10)` | PK (2), FK `fk_cts_tipo_solicitud` -> `Tipo_Solicitudes` | Tipo de solicitud ofrecido. |
+| `id_Tipo_Solicitud` | `NUMBER(10)` | PK (2), FK `fk_cts_tipo_solicitud` -> `Tipo_Solicitudes` | Tipo de solicitud ofrecido (categoría de personal). |
 | `monto_deduccion` | `NUMBER(10,2)` | NOT NULL, CHECK `ck_cts_monto_deduccion` | Monto de deducción configurado; debe ser mayor o igual que cero. |
 | `fecha_asignacion_montos` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Fecha en que se asignó el monto. |
 
@@ -294,6 +305,8 @@ Como una fila solo tiene número de control o ficha (nunca ambos), la unicidad p
 
 Los cuatro segmentos del índice de aspirante reproducen la clave compuesta de `Aspirantes`, de modo que la unicidad se evalúa sobre la identidad completa del aspirante y no solo sobre la ficha. Ambos límites son independientes del tipo de solicitud: un mismo origen no puede repetir convocatoria aunque cambie el tipo.
 
+Estos dos índices son la implementación en base de datos de la regla acordada en `asignacion_Modulos.md`: **una sola solicitud por solicitante y convocatoria**. Corregir respuestas debe actualizar el registro existente, no crear otro; cualquier intento de alta duplicada falla con `ORA-00001`.
+
 #### Tabla: `Respuestas`
 
 Respuesta de una solicitud a una de las preguntas de su formulario.
@@ -389,6 +402,24 @@ Bitácora de los cambios de estado de una deducción.
 | `comentario` | `VARCHAR2(500)` | NULL | Comentario del cambio. |
 | `fecha_registro` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Fecha del movimiento. |
 
+### 3.7 Reglas de negocio acordadas y su implementación
+
+`asignacion_Modulos.md` fija reglas que deben validarse en el backend y en la base de datos, no solo en la interfaz. Esta tabla contrasta cada regla con lo que hoy existe en Oracle; sirve para saber qué falta antes de cerrar los módulos.
+
+| Regla acordada | Implementación actual en la base | Estado |
+| --- | --- | --- |
+| Una sola solicitud por solicitante y convocatoria. | Índices únicos `uk_solicitud_estudiante_conv` y `uk_solicitud_aspirante_conv`. | Implementada. |
+| La reducción se configura por convocatoria según categoría interno/homologado, sin distinguir inscripción y reinscripción. | `Convocatorias_TipoSolicitudes.monto_deduccion` por `(id_convocatoria, id_Tipo_Solicitud)`; los montos base viven en `Monto_Inscripciones` / `Monto_Reinscripciones`. | Implementada. |
+| Solo se puede solicitar dentro de la vigencia de la convocatoria. | `PKG_ESTUDIANTE.crear_solicitud` y `PKG_ADMINISTRADOR.crear_solicitud_estudiante` exigen `TRUNC(SYSDATE)` entre `fecha_inicio` y `fecha_fin`, además de la combinación convocatoria/tipo/formulario (`-20812`, `-20822`). | Implementada. |
+| Corregir respuestas no genera una solicitud adicional. | `PKG_ESTUDIANTE.guardar_respuesta` hace *upsert* sobre `(id_solicitud, id_pregunta)`, y los índices únicos impiden una segunda solicitud. | Implementada parcialmente: el *upsert* existe, pero la condición de estado no coincide (ver siguiente fila). |
+| El solicitante puede modificar respuestas solo si la solicitud está `RECHAZADA` o `CANCELADA`. | `PKG_ESTUDIANTE.guardar_respuesta` exige `id_estatus_solicitud = 1` (`PENDIENTE`) y convocatoria vigente (`-20813`). Es lo contrario de la regla acordada. | **Pendiente**: hay que cambiar el paquete y los triggers para admitir 3 y 4, y decidir el estado posterior al reenvío. |
+| El solicitante cancela su solicitud solo si está `PENDIENTE`; el administrador es el único que cancela una `AUTORIZADA`. | No existe procedimiento de cancelación para el solicitante. El administrador rechaza o autoriza con `cambiar_estatus_solicitud` (solo `1 -> 2` o `1 -> 3`); la cancelación de una autorizada se logra cancelando su deducción (`2 -> 4`), y `trg_deduccion_cancelacion` sincroniza el estado de la solicitud. | **Parcial**: falta la operación de cancelación del solicitante y formalizar la transición de la solicitud a `CANCELADO` (4) desde el administrador. |
+| El estado al que vuelve una solicitud rechazada o cancelada tras corregir y reenviar está **pendiente de definición**. | No está modelado. `PKG_ADMINISTRADOR.cambiar_estatus_solicitud` solo permite `1 -> 2` o `1 -> 3`, y `trg_deduccion_cancelacion` mueve entre 2, 4 y 5; ninguna operación de paquete devuelve una solicitud de `RECHAZADO` (3) o `CANCELADO` (4) a otro estado. | **Bloqueada** hasta que se defina el flujo. |
+| El aspirante también puede crear solicitudes, corregirlas y cancelarlas. | `PKG_ASPIRANTE` solo expone `validar_aspirante`; no hay operaciones de negocio para aspirantes. | **Pendiente**. |
+| Los controles de autorización se aplican en servidor. | Los paquetes reciben la identidad como parámetro y validan que exista; `SAR_BACKEND` no tiene acceso directo a tablas. La autorización por rol y por pertenencia se aplica en el backend. | Implementada en la base; la cobertura por endpoint es parcial. |
+
+Regla de mantenimiento: si un equipo cambia alguna de estas reglas en su rama, debe actualizar esta sección junto con el script oficial, para que `ARQUITECTURA.md`, `BaseDeDatos.md` y los paquetes sigan describiendo el mismo comportamiento.
+
 ## 4. Relaciones principales
 
 ```text
@@ -464,12 +495,15 @@ Los inserta `02-crear-estructura.sql` y están presentes incluso sin datos de de
 ## 6. Flujo general
 
 1. Se identifica al estudiante por `Numero_Control`, al aspirante por `(ficha, periodo, anio)` o al administrador por `idAdministrador`.
-2. Se configuran los periodos, las convocatorias, los tipos de solicitud, los formularios y los montos.
-3. Se registra la solicitud con su convocatoria, tipo, formulario y perfil de origen.
-4. Se guardan y validan las respuestas correspondientes al formulario.
-5. Se revisa la solicitud y se registra su cambio de estado.
+2. Se configuran los periodos, las convocatorias, los dos tipos de solicitud, los formularios y los montos de reducción por categoría (equipo 4).
+3. Se registra la solicitud con su convocatoria, tipo, formulario y perfil de origen. Debe estar dentro de la vigencia y ser la única de ese solicitante en esa convocatoria.
+4. Se guardan y validan las respuestas correspondientes al formulario (equipo 5). Corregir respuestas reutiliza el mismo registro de solicitud.
+5. Se revisa la solicitud y se registra su cambio de estado; el administrador puede autorizar o rechazar una solicitud pendiente (equipo 2).
 6. Si se autoriza, se registra la deducción y se calculan sus montos.
 7. Los cambios de estado de la deducción se validan, se registran en el historial y se sincronizan con la solicitud.
+8. El solicitante consulta el estado y los comentarios (equipo 3). La cancelación por el solicitante solo procede en `PENDIENTE`; la de una solicitud `AUTORIZADA` corresponde al administrador.
+
+Las reglas de los pasos 3, 4, 5 y 8 todavía no están cubiertas por completo en PL/SQL: el detalle y el estado de cada una están en la sección 3.7.
 
 ## 7. Paquetes PL/SQL
 
@@ -510,6 +544,22 @@ En caso de rechazo, el paquete lanza error de aplicación en lugar de devolver f
 | `-20842` | Coincidencia ambigua | Existe más de un registro para esa ficha en el año vigente. |
 
 El backend traduce los tres códigos a un rechazo de autenticación genérico, de modo que un intento fallido no revele si la ficha existe.
+
+### 7.4 Cobertura por módulo y equipo
+
+Correspondencia entre los equipos de `asignacion_Modulos.md` y los objetos de base de datos que cada uno toca. El equipo 7 revisa e integra los cambios; no los desarrolla por defecto.
+
+| Equipo | Objetos de base de datos | Situación |
+| --- | --- | --- |
+| 1 — Autenticación y seguridad | `Aspirantes` (validación de `ficha` + `curp`), `PKG_ASPIRANTE`, cuentas y roles de los scripts 03 y 04. | Operativo. Falta la tabla/estructura de auditoría de accesos y la verificación por correo. |
+| 2 — Panel administrativo | `Solicitudes`, `Respuestas`, `Deducciones_autorizadas`, `Historial_*`, `PKG_ADMINISTRADOR`. | Operativo para listar, aprobar, rechazar y cancelar deducciones. Falta el listado de historial y la cancelación de solicitudes autorizadas como operación explícita. |
+| 3 — Panel del estudiante y aspirante | `Estudiantes`, `Solicitudes`, `Deducciones_autorizadas`, `PKG_ESTUDIANTE`. | Parcial: existen `mis_datos`, `mis_solicitudes` y `mis_deducciones`; faltan cancelación, edición en estados `RECHAZADO`/`CANCELADO` y todo el flujo de negocio del aspirante. |
+| 4 — Convocatorias y montos | `Convocatorias`, `Convocatorias_TipoSolicitudes`, `Monto_Inscripciones`, `Monto_Reinscripciones`. | Estructura disponible; no hay procedimientos ni endpoints de alta o modificación de convocatorias. |
+| 5 — Formularios | `Formularios`, `Preguntas`, `Formulario_Preguntas`, `Opciones`, `Respuestas`, `trg_respuestas_validacion`, `PKG_ESTUDIANTE.guardar_respuesta`. | Estructura y validación de forma operativas; falta la lectura del formulario por convocatoria/tipo y la edición en los estados acordados. |
+| 6 — Notificaciones | Ninguno todavía. No hay tablas, paquetes ni cola de envíos. | Pendiente. |
+| 7 — Base de datos | Scripts 01 a 06, `database/tests/`, respaldos y esta documentación. | Operativo. |
+
+Cada cambio de estructura o de PL/SQL que proponga un equipo debe llegar como modificación de los scripts oficiales de `docker/init-db/`, y el equipo 7 lo valida antes de integrarlo.
 
 ## 8. Privilegios mínimos de `SAR_BACKEND`
 

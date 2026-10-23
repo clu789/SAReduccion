@@ -18,8 +18,24 @@ La aplicación se compone de tres capas desplegadas con Docker Compose:
 | Capa | Tecnología | Función |
 | --- | --- | --- |
 | Frontend | HTML, CSS y JavaScript estáticos servidos por Nginx | Formularios, validación en cliente y consumo de la API. |
-| Backend | Spring Boot 2.7.18 sobre Java 8, Spring Web y Spring JDBC | API REST de autenticación, gestión de sesión y acceso a Oracle. |
+| Backend | Spring Boot 2.7.18 sobre Java 8, Spring Web y Spring JDBC | API REST de autenticación, sesión y panel administrativo, y acceso a Oracle. |
 | Datos | Oracle XE 21c (`gvenzl/oracle-xe:21-slim`) | Esquema `SA_REDUCCION`, paquetes PL/SQL y datos. |
+
+## Módulos y equipos
+
+El desarrollo se organiza por funcionalidades completas (interfaz, backend y base de datos), según `asignacion_Modulos.md`. El equipo 7 revisa e integra los cambios de base de datos; no los programa por defecto.
+
+| Equipo | Alcance | Dónde vive en el repositorio | Estado |
+| --- | --- | --- | --- |
+| 1 | Autenticación, sesiones, CSRF, captcha, rate limiting, auditoría y logs | `AuthController`, `com.itt.sareduccion.auth`, `PKG_ASPIRANTE`, scripts 03 y 04 | Parcial: faltan captcha, rate limiting para estudiante/administrador, auditoría en Oracle y verificación por correo. |
+| 2 | Panel administrativo y resolución de solicitudes | `SolicitudAdminController`, `SolicitudAdminService`, `AdministradorRepository`, `PKG_ADMINISTRADOR`, `modulo-administrativo/` | Operativo para listar, aprobar, rechazar y cancelar deducciones. |
+| 3 | Paneles de estudiante y aspirante | `PKG_ESTUDIANTE`, `modulo-solicitante/` | Parcial: datos y listados existen; faltan cancelación, edición en estados permitidos y el flujo del aspirante. |
+| 4 | Convocatorias y montos de reducción | Tablas `Convocatorias`, `Convocatorias_TipoSolicitudes`, `Monto_*` | Solo estructura; sin endpoints ni pantallas. |
+| 5 | Formularios y respuestas | `Formularios`, `Preguntas`, `Opciones`, `Respuestas`, `trg_respuestas_validacion`, `PKG_ESTUDIANTE.guardar_respuesta` | Estructura y validación listas; falta lectura dinámica y edición en los estados acordados. |
+| 6 | Notificaciones por correo | Ninguno todavía | Pendiente: el frontend llama `/api/notificaciones`, pero no existe endpoint ni servicio. |
+| 7 | Base de datos e integración oficial | `docker/init-db/`, `database/tests/`, `BaseDeDatos.md`, respaldos | Operativo. |
+
+La reducción se configura por convocatoria con dos categorías de personal: **interno** (`Tipo_Solicitudes` `900001`, Hijos de trabajadores) y **homologado** (`900002`, Hijos de homologados). No se distingue inscripción de reinscripción al asignar el monto; esa diferencia se resuelve al calcular la deducción.
 
 ## Contenedores y servicios Docker Compose
 
@@ -60,12 +76,34 @@ Paquetes implementados:
 | Paquete | Contenido |
 | --- | --- |
 | `com.itt.sareduccion` | `SareduccionApplication`. |
-| `com.itt.sareduccion.controller` | `AuthController`: endpoints de autenticación y sesión. |
-| `com.itt.sareduccion.auth` | `AuthenticationService`, `OracleCredentialValidator`, `LoginAttemptLimiter`, `AuthRole`, `SessionPrincipal`, `AuthenticatedPrincipal`, `ApplicantPrincipal`. |
+| `com.itt.sareduccion.controller` | `AuthController`: autenticación y sesión. `SolicitudAdminController`: consulta y resolución de solicitudes y administración de deducciones. |
+| `com.itt.sareduccion.service` | `SolicitudAdminService`: reglas de negocio del panel administrativo y traducción de errores Oracle. `ReglaNegocioException`: conflicto de negocio (`409`). |
+| `com.itt.sareduccion.auth` | `AuthenticationService`, `OracleCredentialValidator`, `LoginAttemptLimiter`, `AuthRole`, `SessionPrincipal`, `AuthenticatedPrincipal`, `ApplicantPrincipal`, `SessionAttributes`. |
 | `com.itt.sareduccion.repository` | `EstudianteRepository`, `AdministradorRepository`, `ApplicantRepository`: invocación de los paquetes PL/SQL con `CallableStatement`. |
-| `com.itt.sareduccion.model` | `EstudianteDatos`, `ApplicantIdentity`. |
+| `com.itt.sareduccion.model` | `EstudianteDatos`, `ApplicantIdentity`, `SolicitudAdmin`, `RespuestaSolicitud`, `DeduccionAdmin`. |
 
-La API expone únicamente rutas de autenticación. No existen todavía endpoints de negocio (solicitudes, respuestas, deducciones); el frontend sigue mostrando datos simulados en esas vistas.
+La autorización se aplica en servidor: los endpoints administrativos exigen una sesión con rol `ADMIN` y, en las operaciones de escritura, el token CSRF. La identidad del administrador se toma siempre de la sesión; nunca del cuerpo ni de la ruta. Un rol distinto responde `401`.
+
+### Endpoints del panel administrativo
+
+Implementados en `SolicitudAdminController` sobre los procedimientos de `PKG_ADMINISTRADOR`:
+
+| Método | Ruta | Función | CSRF |
+| --- | --- | --- | :---: |
+| `GET` | `/api/solicitudes` | Lista solicitudes con filtros opcionales `estatus`, `convocatoria` y `solicitante`. | No |
+| `GET` | `/api/solicitudes/estadisticas` | Contadores por estatus (`pendiente`, `autorizado`, `rechazado`, `cancelado`, `aplicado`). | No |
+| `GET` | `/api/solicitudes/{id}` | Detalle de la solicitud, sus respuestas y su deducción, si existe. | No |
+| `GET` | `/api/deducciones` | Lista deducciones con filtro opcional `estatus`. | No |
+| `PUT` | `/api/solicitudes/{id}/aprobar` | Cambia la solicitud a `AUTORIZADO` y autoriza su deducción en la misma operación. | Sí |
+| `PUT` | `/api/solicitudes/{id}/rechazar` | Cambia la solicitud a `RECHAZADO`; exige comentario. | Sí |
+| `PUT` | `/api/solicitudes/{id}/correccion` | Devuelve la solicitud a corrección; hoy comparte la misma transición que el rechazo. | Sí |
+| `PUT` | `/api/deducciones/{id}/cancelar` | Cambia la deducción autorizada a `CANCELADO`; exige comentario. | Sí |
+
+Códigos de respuesta del panel: `200` en operación correcta, `401` sin sesión `ADMIN`, `403` con CSRF ausente o inválido y `409` cuando se incumple una regla de negocio. Los errores Oracle esperados (`-20823` a `-20827`, `-20019` a `-20027`) se traducen a mensajes genéricos sin exponer detalles de la base.
+
+El módulo administrativo del frontend ya consume esta API. El módulo solicitante mantiene simulación local en el alta de solicitudes y en la carga de formularios.
+
+Reglas acordadas en `asignacion_Modulos.md` que aún no se cumplen en este conjunto de endpoints: la operación de «corrección» no distingue su transición del rechazo, no existe cancelación de solicitud solicitada por el propio estudiante o aspirante, y el historial se devuelve vacío. La edición de respuestas además choca con `PKG_ESTUDIANTE.guardar_respuesta`, que hoy solo acepta solicitudes `PENDIENTE` y no `RECHAZADA`/`CANCELADA` como pide el acuerdo.
 
 ## Oracle, cuentas y permisos
 
@@ -226,7 +264,7 @@ Reglas aplicadas:
 3. **Post-login**, cada flujo redirige explícitamente al panel del rol que el backend confirmó.
 4. El cierre de sesión (`AuthSession.logout`) obtiene un CSRF vigente, invoca `/api/auth/logout` y vuelve al login.
 
-Esta protección es de experiencia de usuario, no de seguridad: la autoridad real está en el backend, que valida la sesión en cada petición. Los endpoints de negocio futuros deberán comprobar el rol en servidor y no confiar en el valor que el cliente haya enviado.
+Esta protección es de experiencia de usuario, no de seguridad: la autoridad real está en el backend, que valida la sesión en cada petición. Los endpoints administrativos ya comprueban el rol `ADMIN` en servidor y el CSRF en las escrituras; los endpoints de negocio del módulo solicitante que se implementen deben aplicar la misma regla y no confiar en el valor que el cliente haya enviado.
 
 ## Inicialización de Oracle
 
@@ -245,13 +283,15 @@ El orquestador es necesario porque la imagen ejecuta los `.sql` de `/container-e
 
 Sobre los datos de desarrollo: `06-seed-desarrollo.sql` se carga únicamente cuando `SAR_LOAD_DEV_SEED` vale `true` (valor por defecto en desarrollo). Al fijarlo en `false` la base queda con el esquema completo y los catálogos, pero sin datos de aplicación. La verificación final del orquestador comprueba que la presencia o ausencia de datos corresponda al valor de esa variable. El detalle de los scripts y de su orden está en [BaseDeDatos.md](BaseDeDatos.md).
 
+El catálogo `Tipo_Solicitudes` es cerrado y lo aporta el seed con exactamente dos filas: `900001` **Hijos de trabajadores** y `900002` **Hijos de homologados**. Cada convocatoria configura un monto de deducción por cada uno de esos dos tipos en `Convocatorias_TipoSolicitudes`, y cada tipo tiene un único formulario. El seed valida al final que no exista ningún tipo fuera de ese par y que solicitudes, historiales y deducciones usen solo esos identificadores; cualquier inconsistencia provoca rollback.
+
 El inicializador comprueba los objetos, los privilegios y el estado de los datos, y deja el marcador `/opt/oracle/oradata/.sareduccion-init.complete`, que el healthcheck exige.
 
 **La inicialización automática se ejecuta una sola vez**, cuando la imagen crea la base sobre un volumen vacío. Reiniciar o recrear los contenedores sin borrar el volumen no vuelve a ejecutar los scripts, y editar un `.sql` o una variable de `.env` tampoco actualiza una base ya inicializada.
 
 Para aplicar un cambio de estructura o de paquetes sobre una base con información que deba conservarse hacen falta cambios controlados —o scripts de migración incrementales aplicados manualmente—; el proyecto **aún no implementa un mecanismo de migraciones**. La recreación desde cero (`docker compose down -v`) es una operación destructiva que borra `sareduccion_oracle_data` y no forma parte del flujo habitual. El procedimiento y sus precauciones están en [BaseDeDatos.md](BaseDeDatos.md).
 
-El destino futuro es Oracle 12c, pero ni los scripts ni el driver se han validado todavía contra una versión 12c concreta.
+El destino futuro es Oracle 12c, pero esa migración **no forma parte del alcance de ningún equipo en esta etapa**. El desarrollo corresponde a una versión de prueba; cuando se entreguen los objetos oficiales se evaluarán por separado su compatibilidad, integración y permisos en el entorno de destino. Ni los scripts ni el driver se han validado contra una versión 12c concreta.
 
 ## Estado del desarrollo
 
@@ -262,16 +302,26 @@ El destino futuro es Oracle 12c, pero ni los scripts ni el driver se han validad
 - `EstudianteRepository.misDatos()` invoca `PKG_ESTUDIANTE.mis_datos` con `CallableStatement`, parámetros enlazados y lectura de `SYS_REFCURSOR`.
 - Login, `/me` y logout para las cuentas `ALU_21281181` y `SA01`: autenticación Oracle temporal, comprobación de roles/perfiles, rotación de sesión y protección CSRF.
 - Autenticación de aspirantes con ficha y CURP (`PKG_ASPIRANTE` + `POST /api/auth/login/aspirante`), validada con HTTP real contra el backend desplegado: periodo y año devueltos, rechazo de CURP o ficha incorrectas, exigencia de CSRF, bloqueo por intentos y ausencia de CURP en la respuesta.
-- Integración del frontend: pestañas de alumno y aspirante, manejo de CSRF y sesión, panel de aspirante y redirección por rol.
+- API del panel administrativo (`SolicitudAdminController` + `SolicitudAdminService`): listado de solicitudes con filtros, estadísticas por estatus, detalle con respuestas y deducción, listado de deducciones, aprobación con autorización de deducción, rechazo, corrección y cancelación de deducción, con autorización por rol `ADMIN` y CSRF en las escrituras.
+- Integración del frontend: pestañas de alumno y aspirante, manejo de CSRF y sesión, panel de aspirante y redirección por rol; el panel administrativo consume la API real.
 - Prueba `database/tests/07-probar-aspirantes.sql` cubre a nivel Oracle los escenarios que el cliente no puede provocar (año no vigente y coincidencias ambiguas entre periodos).
 
 ### Pendiente de desarrollar
 
-- Autorización por perfil en los endpoints de negocio.
-- Capa JDBC para las operaciones restantes de los paquetes y manejo de cursores/transacciones.
+- Endpoints de negocio para el módulo solicitante: alta y cancelación de solicitudes, edición de respuestas en `RECHAZADO`/`CANCELADO` y consulta de deducciones propias (equipos 3 y 5).
+- Flujo de negocio del aspirante: hoy `PKG_ASPIRANTE` solo valida identidad, sin creación ni gestión de solicitudes.
+- Módulo de convocatorias y montos: sin endpoints ni pantallas de alta y modificación (equipo 4).
+- Servicio de notificaciones por correo; el frontend administrativo ya invoca `/api/notificaciones`, que no existe en el backend (equipo 6).
+- Captcha en los tres inicios de sesión y rate limiting para estudiante y administrador, no solo para aspirante (equipo 1).
+- Mecanismo central de autorización por rol e interceptor común para los endpoints de negocio (equipo 1).
+- Auditoría en Oracle de intentos de acceso y eventos de sesión, y estándar común de logs técnicos con enmascaramiento de datos (equipos 1 y 7).
+- IP real del cliente detrás de Nginx, cabeceras de seguridad y respuesta uniforme ante sesión expirada (`401`/`403`) (equipo 1).
+- Historial de la solicitud en el detalle administrativo: el contrato ya lo expone, pero se devuelve vacío porque aún no hay procedimiento en la base.
+- Separar la transición de «corrección» del rechazo y definir el estado al que vuelve una solicitud rechazada o cancelada después de corregir.
 - Sustituir la autenticación provisional de aspirantes por verificación mediante correo electrónico con código de un solo uso.
 - Persistir el rate limiting fuera de la memoria del proceso.
-- Pruebas de compatibilidad con la versión objetivo de Oracle 12c.
+
+La compatibilidad con Oracle 12c queda fuera del alcance de esta etapa, tal como establece `asignacion_Modulos.md`; se evaluará por separado cuando se entreguen los objetos oficiales.
 
 ### Limitaciones actuales
 
@@ -281,8 +331,14 @@ El destino futuro es Oracle 12c, pero ni los scripts ni el driver se han validad
 | Rate limiting en memoria | `LoginAttemptLimiter` usa un mapa en memoria del proceso: se reinicia con el backend y no se comparte entre instancias. La clave es `IP + ficha`, por lo que la rotación de fichas desde una misma IP elude parcialmente el límite. |
 | CURP no validada contra la fecha de nacimiento | La comprobación es de coincidencia exacta con el registro y de longitud, no de consistencia interna. |
 | Sin verificación por correo | No existen todavía envío de correos, códigos de un solo uso ni recuperación de acceso. |
-| Sin endpoints de negocio | Las vistas de solicitudes, respuestas y deducciones siguen operando con datos simulados. |
-| Protección de rutas solo en cliente | La redirección por rol es de experiencia de usuario; el backend aún no autoriza operaciones de negocio. |
+| Módulo solicitante simulado | Las vistas de alta de solicitud y carga de formulario del solicitante siguen operando con datos locales; la consulta y resolución administrativas ya usan la API. |
+| Historial no disponible en la API | El detalle de solicitud devuelve `historial` vacío; falta el procedimiento de consulta en la base. |
+| Monto por defecto en la aprobación | Si el cliente no envía `idMontoInscripcion` ni `idMontoReinscripcion`, el servicio usa el id de la convocatoria como valor por defecto de desarrollo. |
+| Edición de respuestas inconsistente | `PKG_ESTUDIANTE.guardar_respuesta` solo admite solicitudes `PENDIENTE`, mientras que `asignacion_Modulos.md` exige permitir la edición en `RECHAZADO` y `CANCELADO`. |
+| Sin cancelación del solicitante | No existe operación para que el estudiante o aspirante cancele su solicitud `PENDIENTE`; solo el administrador cambia estados. |
+| Sin captcha ni rate limiting general | El captcha no está implementado y el límite de intentos solo cubre el login de aspirante. |
+| Notificaciones no implementadas | No hay servicio ni endpoint de correo; `/api/notificaciones` no existe en el backend. |
+| Protección de rutas solo en cliente | La redirección por rol es de experiencia de usuario; el backend aún no autoriza operaciones del módulo solicitante. |
 | Sin migraciones incrementales | Los scripts de `docker/init-db/` solo se aplican sobre un volumen vacío; actualizar una base existente exige cambios manuales o reinstalarla. |
 
 ## Diagnóstico rápido
