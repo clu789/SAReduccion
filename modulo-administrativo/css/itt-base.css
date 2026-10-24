@@ -667,3 +667,6 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   .stepper { flex-direction: column; align-items: flex-start; gap: 10px; }
   .step-linea { display: none; }
 }
+
+#pagina-panel-admin .itt-header-top{justify-content:center;}
+#pagina-panel-admin .itt-header-top .logo-header{margin-left:auto;margin-right:auto;}
