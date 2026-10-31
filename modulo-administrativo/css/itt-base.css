@@ -132,11 +132,17 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 #pagina-panel-admin .itt-header-top {
   background-color: var(--adm-navbar-bg, #F8F8F8);
   border-bottom: 1px solid var(--adm-navbar-border, #DDDDDD);
+  padding: 16px 24px;
 }
 
 .itt-header-top img.logo-header {
   max-height: 64px;
   object-fit: contain;
+}
+
+#pagina-panel-admin .itt-header-top img.logo-header {
+  max-height: 88px;
+  max-width: 100%;
 }
 
 .itt-header-brand {
@@ -170,8 +176,13 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 }
 
 #pagina-panel-admin .itt-navbar {
-  background: var(--adm-navbar-bg, #F8F8F8);
-  border-bottom: 1px solid var(--adm-navbar-border, #DDDDDD);
+  background: #F5F5F5;
+  border: 1px solid var(--adm-navbar-border, #DDDDDD);
+  border-radius: var(--adm-radio-sm, 4px);
+  max-width: 1052px;
+  width: calc(100% - 48px);
+  margin: 14px auto;
+  padding: 0 16px;
 }
 
 .itt-navbar-links {

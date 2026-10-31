@@ -309,6 +309,34 @@
 }
 .btn-cancelar:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
+/* ── Tabla estilo portal TecNM (solo .tabla-tec, no afecta .tabla-itt global) ── */
+#pagina-panel-admin .tabla-tec {
+  border: 1px solid #DDDDDD;
+}
+
+#pagina-panel-admin .tabla-tec thead th {
+  background: #D9EDF7;
+  color: #333333;
+  font-weight: 700;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: normal;
+  border: 1px solid #DDDDDD;
+}
+
+#pagina-panel-admin .tabla-tec tbody td {
+  padding: 6px 8px;
+  border: 1px solid #DDDDDD;
+}
+
+#pagina-panel-admin .tabla-tec tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+#pagina-panel-admin .tabla-tec tbody tr:nth-child(even):hover {
+  background-color: #eef3fa;
+}
+
 /* ── Historial de cambios ── */
 .historial-lista { list-style: none; padding: 0; margin: 0; }
 
