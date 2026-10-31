@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 
 import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.DeduccionAdmin;
+import com.itt.sareduccion.model.HistorialDeduccionAdmin;
+import com.itt.sareduccion.model.HistorialSolicitudAdmin;
+import com.itt.sareduccion.model.MontoAdmin;
 import com.itt.sareduccion.model.RespuestaSolicitud;
 import com.itt.sareduccion.model.SolicitudAdmin;
 import com.itt.sareduccion.repository.AdministradorRepository;
@@ -68,10 +71,13 @@ public class SolicitudAdminService {
             }
             if (filtro != null && !filtro.isEmpty()) {
                 String identificador = solicitud.getSolicitante();
+                String nombre = solicitud.getNombreCompleto();
                 boolean coincideFolio = String.valueOf(solicitud.getIdSolicitud()).contains(filtro);
                 boolean coincideSolicitante = identificador != null
                         && identificador.toUpperCase(Locale.ROOT).contains(filtro);
-                if (!coincideFolio && !coincideSolicitante) {
+                boolean coincideNombre = nombre != null
+                        && nombre.toUpperCase(Locale.ROOT).contains(filtro);
+                if (!coincideFolio && !coincideSolicitante && !coincideNombre) {
                     continue;
                 }
             }
@@ -82,6 +88,10 @@ public class SolicitudAdminService {
 
     public List<ConvocatoriaAdmin> listarConvocatorias(String idAdministrador) {
         return administradorRepository.listarConvocatorias(idAdministrador);
+    }
+
+    public List<MontoAdmin> listarMontos(String idAdministrador) {
+        return administradorRepository.listarMontos(idAdministrador);
     }
 
     public Map<String, Object> estadisticas(String idAdministrador) {
@@ -141,7 +151,25 @@ public class SolicitudAdminService {
                 break;
             }
         }
-        return new DetalleSolicitud(solicitud, respuestas, deduccion);
+
+        List<HistorialSolicitudAdmin> historial = new ArrayList<HistorialSolicitudAdmin>();
+        for (HistorialSolicitudAdmin item : administradorRepository.listarHistorialSolicitud(idAdministrador)) {
+            if (item.getIdSolicitud() != null && item.getIdSolicitud().longValue() == idSolicitud) {
+                historial.add(item);
+            }
+        }
+
+        List<HistorialDeduccionAdmin> historialDeduccion = new ArrayList<HistorialDeduccionAdmin>();
+        if (deduccion != null && deduccion.getIdDeduccion() != null) {
+            long idDeduccion = deduccion.getIdDeduccion().longValue();
+            for (HistorialDeduccionAdmin item : administradorRepository.listarHistorialDeduccion(idAdministrador)) {
+                if (item.getIdDeduccion() != null && item.getIdDeduccion().longValue() == idDeduccion) {
+                    historialDeduccion.add(item);
+                }
+            }
+        }
+
+        return new DetalleSolicitud(solicitud, respuestas, deduccion, historial, historialDeduccion);
     }
 
     /**
@@ -166,34 +194,27 @@ public class SolicitudAdminService {
             throw new ReglaNegocioException("Solo se pueden aprobar solicitudes pendientes o canceladas");
         }
 
-        // TODO(#4 - decidir con el equipo de BD): no existe un catalogo consultable
-        // de ids de monto. autorizar_deduccion exige exactamente uno de
-        // p_id_monto_inscripcion/p_id_monto_reinscripcion (si no, ORA-20871).
-        // Usar el id de convocatoria como id de monto (como se hacia antes del
-        // merge) produce NO_DATA_FOUND en obtener_montos. Opciones a acordar:
-        //   a) Agregar PKG_ADMINISTRADOR.listar_montos(p_admin, p_resultado) que
-        //      devuelva ambos catalogos (Monto_Inscripciones / Monto_Reinscripciones)
-        //      y que este servicio elija MIN(id_monto_reinscripcion) para estudiante
-        //      / MIN(id_monto_inscripcion) para aspirante (igual que hace el seed).
-        //   b) Que el frontend obtenga el id de algun catalogo ya expuesto y lo
-        //      envie explicito en AprobarRequest (requeriria exponer un endpoint
-        //      de consulta de montos).
-        // No se implementa ninguna opcion aqui: requiere acuerdo con el equipo de BD.
-        Long inscripcion = idMontoInscripcion;
-        Long reinscripcion = idMontoReinscripcion;
-        if (inscripcion == null && reinscripcion == null) {
-            if (solicitud.esEstudiante()) {
-                reinscripcion = solicitud.getIdConvocatoria();
-            } else {
-                inscripcion = solicitud.getIdConvocatoria();
+        // El monto base lo elige el administrador (GET /api/montos), nunca se
+        // calcula automaticamente: cualquier administrador puede determinar que
+        // monto corresponde. El cliente debe mandar exactamente el id que aplica
+        // segun el tipo de solicitante.
+        if (solicitud.esEstudiante()) {
+            if (idMontoReinscripcion == null || idMontoInscripcion != null) {
+                throw new ReglaNegocioException(
+                        "Debe seleccionar un monto de reinscripcion para un estudiante");
+            }
+        } else {
+            if (idMontoInscripcion == null || idMontoReinscripcion != null) {
+                throw new ReglaNegocioException(
+                        "Debe seleccionar un monto de inscripcion para un aspirante");
             }
         }
 
         try {
             // autorizar_deduccion realiza por si sola la transicion de estatus
             // de la solicitud (1 o 4 -> 2); no se llama ningun cambio de estatus aparte.
-            administradorRepository.autorizarDeduccion(idAdministrador, idSolicitud, inscripcion,
-                    reinscripcion, comentario);
+            administradorRepository.autorizarDeduccion(idAdministrador, idSolicitud, idMontoInscripcion,
+                    idMontoReinscripcion, comentario);
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aprobar la solicitud");
         }
@@ -341,17 +362,22 @@ public class SolicitudAdminService {
         return null;
     }
 
-    /** Detalle completo de una solicitud: datos, respuestas y deduccion (si existe). */
+    /** Detalle completo de una solicitud: datos, respuestas, deduccion e historiales. */
     public static final class DetalleSolicitud {
         private final SolicitudAdmin solicitud;
         private final List<RespuestaSolicitud> respuestas;
         private final DeduccionAdmin deduccion;
+        private final List<HistorialSolicitudAdmin> historial;
+        private final List<HistorialDeduccionAdmin> historialDeduccion;
 
         public DetalleSolicitud(SolicitudAdmin solicitud, List<RespuestaSolicitud> respuestas,
-                DeduccionAdmin deduccion) {
+                DeduccionAdmin deduccion, List<HistorialSolicitudAdmin> historial,
+                List<HistorialDeduccionAdmin> historialDeduccion) {
             this.solicitud = solicitud;
             this.respuestas = respuestas;
             this.deduccion = deduccion;
+            this.historial = historial;
+            this.historialDeduccion = historialDeduccion;
         }
 
         public SolicitudAdmin getSolicitud() {
@@ -364,6 +390,14 @@ public class SolicitudAdminService {
 
         public DeduccionAdmin getDeduccion() {
             return deduccion;
+        }
+
+        public List<HistorialSolicitudAdmin> getHistorial() {
+            return historial;
+        }
+
+        public List<HistorialDeduccionAdmin> getHistorialDeduccion() {
+            return historialDeduccion;
         }
     }
 }

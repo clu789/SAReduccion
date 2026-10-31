@@ -320,6 +320,9 @@ CREATE OR REPLACE PACKAGE PKG_ADMINISTRADOR AUTHID DEFINER AS
  PROCEDURE listar_convocatorias(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE listar_respuestas(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE listar_deducciones(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE listar_montos(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE listar_historial_solicitud(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE listar_historial_deduccion(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE crear_solicitud_estudiante(p_id_administrador VARCHAR2,p_control VARCHAR2,p_convocatoria NUMBER,
    p_tipo NUMBER,p_formulario NUMBER,p_respuestas CLOB,p_id OUT NUMBER);
  PROCEDURE rechazar_solicitud(p_id_administrador VARCHAR2,p_solicitud NUMBER,p_comentario VARCHAR2);
@@ -366,8 +369,13 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
  BEGIN
   PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
   OPEN p_resultado FOR SELECT s.id_solicitud,s.num_control,s.ficha,s.periodo,s.anio,s.id_convocatoria,
-    s.id_estatus_solicitud,s.id_tipo_solicitud,s.fecha_actualizacion,t.nombre
-   FROM Solicitudes s LEFT JOIN Tipo_Solicitudes t ON t.id_tipo_solicitud=s.id_tipo_solicitud;
+    s.id_estatus_solicitud,s.id_tipo_solicitud,s.fecha_actualizacion,t.nombre,
+    TRIM(COALESCE(e.nombre,a.nombre)||' '||COALESCE(e.primer_apellido,a.primer_apellido)||
+      CASE WHEN COALESCE(e.segundo_apellido,a.segundo_apellido) IS NOT NULL
+           THEN ' '||COALESCE(e.segundo_apellido,a.segundo_apellido) ELSE '' END) AS nombre_solicitante
+   FROM Solicitudes s LEFT JOIN Tipo_Solicitudes t ON t.id_tipo_solicitud=s.id_tipo_solicitud
+    LEFT JOIN Estudiantes e ON e.numero_control=s.num_control
+    LEFT JOIN Aspirantes a ON a.ficha=s.ficha AND a.periodo=s.periodo AND a.anio=s.anio;
  END;
  PROCEDURE listar_convocatorias(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
@@ -386,6 +394,47 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
   PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
   OPEN p_resultado FOR SELECT id_deduccion_autorizada,id_solicitud,estatus_deduccion,monto_pago,
    monto_deduccion,monto_final FROM Deducciones_autorizadas;
+ END;
+ PROCEDURE listar_montos(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+  OPEN p_resultado FOR
+   SELECT id_monto_inscripcion AS id_monto,monto_pago,'INSCRIPCION' AS tipo_monto
+     FROM Monto_Inscripciones
+   UNION ALL
+   SELECT id_monto_reinscripcion,monto_pago,'REINSCRIPCION'
+     FROM Monto_Reinscripciones
+   ORDER BY 3,1;
+ END;
+ PROCEDURE listar_historial_solicitud(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+  OPEN p_resultado FOR
+   SELECT h.id_historial,h.id_solicitud,h.id_estatus,es.nombre AS estatus_nombre,
+    h.id_administrador,
+    CASE WHEN h.id_administrador IS NULL THEN NULL
+         ELSE TRIM(adm.nombre||' '||adm.primer_apellido||
+              CASE WHEN adm.segundo_apellido IS NOT NULL THEN ' '||adm.segundo_apellido ELSE '' END)
+    END AS administrador_nombre,
+    h.comentario,h.fecha_registro
+   FROM Historial_Solicitudes h
+    JOIN Estatus_Solicitudes es ON es.id_estatus_solicitud=h.id_estatus
+    LEFT JOIN Administradores adm ON adm.id_administrador=h.id_administrador
+   ORDER BY h.id_solicitud,h.fecha_registro,h.id_historial;
+ END;
+ PROCEDURE listar_historial_deduccion(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+  OPEN p_resultado FOR
+   SELECT h.id_historial_deduccion,h.id_deduccion_autorizada,h.id_estatus,ed.nombre AS estatus_nombre,
+    h.id_administrador,
+    TRIM(adm.nombre||' '||adm.primer_apellido||
+      CASE WHEN adm.segundo_apellido IS NOT NULL THEN ' '||adm.segundo_apellido ELSE '' END) AS administrador_nombre,
+    h.monto_pago,h.monto_deduccion,h.monto_final,h.fecha_registro
+   FROM Historial_Deducciones h
+    JOIN Estatus_Deducciones ed ON ed.id_estatus_deducciones=h.id_estatus
+    LEFT JOIN Administradores adm ON adm.id_administrador=h.id_administrador
+   ORDER BY h.id_deduccion_autorizada,h.fecha_registro,h.id_historial_deduccion;
  END;
  PROCEDURE crear_solicitud_estudiante(p_id_administrador VARCHAR2,p_control VARCHAR2,p_convocatoria NUMBER,
    p_tipo NUMBER,p_formulario NUMBER,p_respuestas CLOB,p_id OUT NUMBER) IS

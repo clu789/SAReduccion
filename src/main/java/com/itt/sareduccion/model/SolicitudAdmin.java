@@ -14,10 +14,11 @@ public final class SolicitudAdmin {
     private final Integer idTipoSolicitud;
     private final LocalDateTime fechaActualizacion;
     private final String tipoSolicitudNombre;
+    private final String nombreCompleto;
 
     public SolicitudAdmin(Long idSolicitud, String numControl, String ficha, Integer periodo,
             Integer anio, Long idConvocatoria, Integer idEstatusSolicitud, Integer idTipoSolicitud,
-            LocalDateTime fechaActualizacion, String tipoSolicitudNombre) {
+            LocalDateTime fechaActualizacion, String tipoSolicitudNombre, String nombreCompleto) {
         this.idSolicitud = idSolicitud;
         this.numControl = numControl;
         this.ficha = ficha;
@@ -28,6 +29,7 @@ public final class SolicitudAdmin {
         this.idTipoSolicitud = idTipoSolicitud;
         this.fechaActualizacion = fechaActualizacion;
         this.tipoSolicitudNombre = tipoSolicitudNombre;
+        this.nombreCompleto = nombreCompleto;
     }
 
     public Long getIdSolicitud() {
@@ -68,6 +70,11 @@ public final class SolicitudAdmin {
 
     public String getTipoSolicitudNombre() {
         return tipoSolicitudNombre;
+    }
+
+    /** Nombre completo del estudiante o aspirante, resuelto por la BD; puede ser nulo. */
+    public String getNombreCompleto() {
+        return nombreCompleto;
     }
 
     /** Identificador visible del solicitante: control de estudiante o ficha de aspirante. */

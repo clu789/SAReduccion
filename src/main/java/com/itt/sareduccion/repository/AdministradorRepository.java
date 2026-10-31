@@ -18,6 +18,9 @@ import org.springframework.stereotype.Repository;
 
 import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.DeduccionAdmin;
+import com.itt.sareduccion.model.HistorialDeduccionAdmin;
+import com.itt.sareduccion.model.HistorialSolicitudAdmin;
+import com.itt.sareduccion.model.MontoAdmin;
 import com.itt.sareduccion.model.RespuestaSolicitud;
 import com.itt.sareduccion.model.SolicitudAdmin;
 
@@ -40,6 +43,12 @@ public class AdministradorRepository {
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_respuestas(?, ?)}";
     private static final String LISTAR_DEDUCCIONES_CALL =
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_deducciones(?, ?)}";
+    private static final String LISTAR_MONTOS_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_montos(?, ?)}";
+    private static final String LISTAR_HISTORIAL_SOLICITUD_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_historial_solicitud(?, ?)}";
+    private static final String LISTAR_HISTORIAL_DEDUCCION_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_historial_deduccion(?, ?)}";
     private static final String RECHAZAR_SOLICITUD_CALL =
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.rechazar_solicitud(?, ?, ?)}";
     private static final String AUTORIZAR_DEDUCCION_CALL =
@@ -80,6 +89,21 @@ public class AdministradorRepository {
     public List<DeduccionAdmin> listarDeducciones(String idAdministrador) {
         return jdbcTemplate.execute((ConnectionCallback<List<DeduccionAdmin>>) connection ->
                 listarDeducciones(connection, idAdministrador));
+    }
+
+    public List<MontoAdmin> listarMontos(String idAdministrador) {
+        return jdbcTemplate.execute((ConnectionCallback<List<MontoAdmin>>) connection ->
+                listarMontos(connection, idAdministrador));
+    }
+
+    public List<HistorialSolicitudAdmin> listarHistorialSolicitud(String idAdministrador) {
+        return jdbcTemplate.execute((ConnectionCallback<List<HistorialSolicitudAdmin>>) connection ->
+                listarHistorialSolicitud(connection, idAdministrador));
+    }
+
+    public List<HistorialDeduccionAdmin> listarHistorialDeduccion(String idAdministrador) {
+        return jdbcTemplate.execute((ConnectionCallback<List<HistorialDeduccionAdmin>>) connection ->
+                listarHistorialDeduccion(connection, idAdministrador));
     }
 
     /**
@@ -237,7 +261,8 @@ public class AdministradorRepository {
                             intOrNull(resultSet.getObject(7)),
                             intOrNull(resultSet.getObject(8)),
                             fechaActualizacion,
-                            resultSet.getString(10)));
+                            resultSet.getString(10),
+                            resultSet.getString(11)));
                 }
             }
         }
@@ -336,6 +361,95 @@ public class AdministradorRepository {
             }
         }
         return deducciones;
+    }
+
+    private List<MontoAdmin> listarMontos(Connection connection, String idAdministrador)
+            throws SQLException {
+        List<MontoAdmin> montos = new ArrayList<MontoAdmin>();
+        try (CallableStatement statement = connection.prepareCall(LISTAR_MONTOS_CALL)) {
+            statement.setString(1, idAdministrador);
+            statement.registerOutParameter(2, Types.REF_CURSOR);
+            statement.execute();
+
+            Object cursor = statement.getObject(2);
+            if (!(cursor instanceof ResultSet)) {
+                throw new SQLException("PKG_ADMINISTRADOR.listar_montos no devolvio un cursor JDBC");
+            }
+
+            try (ResultSet resultSet = (ResultSet) cursor) {
+                while (resultSet.next()) {
+                    montos.add(new MontoAdmin(
+                            longOrNull(resultSet.getObject(1)),
+                            decimalOrNull(resultSet.getObject(2)),
+                            resultSet.getString(3)));
+                }
+            }
+        }
+        return montos;
+    }
+
+    private List<HistorialSolicitudAdmin> listarHistorialSolicitud(Connection connection, String idAdministrador)
+            throws SQLException {
+        List<HistorialSolicitudAdmin> historial = new ArrayList<HistorialSolicitudAdmin>();
+        try (CallableStatement statement = connection.prepareCall(LISTAR_HISTORIAL_SOLICITUD_CALL)) {
+            statement.setString(1, idAdministrador);
+            statement.registerOutParameter(2, Types.REF_CURSOR);
+            statement.execute();
+
+            Object cursor = statement.getObject(2);
+            if (!(cursor instanceof ResultSet)) {
+                throw new SQLException("PKG_ADMINISTRADOR.listar_historial_solicitud no devolvio un cursor JDBC");
+            }
+
+            try (ResultSet resultSet = (ResultSet) cursor) {
+                while (resultSet.next()) {
+                    Timestamp fecha = resultSet.getTimestamp(8);
+                    historial.add(new HistorialSolicitudAdmin(
+                            longOrNull(resultSet.getObject(1)),
+                            longOrNull(resultSet.getObject(2)),
+                            intOrNull(resultSet.getObject(3)),
+                            resultSet.getString(4),
+                            resultSet.getString(5),
+                            resultSet.getString(6),
+                            resultSet.getString(7),
+                            fecha == null ? null : fecha.toLocalDateTime()));
+                }
+            }
+        }
+        return historial;
+    }
+
+    private List<HistorialDeduccionAdmin> listarHistorialDeduccion(Connection connection, String idAdministrador)
+            throws SQLException {
+        List<HistorialDeduccionAdmin> historial = new ArrayList<HistorialDeduccionAdmin>();
+        try (CallableStatement statement = connection.prepareCall(LISTAR_HISTORIAL_DEDUCCION_CALL)) {
+            statement.setString(1, idAdministrador);
+            statement.registerOutParameter(2, Types.REF_CURSOR);
+            statement.execute();
+
+            Object cursor = statement.getObject(2);
+            if (!(cursor instanceof ResultSet)) {
+                throw new SQLException("PKG_ADMINISTRADOR.listar_historial_deduccion no devolvio un cursor JDBC");
+            }
+
+            try (ResultSet resultSet = (ResultSet) cursor) {
+                while (resultSet.next()) {
+                    Timestamp fecha = resultSet.getTimestamp(10);
+                    historial.add(new HistorialDeduccionAdmin(
+                            longOrNull(resultSet.getObject(1)),
+                            longOrNull(resultSet.getObject(2)),
+                            intOrNull(resultSet.getObject(3)),
+                            resultSet.getString(4),
+                            resultSet.getString(5),
+                            resultSet.getString(6),
+                            decimalOrNull(resultSet.getObject(7)),
+                            decimalOrNull(resultSet.getObject(8)),
+                            decimalOrNull(resultSet.getObject(9)),
+                            fecha == null ? null : fecha.toLocalDateTime()));
+                }
+            }
+        }
+        return historial;
     }
 
     private Long longOrNull(Object value) {

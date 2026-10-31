@@ -231,6 +231,17 @@
           <!-- Alerta de la decisión -->
           <div id="alerta-decision"></div>
 
+          <!-- Monto base para autorizar/reautorizar (lo elige el administrador) -->
+          <div class="form-group" id="grupo-monto">
+            <label for="select-monto">
+              Monto base a utilizar
+              <span style="font-weight:400;color:var(--itt-texto-claro);">(requerido al aprobar o reautorizar)</span>
+            </label>
+            <select id="select-monto" class="form-control-itt">
+              <option value="">Seleccione un monto…</option>
+            </select>
+          </div>
+
           <!-- Comentario para corrección -->
           <div class="form-group" id="grupo-comentario">
             <label for="comentario-correccion">
@@ -291,6 +302,27 @@
       <div class="modal-footer">
         <button type="button" class="btn-itt btn-secundario" onclick="Modal.cerrar('modal-respuestas')">
           <i class="fa fa-times"></i> Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MODAL: CONFIRMACIÓN GENÉRICA ═══ -->
+  <div id="modal-confirmar" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmar-titulo" style="z-index:1060;">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-header">
+        <h3 id="confirmar-titulo"><i class="fa fa-question-circle"></i> Confirmar acción</h3>
+        <button class="modal-cerrar" onclick="Modal.cerrar('modal-confirmar')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmar-texto" style="margin:0;"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-itt btn-secundario" onclick="Modal.resolverConfirmar(false)">
+          Cancelar
+        </button>
+        <button type="button" class="btn-itt btn-primario" onclick="Modal.resolverConfirmar(true)">
+          Confirmar
         </button>
       </div>
     </div>

@@ -26,6 +26,9 @@ import com.itt.sareduccion.auth.SessionAttributes;
 import com.itt.sareduccion.auth.SessionPrincipal;
 import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.DeduccionAdmin;
+import com.itt.sareduccion.model.HistorialDeduccionAdmin;
+import com.itt.sareduccion.model.HistorialSolicitudAdmin;
+import com.itt.sareduccion.model.MontoAdmin;
 import com.itt.sareduccion.model.RespuestaSolicitud;
 import com.itt.sareduccion.model.SolicitudAdmin;
 import com.itt.sareduccion.service.ReglaNegocioException;
@@ -113,7 +116,7 @@ public class SolicitudAdminController {
         SolicitudAdmin solicitud = detalle.getSolicitud();
         respuesta.put("idSolicitud", solicitud.getIdSolicitud());
         respuesta.put("solicitante", solicitud.getSolicitante());
-        respuesta.put("nombreSolicitante", solicitud.getSolicitante());
+        respuesta.put("nombreSolicitante", solicitud.getNombreCompleto());
         respuesta.put("numControl", solicitud.getNumControl());
         respuesta.put("ficha", solicitud.getFicha());
         respuesta.put("idConvocatoria", solicitud.getIdConvocatoria());
@@ -134,9 +137,49 @@ public class SolicitudAdminController {
         }
         respuesta.put("respuestas", respuestas);
         respuesta.put("deduccion", deduccionJson(detalle.getDeduccion()));
-        // Sin procedimiento de historial en la BD actual (listar_historial_solicitud
-        // / listar_historial_deduccion no existen todavia, ver integracion-bd.md #14).
-        respuesta.put("historial", new ArrayList<Object>());
+
+        List<Map<String, Object>> historial = new ArrayList<Map<String, Object>>();
+        for (HistorialSolicitudAdmin item : detalle.getHistorial()) {
+            Map<String, Object> fila = new LinkedHashMap<String, Object>();
+            fila.put("estatus", item.getEstatusNombre());
+            fila.put("estatusNombre", item.getEstatusNombre());
+            fila.put("administrador", item.getAdministradorNombre());
+            fila.put("comentario", item.getComentario());
+            fila.put("fecha", item.getFechaRegistro());
+            historial.add(fila);
+        }
+        respuesta.put("historial", historial);
+
+        List<Map<String, Object>> historialDeduccion = new ArrayList<Map<String, Object>>();
+        for (HistorialDeduccionAdmin item : detalle.getHistorialDeduccion()) {
+            Map<String, Object> fila = new LinkedHashMap<String, Object>();
+            fila.put("estatus", item.getEstatusNombre());
+            fila.put("administrador", item.getAdministradorNombre());
+            fila.put("montoPago", item.getMontoPago());
+            fila.put("montoDeduccion", item.getMontoDeduccion());
+            fila.put("montoFinal", item.getMontoFinal());
+            fila.put("fecha", item.getFechaRegistro());
+            historialDeduccion.add(fila);
+        }
+        respuesta.put("historialDeduccion", historialDeduccion);
+        return ResponseEntity.ok(respuesta);
+    }
+
+    @GetMapping("/montos")
+    public ResponseEntity<?> montos(HttpServletRequest request) {
+        SessionPrincipal principal = administrador(request);
+        if (principal == null) {
+            return noAutorizado();
+        }
+        List<MontoAdmin> montos = solicitudAdminService.listarMontos(principal.getIdentity());
+        List<Map<String, Object>> respuesta = new ArrayList<Map<String, Object>>();
+        for (MontoAdmin monto : montos) {
+            Map<String, Object> fila = new LinkedHashMap<String, Object>();
+            fila.put("idMonto", monto.getIdMonto());
+            fila.put("montoPago", monto.getMontoPago());
+            fila.put("tipoMonto", monto.getTipoMonto());
+            respuesta.add(fila);
+        }
         return ResponseEntity.ok(respuesta);
     }
 
@@ -312,7 +355,7 @@ public class SolicitudAdminController {
         private SolicitudResumen(SolicitudAdmin solicitud, SolicitudAdminService service) {
             this.idSolicitud = solicitud.getIdSolicitud();
             this.solicitante = solicitud.getSolicitante();
-            this.nombreSolicitante = solicitud.getSolicitante();
+            this.nombreSolicitante = solicitud.getNombreCompleto();
             this.numControl = solicitud.getNumControl();
             this.ficha = solicitud.getFicha();
             this.idConvocatoria = solicitud.getIdConvocatoria();

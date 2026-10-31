@@ -37,12 +37,15 @@ DECLARE
     v_contenedor VARCHAR2(128) := SYS_CONTEXT('USERENV', 'CON_NAME');
     v_tablas NUMBER;
 BEGIN
+    -- Codigos -20090/-20091 (no -20011/-20012): estos son exclusivos del
+    -- script de arranque (corre una sola vez al crear el esquema) y no deben
+    -- coincidir con los que usa trg_respuestas_validacion en produccion.
     IF v_usuario <> 'SA_REDUCCION' THEN
-        RAISE_APPLICATION_ERROR(-20011,
+        RAISE_APPLICATION_ERROR(-20090,
             'Conectarse como SA_REDUCCION; sesion actual: ' || v_usuario);
     END IF;
     IF v_contenedor <> 'XEPDB1' THEN
-        RAISE_APPLICATION_ERROR(-20012,
+        RAISE_APPLICATION_ERROR(-20091,
             'Conectarse a XEPDB1; contenedor actual: ' || v_contenedor);
     END IF;
     SELECT COUNT(*) INTO v_tablas FROM USER_TABLES;
@@ -525,7 +528,12 @@ CREATE TABLE Historial_Deducciones (
     CONSTRAINT fk_hd_estatus
         FOREIGN KEY (id_estatus) REFERENCES Estatus_Deducciones(id_estatus_deducciones),
     CONSTRAINT fk_hd_administrador
-        FOREIGN KEY (id_administrador) REFERENCES Administradores(id_administrador)
+        FOREIGN KEY (id_administrador) REFERENCES Administradores(id_administrador),
+    -- A diferencia de Historial_Solicitudes, aqui no existe ningun flujo de
+    -- alumno ni estatus "automatico": autorizar/cancelar/aplicar deduccion
+    -- son siempre acciones de administrador, asi que el campo nunca debe
+    -- quedar NULL.
+    CONSTRAINT chk_hd_administrador CHECK (id_administrador IS NOT NULL)
 );
 
 -- ================================================================
