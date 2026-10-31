@@ -80,6 +80,13 @@
           <div class="stat-etiqueta">Rechazadas</div>
         </div>
       </div>
+      <div class="stat-card retirado">
+        <div class="stat-icono"><i class="fa fa-undo"></i></div>
+        <div class="stat-info">
+          <div class="stat-valor" id="stat-retirado">—</div>
+          <div class="stat-etiqueta">Retiradas</div>
+        </div>
+      </div>
     </div>
 
     <!-- ── Alertas bandeja ── -->
@@ -108,6 +115,7 @@
       <button class="filtro-chip correccion"      data-estatus="3"     id="filtro-rechazado">Rechazadas</button>
       <button class="filtro-chip cancelado"       data-estatus="4"     id="filtro-cancelado">Canceladas</button>
       <button class="filtro-chip aplicado"        data-estatus="5"     id="filtro-aplicado">Aplicadas</button>
+      <button class="filtro-chip retirado"        data-estatus="6"     id="filtro-retirado">Retiradas</button>
 
       <!-- Filtro por convocatoria (llenado desde la API) -->
       <select id="filtro-convocatoria" class="form-control-itt" style="width:250px;height:34px;" disabled>
@@ -227,7 +235,7 @@
           <div class="form-group" id="grupo-comentario">
             <label for="comentario-correccion">
               Comentario para el solicitante
-              <span style="font-weight:400;color:var(--itt-texto-claro);">(requerido al rechazar o cancelar)</span>
+              <span style="font-weight:400;color:var(--itt-texto-claro);">(requerido al aprobar, reautorizar, rechazar o cancelar)</span>
             </label>
             <textarea
               id="comentario-correccion"
@@ -245,8 +253,14 @@
             <button type="button" id="btn-rechazar" class="btn-rechazar" onclick="PanelAdmin.solicitarCorreccion()">
               <i class="fa fa-times"></i> Rechazar / Solicitar Corrección
             </button>
+            <button type="button" id="btn-reautorizar" class="btn-aprobar" onclick="PanelAdmin.reautorizar()">
+              <i class="fa fa-refresh"></i> Reautorizar Deducción
+            </button>
             <button type="button" id="btn-cancelar-deduccion" class="btn-cancelar" onclick="PanelAdmin.cancelarDeduccion()">
               <i class="fa fa-ban"></i> Cancelar Deducción
+            </button>
+            <button type="button" id="btn-aplicar-deduccion" class="btn-aprobar" onclick="PanelAdmin.aplicarDeduccion()">
+              <i class="fa fa-flag-checkered"></i> Aplicar Deducción
             </button>
           </div>
         </div>

@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,12 +40,14 @@ public class AdministradorRepository {
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_respuestas(?, ?)}";
     private static final String LISTAR_DEDUCCIONES_CALL =
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_deducciones(?, ?)}";
-    private static final String CAMBIAR_ESTATUS_SOLICITUD_CALL =
-            "{call SA_REDUCCION.PKG_ADMINISTRADOR.cambiar_estatus_solicitud(?, ?, ?)}";
+    private static final String RECHAZAR_SOLICITUD_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.rechazar_solicitud(?, ?, ?)}";
     private static final String AUTORIZAR_DEDUCCION_CALL =
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.autorizar_deduccion(?, ?, ?, ?, ?, ?)}";
-    private static final String CAMBIAR_ESTATUS_DEDUCCION_CALL =
-            "{call SA_REDUCCION.PKG_ADMINISTRADOR.cambiar_estatus_deduccion(?, ?, ?, ?)}";
+    private static final String CANCELAR_DEDUCCION_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.cancelar_deduccion(?, ?, ?)}";
+    private static final String APLICAR_DEDUCCION_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.aplicar_deduccion(?, ?)}";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -80,17 +83,17 @@ public class AdministradorRepository {
     }
 
     /**
-     * Cambia el estatus de una solicitud (solo desde PENDIENTE a 2/3 segun el
-     * paquete). Confirma unicamente si el procedimiento termina bien.
+     * Rechaza una solicitud pendiente (la base exige comentario no vacio).
+     * Confirma unicamente si el procedimiento termina bien.
      */
-    public void cambiarEstatusSolicitud(String idAdministrador, long idSolicitud, int estatus) {
+    public void rechazarSolicitud(String idAdministrador, long idSolicitud, String comentario) {
         jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
             boolean autoCommitAnterior = connection.getAutoCommit();
             connection.setAutoCommit(false);
-            try (CallableStatement statement = connection.prepareCall(CAMBIAR_ESTATUS_SOLICITUD_CALL)) {
+            try (CallableStatement statement = connection.prepareCall(RECHAZAR_SOLICITUD_CALL)) {
                 statement.setString(1, idAdministrador);
                 statement.setLong(2, idSolicitud);
-                statement.setInt(3, estatus);
+                statement.setString(3, comentario);
                 statement.execute();
                 connection.commit();
             } catch (SQLException exception) {
@@ -146,19 +149,40 @@ public class AdministradorRepository {
     }
 
     /**
-     * Cambia el estatus de una deduccion (2/4/5). Al cancelar (4) el trigger
-     * {@code trg_deduccion_cancelacion} sincroniza el estatus de la solicitud.
+     * Cancela una deduccion autorizada (la base exige motivo no vacio) y
+     * sincroniza el estatus de la solicitud a CANCELADO.
      */
-    public void cambiarEstatusDeduccion(String idAdministrador, long idDeduccion, int estatus,
-            String comentario) {
+    public void cancelarDeduccion(String idAdministrador, long idDeduccion, String comentario) {
         jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
             boolean autoCommitAnterior = connection.getAutoCommit();
             connection.setAutoCommit(false);
-            try (CallableStatement statement = connection.prepareCall(CAMBIAR_ESTATUS_DEDUCCION_CALL)) {
+            try (CallableStatement statement = connection.prepareCall(CANCELAR_DEDUCCION_CALL)) {
                 statement.setString(1, idAdministrador);
                 statement.setLong(2, idDeduccion);
-                statement.setInt(3, estatus);
-                statement.setString(4, comentario);
+                statement.setString(3, comentario);
+                statement.execute();
+                connection.commit();
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(autoCommitAnterior);
+            }
+            return null;
+        });
+    }
+
+    /**
+     * Aplica una deduccion autorizada (estado definitivo e inmutable). No
+     * recibe comentario: el paquete registra uno fijo en el historial.
+     */
+    public void aplicarDeduccion(String idAdministrador, long idDeduccion) {
+        jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
+            boolean autoCommitAnterior = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try (CallableStatement statement = connection.prepareCall(APLICAR_DEDUCCION_CALL)) {
+                statement.setString(1, idAdministrador);
+                statement.setLong(2, idDeduccion);
                 statement.execute();
                 connection.commit();
             } catch (SQLException exception) {
@@ -237,13 +261,22 @@ public class AdministradorRepository {
                 while (resultSet.next()) {
                     java.sql.Date inicio = resultSet.getDate(2);
                     java.sql.Date fin = resultSet.getDate(3);
+                    java.sql.Date limiteAutorizacion = resultSet.getDate(4);
+                    java.sql.Date limiteAplicacion = resultSet.getDate(5);
+                    LocalDate fechaInicio = inicio == null ? null : inicio.toLocalDate();
+                    LocalDate fechaFin = fin == null ? null : fin.toLocalDate();
+                    LocalDate hoy = LocalDate.now();
+                    boolean activa = fechaInicio != null && fechaFin != null
+                            && !hoy.isBefore(fechaInicio) && !hoy.isAfter(fechaFin);
                     convocatorias.add(new ConvocatoriaAdmin(
                             longOrNull(resultSet.getObject(1)),
-                            inicio == null ? null : inicio.toLocalDate(),
-                            fin == null ? null : fin.toLocalDate(),
-                            intOrNull(resultSet.getObject(4)),
-                            intOrNull(resultSet.getObject(5)),
-                            Integer.valueOf(1).equals(intOrNull(resultSet.getObject(6)))));
+                            fechaInicio,
+                            fechaFin,
+                            limiteAutorizacion == null ? null : limiteAutorizacion.toLocalDate(),
+                            limiteAplicacion == null ? null : limiteAplicacion.toLocalDate(),
+                            intOrNull(resultSet.getObject(6)),
+                            intOrNull(resultSet.getObject(7)),
+                            activa));
                 }
             }
         }

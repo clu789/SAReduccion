@@ -80,6 +80,7 @@
 .stat-card.aprobado   { border-color: var(--itt-verde); }
 .stat-card.rechazado  { border-color: var(--itt-rojo); }
 .stat-card.total      { border-color: var(--itt-azul-claro); }
+.stat-card.retirado   { border-color: #8e6fc2; }
 
 .stat-icono {
   width: 48px; height: 48px;
@@ -96,6 +97,7 @@
 .stat-card.aprobado   .stat-icono { background: #eaf7ee; color: var(--itt-verde); }
 .stat-card.rechazado  .stat-icono { background: #fdecea; color: var(--itt-rojo); }
 .stat-card.total      .stat-icono { background: #e8f4fd; color: var(--itt-azul-medio); }
+.stat-card.retirado   .stat-icono { background: #f0e6fb; color: #4b2e83; }
 
 .stat-info .stat-valor {
   font-size: 1.6rem;
@@ -152,6 +154,7 @@
 .filtro-chip.aprobado     { background: #d4edda; color: #155724; border-color: var(--itt-verde); }
 .filtro-chip.cancelado    { background: #e2e3e5; color: #383d41; border-color: #adb5bd; }
 .filtro-chip.aplicado     { background: #cce5ff; color: #004085; border-color: #4a90d9; }
+.filtro-chip.retirado     { background: #f0e6fb; color: #4b2e83; border-color: #8e6fc2; }
 
 .filtro-chip:hover,
 .filtro-chip.activo {
@@ -329,6 +332,10 @@
   border: 1px solid #DDDDDD;
 }
 
+#pagina-panel-admin .tabla-tec tbody td:first-child {
+  text-align: center;
+}
+
 #pagina-panel-admin .tabla-tec tbody tr:nth-child(even) {
   background-color: #f9f9f9;
 }
@@ -365,6 +372,7 @@
 .historial-icono.correccion { background: #fff0e0; color: var(--itt-naranja); }
 .historial-icono.cancelado  { background: #e2e3e5; color: #383d41; }
 .historial-icono.aplicado   { background: #cce5ff; color: #004085; }
+.historial-icono.retirado   { background: #f0e6fb; color: #4b2e83; }
 
 .historial-info .hist-titulo {
   font-weight: 700;

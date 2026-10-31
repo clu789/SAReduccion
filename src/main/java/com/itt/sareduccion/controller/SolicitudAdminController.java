@@ -91,6 +91,8 @@ public class SolicitudAdminController {
             fila.put("idConvocatoria", convocatoria.getIdConvocatoria());
             fila.put("fechaInicio", convocatoria.getFechaInicio());
             fila.put("fechaFin", convocatoria.getFechaFin());
+            fila.put("fechaLimiteAutorizacion", convocatoria.getFechaLimiteAutorizacion());
+            fila.put("fechaLimiteAplicacion", convocatoria.getFechaLimiteAplicacion());
             fila.put("periodo", convocatoria.getPeriodo());
             fila.put("anio", convocatoria.getAnio());
             fila.put("activa", convocatoria.isActiva());
@@ -132,7 +134,8 @@ public class SolicitudAdminController {
         }
         respuesta.put("respuestas", respuestas);
         respuesta.put("deduccion", deduccionJson(detalle.getDeduccion()));
-        // Sin procedimiento de historial en la BD actual (se cubre en la Fase 3).
+        // Sin procedimiento de historial en la BD actual (listar_historial_solicitud
+        // / listar_historial_deduccion no existen todavia, ver integracion-bd.md #14).
         respuesta.put("historial", new ArrayList<Object>());
         return ResponseEntity.ok(respuesta);
     }
@@ -179,6 +182,13 @@ public class SolicitudAdminController {
         return resolverRechazo(id, body, csrfHeader, request);
     }
 
+    // TODO(#8 - decidir con el equipo de BD): /correccion es un alias literal de
+    // /rechazar (resolverRechazo); la BD solo tiene una transicion a RECHAZADO(3),
+    // no existe un estatus de "correccion" distinto. El frontend actual solo
+    // invoca /rechazar, nunca /correccion. Opciones:
+    //   a) Mantenerlo como alias documentado (sin cambios de comportamiento).
+    //   b) Retirar el endpoint ya que nadie lo usa hoy.
+    // Pendiente de acuerdo con el equipo de BD/producto; no se decide aqui.
     @PutMapping("/solicitudes/{id}/correccion")
     public ResponseEntity<?> correccion(@PathVariable("id") long id,
             @RequestBody(required = false) ComentarioRequest body,
@@ -203,6 +213,22 @@ public class SolicitudAdminController {
         String comentario = body == null ? null : body.getComentario();
         solicitudAdminService.cancelarDeduccion(principal.getIdentity(), id, comentario);
         return ResponseEntity.ok(mensaje("Deduccion cancelada correctamente."));
+    }
+
+    @PutMapping("/deducciones/{id}/aplicar")
+    public ResponseEntity<?> aplicarDeduccion(@PathVariable("id") long id,
+            @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
+            HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (!SessionAttributes.validCsrf(session, csrfHeader)) {
+            return csrfInvalido();
+        }
+        SessionPrincipal principal = administrador(request);
+        if (principal == null) {
+            return noAutorizado();
+        }
+        solicitudAdminService.aplicarDeduccion(principal.getIdentity(), id);
+        return ResponseEntity.ok(mensaje("Deduccion aplicada correctamente."));
     }
 
     @ExceptionHandler(ReglaNegocioException.class)

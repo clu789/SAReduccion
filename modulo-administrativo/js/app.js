@@ -279,6 +279,7 @@ const ESTATUS_BADGE = {
   RECHAZADO:  'badge-rechazado',
   CANCELADO:  'badge-cancelado',
   APLICADO:   'badge-aplicado',
+  RETIRADO:   'badge-retirado',
 };
 
 const ESTATUS_ICONO = {
@@ -287,6 +288,7 @@ const ESTATUS_ICONO = {
   RECHAZADO:  { clase: 'rechazado',  icon: 'fa-times' },
   CANCELADO:  { clase: 'cancelado',  icon: 'fa-ban' },
   APLICADO:   { clase: 'aplicado',   icon: 'fa-flag-checkered' },
+  RETIRADO:   { clase: 'retirado',   icon: 'fa-undo' },
 };
 
 const PanelAdmin = {
@@ -366,6 +368,7 @@ const PanelAdmin = {
       this.actualizarContador('stat-pendiente',  stats.pendiente  ?? 0);
       this.actualizarContador('stat-autorizado', stats.autorizado ?? 0);
       this.actualizarContador('stat-rechazado',  stats.rechazado  ?? 0);
+      this.actualizarContador('stat-retirado',   stats.retirado   ?? 0);
     } catch (err) {
       console.warn('No se pudieron cargar estadísticas:', err.message);
     }
@@ -689,28 +692,36 @@ const PanelAdmin = {
   /* ── Muestra u oculta botones según el estatus de la solicitud ── */
   ajustarAcciones(solicitud) {
     const botones = {
-      aprobar:  document.getElementById('btn-aprobar'),
-      rechazar: document.getElementById('btn-rechazar'),
-      cancelar: document.getElementById('btn-cancelar-deduccion'),
+      aprobar:     document.getElementById('btn-aprobar'),
+      rechazar:    document.getElementById('btn-rechazar'),
+      reautorizar: document.getElementById('btn-reautorizar'),
+      cancelar:    document.getElementById('btn-cancelar-deduccion'),
+      aplicar:     document.getElementById('btn-aplicar-deduccion'),
     };
     const grupoComentario = document.getElementById('grupo-comentario');
     const areaDecision = document.getElementById('area-decision');
 
     const esPendiente  = solicitud.estatus === 'PENDIENTE';
+    const esCancelado  = solicitud.estatus === 'CANCELADO';
     const esAutorizado = solicitud.estatus === 'AUTORIZADO' && solicitud.deduccion;
 
     Object.values(botones).forEach(b => { if (b) b.style.display = 'none'; });
     if (grupoComentario) grupoComentario.style.display = 'none';
-    if (areaDecision) areaDecision.style.display = (esPendiente || esAutorizado) ? '' : 'none';
+    if (areaDecision) areaDecision.style.display = (esPendiente || esCancelado || esAutorizado) ? '' : 'none';
 
     if (esPendiente) {
       if (botones.aprobar)  botones.aprobar.style.display = '';
       if (botones.rechazar) botones.rechazar.style.display = '';
       if (grupoComentario)  grupoComentario.style.display = '';
     }
-    if (esAutorizado && botones.cancelar) {
-      botones.cancelar.style.display = '';
-      if (grupoComentario) grupoComentario.style.display = '';
+    if (esCancelado) {
+      if (botones.reautorizar) botones.reautorizar.style.display = '';
+      if (grupoComentario)     grupoComentario.style.display = '';
+    }
+    if (esAutorizado) {
+      if (botones.cancelar) botones.cancelar.style.display = '';
+      if (botones.aplicar)  botones.aplicar.style.display = '';
+      if (grupoComentario)  grupoComentario.style.display = '';
     }
   },
 
@@ -723,22 +734,42 @@ const PanelAdmin = {
     Alerta.limpiar('alerta-decision');
   },
 
-  /* ── Decisión: Aprobar ── */
+  /* ── Decisión: Aprobar (PENDIENTE) o Reautorizar (CANCELADO) ──
+     Ambas pegan al mismo endpoint /aprobar: es la misma operación de BD
+     (autorizar_deduccion), solo cambia el texto mostrado en el panel. ── */
   async aprobar() {
+    return this._autorizarComun(
+      '¿Confirma la aprobación de esta solicitud? Se autorizará la deducción.',
+      'Solicitud aprobada correctamente.'
+    );
+  },
+
+  async reautorizar() {
+    return this._autorizarComun(
+      '¿Confirma reautorizar la deducción de esta solicitud cancelada?',
+      'Deducción reautorizada correctamente.'
+    );
+  },
+
+  async _autorizarComun(mensajeConfirm, mensajeExito) {
     if (!this._solicitudActual) return;
-    if (!confirm('¿Confirma la aprobación de esta solicitud? Se autorizará la deducción.')) return;
+    const comentario = document.getElementById('comentario-correccion')?.value?.trim();
+    if (!comentario) {
+      Alerta.mostrar('alerta-decision', 'advertencia', 'Escriba un comentario para continuar.');
+      return;
+    }
+    if (!confirm(mensajeConfirm)) return;
 
     const idActual = this._solicitudActual.idSolicitud;
     Spinner.show();
     try {
-      const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
       await Http.put(`/solicitudes/${idActual}/aprobar`, { comentario });
       this.cerrarDetalle();
-      Alerta.mostrar('alerta-bandeja', 'exito', 'Solicitud aprobada correctamente.', 4000);
+      Alerta.mostrar('alerta-bandeja', 'exito', mensajeExito, 4000);
       await this.cargarSolicitudes();
       await this.cargarEstadisticas();
     } catch (err) {
-      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo aprobar la solicitud.');
+      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo completar la operación.');
     } finally {
       Spinner.hide();
     }
@@ -788,6 +819,27 @@ const PanelAdmin = {
       await this.cargarEstadisticas();
     } catch (err) {
       Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo cancelar la deducción.');
+    } finally {
+      Spinner.hide();
+    }
+  },
+
+  /* ── Decisión: Aplicar una deducción autorizada (estado definitivo) ──
+     No exige comentario: aplicar_deduccion no lo recibe en la BD. ── */
+  async aplicarDeduccion() {
+    if (!this._solicitudActual || !this._solicitudActual.deduccion) return;
+    if (!confirm('¿Confirma aplicar esta deducción? La solicitud pasará a APLICADO y no podrá modificarse.')) return;
+
+    const idDeduccion = this._solicitudActual.deduccion.idDeduccion;
+    Spinner.show();
+    try {
+      await Http.put(`/deducciones/${idDeduccion}/aplicar`, {});
+      this.cerrarDetalle();
+      Alerta.mostrar('alerta-bandeja', 'exito', 'Deducción aplicada correctamente.', 4000);
+      await this.cargarSolicitudes();
+      await this.cargarEstadisticas();
+    } catch (err) {
+      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo aplicar la deducción.');
     } finally {
       Spinner.hide();
     }
