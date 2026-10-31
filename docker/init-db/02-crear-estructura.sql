@@ -4,7 +4,7 @@
 -- Define la estructura y las reglas de integridad del sistema.
 --
 -- OBJETIVO
---   Crear 21 tablas, 15 secuencias, triggers, índices y catálogos base.
+--   Crear 22 tablas, 16 secuencias, triggers, índices y catálogos base.
 --   Este archivo NO crea cuentas ni concede permisos a otros perfiles.
 --
 -- EJECUCIÓN
@@ -19,6 +19,9 @@
 --   * En Oracle, el DDL confirma transacciones implícitamente: un fallo a mitad
 --     de ejecución NO revierte las tablas creadas previamente.
 --   * Revisar los errores de compilación de triggers en la salida.
+--   * Las reglas de negocio se completan con los paquetes de
+--     05-crear-paquetes-permisos.sql; sin ellos el esquema no debe recibir
+--     operaciones de la aplicación.
 --   * Requiere ejecutarse con SET SQLBLANKLINES ON (lo aplica init-db.sh),
 --     porque el archivo contiene líneas en blanco dentro de bloques PL/SQL.
 -- ============================================================================
@@ -65,27 +68,28 @@ END;
 -- TABLA PERIODOS: Catálogo de periodos académicos utilizado por convocatorias y aspirantes.
 -- ------------------------------------------------------------------------
 CREATE TABLE Periodos (
-    idPeriodo        NUMBER(2)     CONSTRAINT pk_periodos PRIMARY KEY,
-    Descripcion      VARCHAR2(50)  NOT NULL,
-    CONSTRAINT uk_periodos_descripcion UNIQUE (Descripcion)
+    id_periodo        NUMBER(2)     CONSTRAINT pk_periodos PRIMARY KEY,
+    descripcion       VARCHAR2(50)  NOT NULL,
+    CONSTRAINT uk_periodos_descripcion UNIQUE (descripcion)
 );
 
 -- ------------------------------------------------------------------------
 -- TABLA TIPO_SOLICITUDES: Clasificación de los tipos de solicitud disponibles.
 -- ------------------------------------------------------------------------
 CREATE TABLE Tipo_Solicitudes (
-    id_Tipo_Solicitud NUMBER(10)    CONSTRAINT pk_tipo_solicitudes PRIMARY KEY,
-    Nombre            VARCHAR2(50)  NOT NULL,
-    Descripcion       VARCHAR2(200)
+    id_tipo_solicitud NUMBER(10)    CONSTRAINT pk_tipo_solicitudes PRIMARY KEY,
+    nombre            VARCHAR2(50)  NOT NULL,
+    descripcion       VARCHAR2(200)
 );
 
 -- ------------------------------------------------------------------------
 -- TABLA TIPO_PREGUNTAS: Catálogo de modalidades de preguntas para formularios.
 -- ------------------------------------------------------------------------
 CREATE TABLE Tipo_Preguntas (
-    id_Tipo_Pregunta NUMBER(10)    CONSTRAINT pk_tipo_preguntas PRIMARY KEY,
-    Nombre           VARCHAR2(50)  NOT NULL,
-    CONSTRAINT uk_tipo_preguntas_nombre UNIQUE (Nombre)
+    id_tipo_pregunta NUMBER(10)    CONSTRAINT pk_tipo_preguntas PRIMARY KEY,
+    nombre           VARCHAR2(50)  NOT NULL,
+    descripcion      VARCHAR2(400) NOT NULL,
+    CONSTRAINT uk_tipo_preguntas_nombre UNIQUE (nombre)
 );
 
 -- ------------------------------------------------------------------------
@@ -93,19 +97,19 @@ CREATE TABLE Tipo_Preguntas (
 -- ------------------------------------------------------------------------
 CREATE TABLE Estatus_Solicitudes (
     id_estatus_solicitud NUMBER(10)    CONSTRAINT pk_estatus_solicitudes PRIMARY KEY,
-    Nombre               VARCHAR2(100) NOT NULL,
-    Descripcion          VARCHAR2(200),
-    CONSTRAINT uk_estatus_solicitudes_nombre UNIQUE (Nombre)
+    nombre               VARCHAR2(100) NOT NULL,
+    descripcion          VARCHAR2(200),
+    CONSTRAINT uk_estatus_solicitudes_nombre UNIQUE (nombre)
 );
 
 -- ------------------------------------------------------------------------
 -- TABLA ESTATUS_DEDUCCIONES: Estados posibles de una deducción autorizada.
 -- ------------------------------------------------------------------------
 CREATE TABLE Estatus_Deducciones (
-    id_Estatus_Deducciones NUMBER(10)   CONSTRAINT pk_estatus_deducciones PRIMARY KEY,
-    Nombre                 VARCHAR2(50) NOT NULL,
-    Descripcion            VARCHAR2(100),
-    CONSTRAINT uk_estatus_deducciones_nombre UNIQUE (Nombre)
+    id_estatus_deducciones NUMBER(10)   CONSTRAINT pk_estatus_deducciones PRIMARY KEY,
+    nombre                 VARCHAR2(50) NOT NULL,
+    descripcion            VARCHAR2(300),
+    CONSTRAINT uk_estatus_deducciones_nombre UNIQUE (nombre)
 );
 
 -- ================================================================
@@ -116,34 +120,34 @@ CREATE TABLE Estatus_Deducciones (
 -- TABLA ESTUDIANTES: Datos de estudiantes identificados por número de control.
 -- ------------------------------------------------------------------------
 CREATE TABLE Estudiantes (
-    Numero_Control   VARCHAR2(10)  CONSTRAINT pk_estudiantes PRIMARY KEY,
-    Nombre           VARCHAR2(50)  NOT NULL,
-    PrimerAppellido  VARCHAR2(50)  NOT NULL,
-    SegundoApellido  VARCHAR2(50),
-    Carrera          VARCHAR2(100),
-    Semestre         NUMBER(2),
-    CONSTRAINT ck_estudiantes_semestre CHECK (Semestre IS NULL OR Semestre BETWEEN 1 AND 20)
+    numero_control   VARCHAR2(10)  CONSTRAINT pk_estudiantes PRIMARY KEY,
+    nombre           VARCHAR2(50)  NOT NULL,
+    primer_apellido  VARCHAR2(50)  NOT NULL,
+    segundo_apellido VARCHAR2(50),
+    carrera          VARCHAR2(100),
+    semestre         NUMBER(2),
+    CONSTRAINT ck_estudiantes_semestre CHECK (semestre IS NULL OR semestre BETWEEN 1 AND 20)
 );
 
 -- ------------------------------------------------------------------------
 -- TABLA ASPIRANTES: Datos de aspirantes identificados por ficha, periodo y año.
 -- ------------------------------------------------------------------------
 CREATE TABLE Aspirantes (
-    ficha           VARCHAR2(18)  NOT NULL,
-    periodo         NUMBER(2)     NOT NULL,
-    anio            NUMBER(4)     NOT NULL,
-    Nombre          VARCHAR2(50)  NOT NULL,
-    PrimerApellido  VARCHAR2(50)  NOT NULL,
-    SegundoApellido VARCHAR2(50),
-    Semestre        NUMBER(2),
-    Curp            VARCHAR2(18)  NOT NULL,
-    correo          VARCHAR2(254) NOT NULL,
+    ficha            VARCHAR2(18)  NOT NULL,
+    periodo          NUMBER(2)     NOT NULL,
+    anio             NUMBER(4)     NOT NULL,
+    nombre           VARCHAR2(50)  NOT NULL,
+    primer_apellido  VARCHAR2(50)  NOT NULL,
+    segundo_apellido VARCHAR2(50),
+    semestre         NUMBER(2),
+    curp             VARCHAR2(18)  NOT NULL,
+    correo           VARCHAR2(254) NOT NULL,
     CONSTRAINT pk_aspirantes PRIMARY KEY (ficha, periodo, anio),
     CONSTRAINT fk_aspirante_periodo
-        FOREIGN KEY (periodo) REFERENCES Periodos(idPeriodo),
+        FOREIGN KEY (periodo) REFERENCES Periodos(id_periodo),
     CONSTRAINT ck_aspirantes_anio CHECK (anio BETWEEN 2000 AND 2200),
-    CONSTRAINT ck_aspirantes_curp CHECK (LENGTH(Curp) = 18),
-    CONSTRAINT ck_aspirantes_semestre CHECK (Semestre IS NULL OR Semestre BETWEEN 1 AND 20),
+    CONSTRAINT ck_aspirantes_curp CHECK (LENGTH(curp) = 18),
+    CONSTRAINT ck_aspirantes_semestre CHECK (semestre IS NULL OR semestre BETWEEN 1 AND 20),
     CONSTRAINT ck_aspirantes_correo CHECK (
         REGEXP_LIKE(
             correo,
@@ -156,10 +160,10 @@ CREATE TABLE Aspirantes (
 -- TABLA ADMINISTRADORES: Datos del personal administrador.
 -- ------------------------------------------------------------------------
 CREATE TABLE Administradores (
-    idAdministrador VARCHAR2(10) CONSTRAINT pk_administradores PRIMARY KEY,
-    Nombre          VARCHAR2(50) NOT NULL,
-    PrimerApellido  VARCHAR2(50) NOT NULL,
-    SegundoApellido VARCHAR2(50)
+    id_administrador VARCHAR2(10) CONSTRAINT pk_administradores PRIMARY KEY,
+    nombre           VARCHAR2(50) NOT NULL,
+    primer_apellido  VARCHAR2(50) NOT NULL,
+    segundo_apellido VARCHAR2(50)
 );
 
 -- ================================================================
@@ -170,16 +174,45 @@ CREATE TABLE Administradores (
 -- TABLA CONVOCATORIAS: Periodos de apertura y cierre de solicitudes.
 -- ------------------------------------------------------------------------
 CREATE TABLE Convocatorias (
-    id_convocatoria NUMBER(10) CONSTRAINT pk_convocatorias PRIMARY KEY,
-    fecha_inicio    DATE       NOT NULL,
-    fecha_fin       DATE       NOT NULL,
-    id_periodo      NUMBER(2)  NOT NULL,
-    anio            NUMBER(4)  NOT NULL,
+    id_convocatoria             NUMBER(10)   CONSTRAINT pk_convocatorias PRIMARY KEY,
+    fecha_inicio_solicitudes    DATE         NOT NULL,
+    fecha_fin_solicitudes       DATE         NOT NULL,
+    fecha_limite_autorizacion   DATE         NOT NULL,
+    fecha_limite_aplicacion     DATE         NOT NULL,
+    id_periodo                  NUMBER(2)    NOT NULL,
+    anio                        NUMBER(4)    NOT NULL,
     CONSTRAINT fk_convocatoria_periodo
-        FOREIGN KEY (id_periodo) REFERENCES Periodos(idPeriodo),
-    CONSTRAINT ck_convocatoria_fechas CHECK (fecha_fin >= fecha_inicio),
+        FOREIGN KEY (id_periodo) REFERENCES Periodos(id_periodo),
+    CONSTRAINT ck_convocatoria_fechas CHECK (
+        TRUNC(fecha_inicio_solicitudes) <= TRUNC(fecha_fin_solicitudes)
+        AND TRUNC(fecha_fin_solicitudes) <= TRUNC(fecha_limite_autorizacion)
+        AND TRUNC(fecha_limite_autorizacion) <= TRUNC(fecha_limite_aplicacion)
+    ),
     CONSTRAINT ck_convocatoria_anio CHECK (anio BETWEEN 2000 AND 2200),
     CONSTRAINT uk_convocatoria_periodo_anio UNIQUE (id_periodo, anio)
+);
+
+-- ------------------------------------------------------------------------
+-- TABLA HISTORIAL_CONVOCATORIAS: conserva cambios confirmados de las cuatro
+-- fechas. La creación inicial no produce historial. No almacena comentarios.
+-- ------------------------------------------------------------------------
+CREATE TABLE Historial_Convocatorias (
+    id_historial_convocatoria  NUMBER(10)   CONSTRAINT pk_historial_conv PRIMARY KEY,
+    id_convocatoria            NUMBER(10)   NOT NULL,
+    id_administrador           VARCHAR2(10) NOT NULL,
+    fecha_registro             DATE         DEFAULT SYSDATE NOT NULL,
+    inicio_anterior            DATE         NOT NULL,
+    fin_anterior               DATE         NOT NULL,
+    autorizacion_anterior      DATE         NOT NULL,
+    aplicacion_anterior        DATE         NOT NULL,
+    inicio_nuevo               DATE         NOT NULL,
+    fin_nuevo                  DATE         NOT NULL,
+    autorizacion_nueva         DATE         NOT NULL,
+    aplicacion_nueva           DATE         NOT NULL,
+    CONSTRAINT fk_hconv_conv FOREIGN KEY (id_convocatoria)
+        REFERENCES Convocatorias(id_convocatoria),
+    CONSTRAINT fk_hconv_admin FOREIGN KEY (id_administrador)
+        REFERENCES Administradores(id_administrador)
 );
 
 -- ------------------------------------------------------------------------
@@ -187,14 +220,14 @@ CREATE TABLE Convocatorias (
 -- ------------------------------------------------------------------------
 CREATE TABLE Convocatorias_TipoSolicitudes (
     id_convocatoria         NUMBER(10)   NOT NULL,
-    id_Tipo_Solicitud       NUMBER(10)   NOT NULL,
+    id_tipo_solicitud       NUMBER(10)   NOT NULL,
     monto_deduccion         NUMBER(10,2) NOT NULL,
     fecha_asignacion_montos DATE DEFAULT SYSDATE NOT NULL,
-    CONSTRAINT pk_conv_tipo_sol PRIMARY KEY (id_convocatoria, id_Tipo_Solicitud),
+    CONSTRAINT pk_conv_tipo_sol PRIMARY KEY (id_convocatoria, id_tipo_solicitud),
     CONSTRAINT fk_cts_convocatoria
         FOREIGN KEY (id_convocatoria) REFERENCES Convocatorias(id_convocatoria),
     CONSTRAINT fk_cts_tipo_solicitud
-        FOREIGN KEY (id_Tipo_Solicitud) REFERENCES Tipo_Solicitudes(id_Tipo_Solicitud),
+        FOREIGN KEY (id_tipo_solicitud) REFERENCES Tipo_Solicitudes(id_tipo_solicitud),
     CONSTRAINT ck_cts_monto_deduccion CHECK (monto_deduccion >= 0)
 );
 
@@ -206,25 +239,26 @@ CREATE TABLE Convocatorias_TipoSolicitudes (
 -- TABLA FORMULARIOS: Formularios vinculados al proceso de solicitud.
 -- ------------------------------------------------------------------------
 CREATE TABLE Formularios (
-    idFormulario      NUMBER(10)    CONSTRAINT pk_formularios PRIMARY KEY,
-    Nombre            VARCHAR2(100) NOT NULL,
-    Descripcion       VARCHAR2(200),
-    id_Tipo_Solicitud NUMBER(10)    NOT NULL,
+    id_formulario      NUMBER(10)    CONSTRAINT pk_formularios PRIMARY KEY,
+    nombre             VARCHAR2(100) NOT NULL,
+    descripcion        VARCHAR2(200),
+    instrucciones      VARCHAR2(4000),
+    id_tipo_solicitud  NUMBER(10)    NOT NULL,
     CONSTRAINT fk_formulario_tipo_solicitud
-        FOREIGN KEY (id_Tipo_Solicitud) REFERENCES Tipo_Solicitudes(id_Tipo_Solicitud),
-    CONSTRAINT uk_formulario_tipo_solicitud UNIQUE (id_Tipo_Solicitud)
+        FOREIGN KEY (id_tipo_solicitud) REFERENCES Tipo_Solicitudes(id_tipo_solicitud),
+    CONSTRAINT uk_formulario_tipo_solicitud UNIQUE (id_tipo_solicitud)
 );
 
 -- ------------------------------------------------------------------------
 -- TABLA PREGUNTAS: Banco de preguntas que pueden formar parte de formularios.
 -- ------------------------------------------------------------------------
 CREATE TABLE Preguntas (
-    idPregunta     NUMBER(10)     CONSTRAINT pk_preguntas PRIMARY KEY,
-    texto_Pregunta VARCHAR2(4000) NOT NULL,
-    obligatoria    CHAR(1)        DEFAULT 'S' NOT NULL,
-    tipo_pregunta  NUMBER(10)     NOT NULL,
+    id_pregunta     NUMBER(10)     CONSTRAINT pk_preguntas PRIMARY KEY,
+    texto_pregunta  VARCHAR2(4000) NOT NULL,
+    obligatoria     CHAR(1)        DEFAULT 'S' NOT NULL,
+    tipo_pregunta   NUMBER(10)     NOT NULL,
     CONSTRAINT fk_pregunta_tipo
-        FOREIGN KEY (tipo_pregunta) REFERENCES Tipo_Preguntas(id_Tipo_Pregunta),
+        FOREIGN KEY (tipo_pregunta) REFERENCES Tipo_Preguntas(id_tipo_pregunta),
     CONSTRAINT ck_pregunta_obligatoria CHECK (obligatoria IN ('S','N'))
 );
 
@@ -232,15 +266,15 @@ CREATE TABLE Preguntas (
 -- TABLA FORMULARIO_PREGUNTAS: Relación de preguntas asignadas a formularios.
 -- ------------------------------------------------------------------------
 CREATE TABLE Formulario_Preguntas (
-    idFormulario NUMBER(10) NOT NULL,
-    idPregunta   NUMBER(10) NOT NULL,
-    orden        NUMBER(5)  NOT NULL,
-    CONSTRAINT pk_formulario_preguntas PRIMARY KEY (idFormulario, idPregunta),
+    id_formulario NUMBER(10) NOT NULL,
+    id_pregunta   NUMBER(10) NOT NULL,
+    orden         NUMBER(5)  NOT NULL,
+    CONSTRAINT pk_formulario_preguntas PRIMARY KEY (id_formulario, id_pregunta),
     CONSTRAINT fk_fp_formulario
-        FOREIGN KEY (idFormulario) REFERENCES Formularios(idFormulario),
+        FOREIGN KEY (id_formulario) REFERENCES Formularios(id_formulario),
     CONSTRAINT fk_fp_pregunta
-        FOREIGN KEY (idPregunta) REFERENCES Preguntas(idPregunta),
-    CONSTRAINT uk_fp_orden UNIQUE (idFormulario, orden),
+        FOREIGN KEY (id_pregunta) REFERENCES Preguntas(id_pregunta),
+    CONSTRAINT uk_fp_orden UNIQUE (id_formulario, orden),
     CONSTRAINT ck_fp_orden CHECK (orden > 0)
 );
 
@@ -248,12 +282,14 @@ CREATE TABLE Formulario_Preguntas (
 -- TABLA OPCIONES: Opciones de respuesta asociadas a preguntas.
 -- ------------------------------------------------------------------------
 CREATE TABLE Opciones (
-    id_opcion    NUMBER(10)    CONSTRAINT pk_opciones PRIMARY KEY,
-    texto_opcion VARCHAR2(255) NOT NULL,
-    orden        NUMBER(5)     NOT NULL,
-    id_pregunta  NUMBER(10)    NOT NULL,
+    id_opcion               NUMBER(10)    CONSTRAINT pk_opciones PRIMARY KEY,
+    texto_opcion            VARCHAR2(255) NOT NULL,
+    orden                   NUMBER(5)     NOT NULL,
+    id_pregunta             NUMBER(10)    NOT NULL,
+    requiere_especificacion NUMBER(1) DEFAULT 0 NOT NULL,
+    CONSTRAINT ck_opcion_especificacion CHECK (requiere_especificacion IN (0,1)),
     CONSTRAINT fk_opcion_pregunta
-        FOREIGN KEY (id_pregunta) REFERENCES Preguntas(idPregunta),
+        FOREIGN KEY (id_pregunta) REFERENCES Preguntas(id_pregunta),
     CONSTRAINT uk_opcion_orden UNIQUE (id_pregunta, orden),
     CONSTRAINT ck_opcion_orden CHECK (orden > 0)
 );
@@ -288,17 +324,17 @@ CREATE TABLE Monto_Reinscripciones (
 -- Cada solicitud pertenece exclusivamente a un estudiante o aspirante.
 -- ------------------------------------------------------------------------
 CREATE TABLE Solicitudes (
-    idSolicitud          NUMBER(10) CONSTRAINT pk_solicitudes PRIMARY KEY,
+    id_solicitud         NUMBER(10) CONSTRAINT pk_solicitudes PRIMARY KEY,
     id_estatus_solicitud NUMBER(10) NOT NULL,
     id_convocatoria      NUMBER(10) NOT NULL,
     num_control          VARCHAR2(10),
     ficha                VARCHAR2(18),
     periodo              NUMBER(2),
     anio                 NUMBER(4),
-    fecha_Solicitud      DATE DEFAULT SYSDATE NOT NULL,
+    fecha_solicitud      DATE DEFAULT SYSDATE NOT NULL,
     fecha_actualizacion  DATE DEFAULT SYSDATE NOT NULL,
-    id_Tipo_Solicitud    NUMBER(10) NOT NULL,
-    idFormulario         NUMBER(10) NOT NULL,
+    id_tipo_solicitud    NUMBER(10) NOT NULL,
+    id_formulario        NUMBER(10) NOT NULL,
 
     CONSTRAINT fk_solicitud_estatus
         FOREIGN KEY (id_estatus_solicitud)
@@ -310,19 +346,19 @@ CREATE TABLE Solicitudes (
 
     CONSTRAINT fk_solicitud_estudiante
         FOREIGN KEY (num_control)
-        REFERENCES Estudiantes(Numero_Control),
+        REFERENCES Estudiantes(numero_control),
 
     CONSTRAINT fk_solicitud_aspirante
         FOREIGN KEY (ficha, periodo, anio)
         REFERENCES Aspirantes(ficha, periodo, anio),
 
     CONSTRAINT fk_solicitud_tipo
-        FOREIGN KEY (id_Tipo_Solicitud)
-        REFERENCES Tipo_Solicitudes(id_Tipo_Solicitud),
+        FOREIGN KEY (id_tipo_solicitud)
+        REFERENCES Tipo_Solicitudes(id_tipo_solicitud),
 
     CONSTRAINT fk_solicitud_formulario
-        FOREIGN KEY (idFormulario)
-        REFERENCES Formularios(idFormulario),
+        FOREIGN KEY (id_formulario)
+        REFERENCES Formularios(id_formulario),
 
     -- Garantiza que la solicitud pertenezca a un estudiante o aspirante,
     -- pero nunca a ambos simultáneamente.
@@ -382,9 +418,9 @@ CREATE TABLE Respuestas (
     id_pregunta     NUMBER(10) NOT NULL,
     id_opcion       NUMBER(10),
     CONSTRAINT fk_respuesta_solicitud
-        FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(idSolicitud),
+        FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(id_solicitud),
     CONSTRAINT fk_respuesta_pregunta
-        FOREIGN KEY (id_pregunta) REFERENCES Preguntas(idPregunta),
+        FOREIGN KEY (id_pregunta) REFERENCES Preguntas(id_pregunta),
     CONSTRAINT fk_respuesta_opcion
         FOREIGN KEY (id_opcion) REFERENCES Opciones(id_opcion)
 );
@@ -402,19 +438,23 @@ CREATE UNIQUE INDEX ux_respuesta_solicitud_pregunta
 CREATE TABLE Historial_Solicitudes (
     id_historial       NUMBER(10) CONSTRAINT pk_historial_solicitudes PRIMARY KEY,
     comentario         VARCHAR2(500),
-    fecha_Registro     DATE DEFAULT SYSDATE NOT NULL,
+    fecha_registro     DATE DEFAULT SYSDATE NOT NULL,
     id_solicitud       NUMBER(10) NOT NULL,
     id_estatus         NUMBER(10) NOT NULL,
     id_administrador   VARCHAR2(10),
-    id_Tipo_solicitud  NUMBER(10) NOT NULL,
+    id_tipo_solicitud  NUMBER(10) NOT NULL,
     CONSTRAINT fk_hs_solicitud
-        FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(idSolicitud),
+        FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(id_solicitud),
     CONSTRAINT fk_hs_estatus
         FOREIGN KEY (id_estatus) REFERENCES Estatus_Solicitudes(id_estatus_solicitud),
     CONSTRAINT fk_hs_administrador
-        FOREIGN KEY (id_administrador) REFERENCES Administradores(idAdministrador),
+        FOREIGN KEY (id_administrador) REFERENCES Administradores(id_administrador),
     CONSTRAINT fk_hs_tipo_solicitud
-        FOREIGN KEY (id_Tipo_solicitud) REFERENCES Tipo_Solicitudes(id_Tipo_Solicitud)
+        FOREIGN KEY (id_tipo_solicitud) REFERENCES Tipo_Solicitudes(id_tipo_solicitud),
+    CONSTRAINT chk_historial_administrador CHECK (
+        (id_estatus IN (1,6) AND id_administrador IS NULL)
+        OR (id_estatus IN (2,3,4,5) AND id_administrador IS NOT NULL)
+    )
 );
 
 -- ================================================================
@@ -431,24 +471,22 @@ CREATE TABLE Deducciones_autorizadas (
     fecha_registro          DATE DEFAULT SYSDATE NOT NULL,
     id_solicitud            NUMBER(10) NOT NULL,
     id_administrador        VARCHAR2(10),
-    fecha_autorizacion      DATE,
     id_convocatoria         NUMBER(10) NOT NULL,
-    id_Tipo_Solicitud       NUMBER(10) NOT NULL,
+    id_tipo_solicitud       NUMBER(10) NOT NULL,
     fecha_actualizacion     DATE DEFAULT SYSDATE NOT NULL,
-    comentario              VARCHAR2(500),
     id_monto_inscripcion    NUMBER(10),
     id_monto_reinscripcion  NUMBER(10),
     monto_pago              NUMBER(10,2) NOT NULL,
     monto_deduccion         NUMBER(10,2) NOT NULL,
     CONSTRAINT fk_da_estatus
-        FOREIGN KEY (estatus_deduccion) REFERENCES Estatus_Deducciones(id_Estatus_Deducciones),
+        FOREIGN KEY (estatus_deduccion) REFERENCES Estatus_Deducciones(id_estatus_deducciones),
     CONSTRAINT fk_da_solicitud
-        FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(idSolicitud),
+        FOREIGN KEY (id_solicitud) REFERENCES Solicitudes(id_solicitud),
     CONSTRAINT fk_da_administrador
-        FOREIGN KEY (id_administrador) REFERENCES Administradores(idAdministrador),
+        FOREIGN KEY (id_administrador) REFERENCES Administradores(id_administrador),
     CONSTRAINT fk_da_cts
-        FOREIGN KEY (id_convocatoria, id_Tipo_Solicitud)
-        REFERENCES Convocatorias_TipoSolicitudes(id_convocatoria, id_Tipo_Solicitud),
+        FOREIGN KEY (id_convocatoria, id_tipo_solicitud)
+        REFERENCES Convocatorias_TipoSolicitudes(id_convocatoria, id_tipo_solicitud),
     CONSTRAINT fk_da_monto_inscripcion
         FOREIGN KEY (id_monto_inscripcion) REFERENCES Monto_Inscripciones(id_monto_inscripcion),
     CONSTRAINT fk_da_monto_reinscripcion
@@ -471,26 +509,31 @@ CREATE TABLE Deducciones_autorizadas (
 -- TABLA HISTORIAL_DEDUCCIONES: Historial de movimientos de las deducciones.
 -- ------------------------------------------------------------------------
 CREATE TABLE Historial_Deducciones (
-    id_Historial_Deduccion  NUMBER(10) CONSTRAINT pk_historial_deducciones PRIMARY KEY,
+    id_historial_deduccion  NUMBER(10) CONSTRAINT pk_historial_deducciones PRIMARY KEY,
     id_deduccion_autorizada NUMBER(10) NOT NULL,
     id_estatus              NUMBER(10) NOT NULL,
     id_administrador        VARCHAR2(10),
-    comentario              VARCHAR2(500),
+    id_tipo_solicitud       NUMBER(10) NOT NULL,
+    monto_pago              NUMBER(10,2) NOT NULL,
+    monto_deduccion         NUMBER(10,2) NOT NULL,
+    monto_final             NUMBER(10,2) NOT NULL,
     fecha_registro          DATE DEFAULT SYSDATE NOT NULL,
+    CONSTRAINT ck_hd_montos CHECK (monto_pago >= 0 AND monto_deduccion >= 0 AND monto_final = monto_pago - monto_deduccion),
+    CONSTRAINT fk_hd_tipo FOREIGN KEY (id_tipo_solicitud) REFERENCES Tipo_Solicitudes(id_tipo_solicitud),
     CONSTRAINT fk_hd_deduccion
         FOREIGN KEY (id_deduccion_autorizada) REFERENCES Deducciones_autorizadas(id_deduccion_autorizada),
     CONSTRAINT fk_hd_estatus
-        FOREIGN KEY (id_estatus) REFERENCES Estatus_Deducciones(id_Estatus_Deducciones),
+        FOREIGN KEY (id_estatus) REFERENCES Estatus_Deducciones(id_estatus_deducciones),
     CONSTRAINT fk_hd_administrador
-        FOREIGN KEY (id_administrador) REFERENCES Administradores(idAdministrador)
+        FOREIGN KEY (id_administrador) REFERENCES Administradores(id_administrador)
 );
 
 -- ================================================================
 -- SECUENCIAS
 -- ================================================================
 
--- Secuencia seq_tipo_solicitudes: proporciona identificadores automáticos para nuevos registros.
-CREATE SEQUENCE seq_tipo_solicitudes START WITH 1 INCREMENT BY 1;
+-- Secuencia seq_tipo_solicitudes: inicia en 3 porque este script inserta los ids 1 y 2.
+CREATE SEQUENCE seq_tipo_solicitudes START WITH 3 INCREMENT BY 1;
 -- Secuencia seq_tipo_preguntas: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_tipo_preguntas START WITH 4 INCREMENT BY 1;
 -- Secuencia seq_estatus_solicitudes: proporciona identificadores automáticos para nuevos registros.
@@ -499,8 +542,9 @@ CREATE SEQUENCE seq_estatus_solicitudes START WITH 6 INCREMENT BY 1;
 CREATE SEQUENCE seq_estatus_deducciones START WITH 6 INCREMENT BY 1;
 -- Secuencia seq_convocatorias: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_convocatorias START WITH 1 INCREMENT BY 1;
--- Secuencia seq_formularios: proporciona identificadores automáticos para nuevos registros.
-CREATE SEQUENCE seq_formularios START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE seq_historial_convocatorias START WITH 1 INCREMENT BY 1;
+-- Secuencia seq_formularios: inicia en 3 porque este script inserta los ids 1 y 2.
+CREATE SEQUENCE seq_formularios START WITH 3 INCREMENT BY 1;
 -- Secuencia seq_preguntas: proporciona identificadores automáticos para nuevos registros.
 CREATE SEQUENCE seq_preguntas START WITH 1 INCREMENT BY 1;
 -- Secuencia seq_opciones: proporciona identificadores automáticos para nuevos registros.
@@ -530,9 +574,9 @@ CREATE SEQUENCE seq_historial_deducciones START WITH 1 INCREMENT BY 1;
 CREATE OR REPLACE TRIGGER trg_tipo_solicitudes_bi
 BEFORE INSERT ON Tipo_Solicitudes
 FOR EACH ROW
-WHEN (NEW.id_Tipo_Solicitud IS NULL)
+WHEN (NEW.id_tipo_solicitud IS NULL)
 BEGIN
-    SELECT seq_tipo_solicitudes.NEXTVAL INTO :NEW.id_Tipo_Solicitud FROM dual;
+    SELECT seq_tipo_solicitudes.NEXTVAL INTO :NEW.id_tipo_solicitud FROM dual;
 END;
 /
 
@@ -542,9 +586,9 @@ END;
 CREATE OR REPLACE TRIGGER trg_tipo_preguntas_bi
 BEFORE INSERT ON Tipo_Preguntas
 FOR EACH ROW
-WHEN (NEW.id_Tipo_Pregunta IS NULL)
+WHEN (NEW.id_tipo_pregunta IS NULL)
 BEGIN
-    SELECT seq_tipo_preguntas.NEXTVAL INTO :NEW.id_Tipo_Pregunta FROM dual;
+    SELECT seq_tipo_preguntas.NEXTVAL INTO :NEW.id_tipo_pregunta FROM dual;
 END;
 /
 
@@ -566,9 +610,9 @@ END;
 CREATE OR REPLACE TRIGGER trg_estatus_deducciones_bi
 BEFORE INSERT ON Estatus_Deducciones
 FOR EACH ROW
-WHEN (NEW.id_Estatus_Deducciones IS NULL)
+WHEN (NEW.id_estatus_deducciones IS NULL)
 BEGIN
-    SELECT seq_estatus_deducciones.NEXTVAL INTO :NEW.id_Estatus_Deducciones FROM dual;
+    SELECT seq_estatus_deducciones.NEXTVAL INTO :NEW.id_estatus_deducciones FROM dual;
 END;
 /
 
@@ -585,14 +629,24 @@ END;
 /
 
 -- ------------------------------------------------------------------------
+-- TRIGGER trg_hist_convocatorias_bi: identificador del historial de fechas.
+CREATE OR REPLACE TRIGGER trg_hist_convocatorias_bi
+BEFORE INSERT ON Historial_Convocatorias FOR EACH ROW
+BEGIN
+    IF :NEW.id_historial_convocatoria IS NULL THEN
+        :NEW.id_historial_convocatoria := seq_historial_convocatorias.NEXTVAL;
+    END IF;
+END;
+/
+
 -- TRIGGER trg_formularios_bi: Asigna el siguiente identificador de su secuencia cuando no se proporciona uno.
 -- ------------------------------------------------------------------------
 CREATE OR REPLACE TRIGGER trg_formularios_bi
 BEFORE INSERT ON Formularios
 FOR EACH ROW
-WHEN (NEW.idFormulario IS NULL)
+WHEN (NEW.id_formulario IS NULL)
 BEGIN
-    SELECT seq_formularios.NEXTVAL INTO :NEW.idFormulario FROM dual;
+    SELECT seq_formularios.NEXTVAL INTO :NEW.id_formulario FROM dual;
 END;
 /
 
@@ -602,9 +656,9 @@ END;
 CREATE OR REPLACE TRIGGER trg_preguntas_bi
 BEFORE INSERT ON Preguntas
 FOR EACH ROW
-WHEN (NEW.idPregunta IS NULL)
+WHEN (NEW.id_pregunta IS NULL)
 BEGIN
-    SELECT seq_preguntas.NEXTVAL INTO :NEW.idPregunta FROM dual;
+    SELECT seq_preguntas.NEXTVAL INTO :NEW.id_pregunta FROM dual;
 END;
 /
 
@@ -650,9 +704,9 @@ END;
 CREATE OR REPLACE TRIGGER trg_solicitudes_bi
 BEFORE INSERT ON Solicitudes
 FOR EACH ROW
-WHEN (NEW.idSolicitud IS NULL)
+WHEN (NEW.id_solicitud IS NULL)
 BEGIN
-    SELECT seq_solicitudes.NEXTVAL INTO :NEW.idSolicitud FROM dual;
+    SELECT seq_solicitudes.NEXTVAL INTO :NEW.id_solicitud FROM dual;
 END;
 /
 
@@ -698,488 +752,299 @@ END;
 CREATE OR REPLACE TRIGGER trg_hist_deducciones_bi
 BEFORE INSERT ON Historial_Deducciones
 FOR EACH ROW
-WHEN (NEW.id_Historial_Deduccion IS NULL)
+WHEN (NEW.id_historial_deduccion IS NULL)
 BEGIN
-    SELECT seq_historial_deducciones.NEXTVAL INTO :NEW.id_Historial_Deduccion FROM dual;
+    SELECT seq_historial_deducciones.NEXTVAL INTO :NEW.id_historial_deduccion FROM dual;
 END;
 /
 
 -- ================================================================
--- TRIGGER: VALIDACIÓN DE SOLICITUD
+-- INICIO - REGLAS DE NEGOCIO VALIDADAS POR EL ESQUEMA
+-- Los triggers siguientes impiden estados, importes y fechas inválidos aunque
+-- el DML provenga del propietario del esquema: inmutabilidad de solicitudes y
+-- de deducciones aplicadas, transiciones de estado permitidas, correspondencia
+-- entre formulario, tipo y convocatoria, y convocatorias sin traslape.
+-- No sustituyen la autenticación ni la autorización del backend.
 -- ================================================================
 
--- ------------------------------------------------------------------------
--- TRIGGER trg_solicitudes_validacion: Comprueba que la convocatoria, el tipo de solicitud y el formulario sean compatibles con el solicitante.
--- ------------------------------------------------------------------------
+-- Impide cambiar el propietario, la convocatoria y la fecha de origen de una
+-- solicitud; exige que el formulario corresponda al tipo de solicitud, que el
+-- periodo del aspirante coincida con el de la convocatoria y que las
+-- transiciones de estado sigan la secuencia permitida.
 CREATE OR REPLACE TRIGGER trg_solicitudes_validacion
-BEFORE INSERT OR UPDATE ON Solicitudes
-FOR EACH ROW
+BEFORE INSERT OR UPDATE ON Solicitudes FOR EACH ROW
 DECLARE
-    v_tipo_formulario      Formularios.id_Tipo_Solicitud%TYPE;
-    v_periodo_convocatoria Convocatorias.id_periodo%TYPE;
-    v_anio_convocatoria    Convocatorias.anio%TYPE;
-    v_periodo_aspirante    Aspirantes.periodo%TYPE;
-    v_anio_aspirante       Aspirantes.anio%TYPE;
+    v_tipo NUMBER;
+    v_periodo NUMBER;
+    v_anio NUMBER;
 BEGIN
-    SELECT id_Tipo_Solicitud
-      INTO v_tipo_formulario
-      FROM Formularios
-     WHERE idFormulario = :NEW.idFormulario;
-
-    IF v_tipo_formulario <> :NEW.id_Tipo_Solicitud THEN
-        RAISE_APPLICATION_ERROR(
-            -20001,
-            'El formulario no corresponde al tipo de solicitud.'
-        );
+    SELECT id_tipo_solicitud INTO v_tipo FROM Formularios
+     WHERE id_formulario = :NEW.id_formulario;
+    IF v_tipo <> :NEW.id_tipo_solicitud THEN
+        RAISE_APPLICATION_ERROR(-20001,'El formulario no corresponde al tipo de solicitud');
     END IF;
-
-    IF :NEW.num_control IS NULL THEN
-        SELECT periodo, anio
-          INTO v_periodo_aspirante, v_anio_aspirante
-          FROM Aspirantes
-         WHERE ficha = :NEW.ficha
-           AND periodo = :NEW.periodo
-           AND anio = :NEW.anio;
-
-        SELECT id_periodo, anio
-          INTO v_periodo_convocatoria, v_anio_convocatoria
-          FROM Convocatorias
-         WHERE id_convocatoria = :NEW.id_convocatoria;
-
-        IF v_periodo_aspirante <> v_periodo_convocatoria
-           OR v_anio_aspirante <> v_anio_convocatoria THEN
-            RAISE_APPLICATION_ERROR(
-                -20003,
-                'El periodo y anio del aspirante deben coincidir con los de la convocatoria.'
-            );
+    SELECT id_periodo, anio INTO v_periodo, v_anio FROM Convocatorias
+     WHERE id_convocatoria = :NEW.id_convocatoria;
+    IF :NEW.ficha IS NOT NULL AND (:NEW.periodo <> v_periodo OR :NEW.anio <> v_anio) THEN
+        RAISE_APPLICATION_ERROR(-20003,'Periodo y anio del aspirante no coinciden con la convocatoria');
+    END IF;
+    IF UPDATING THEN
+        IF :OLD.id_estatus_solicitud = 5 THEN
+            RAISE_APPLICATION_ERROR(-20004,'Una solicitud APLICADO es inmutable');
+        END IF;
+        IF :OLD.id_convocatoria <> :NEW.id_convocatoria
+           OR NVL(:OLD.num_control,'#') <> NVL(:NEW.num_control,'#')
+           OR NVL(:OLD.ficha,'#') <> NVL(:NEW.ficha,'#')
+           OR NVL(:OLD.periodo,-1) <> NVL(:NEW.periodo,-1)
+           OR NVL(:OLD.anio,-1) <> NVL(:NEW.anio,-1)
+           OR :OLD.fecha_solicitud <> :NEW.fecha_solicitud THEN
+            RAISE_APPLICATION_ERROR(-20005,'No se permite cambiar propietario, convocatoria ni fecha de origen');
+        END IF;
+        IF :NEW.id_estatus_solicitud <> :OLD.id_estatus_solicitud THEN
+            IF NOT ((:OLD.id_estatus_solicitud=1 AND :NEW.id_estatus_solicitud IN (2,3,6))
+                OR (:OLD.id_estatus_solicitud IN (3,4,6) AND :NEW.id_estatus_solicitud=1)
+                OR (:OLD.id_estatus_solicitud=2 AND :NEW.id_estatus_solicitud IN (4,5))
+                OR (:OLD.id_estatus_solicitud=4 AND :NEW.id_estatus_solicitud=2)) THEN
+                RAISE_APPLICATION_ERROR(-20006,'Transicion de solicitud no permitida');
+            END IF;
+        END IF;
+        IF :NEW.id_tipo_solicitud <> :OLD.id_tipo_solicitud
+           OR :NEW.id_formulario <> :OLD.id_formulario THEN
+            IF :OLD.id_estatus_solicitud NOT IN (3,4,6)
+               OR :NEW.id_estatus_solicitud <> 1 THEN
+                RAISE_APPLICATION_ERROR(-20007,'El tipo/formulario solo cambia al reenviar');
+            END IF;
         END IF;
     END IF;
-
     :NEW.fecha_actualizacion := SYSDATE;
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(
-            -20002,
-            'El formulario, aspirante o convocatoria indicada no existe.'
-        );
 END;
 /
 
--- ================================================================
--- TRIGGER: VALIDACIÓN DE RESPUESTAS
--- ================================================================
-
--- ------------------------------------------------------------------------
--- TRIGGER trg_respuestas_validacion: Verifica que cada respuesta corresponda a una pregunta válida del formulario y respete su modalidad.
--- ------------------------------------------------------------------------
+-- Una respuesta debe corresponder al formulario y al tipo de pregunta.
+-- Las preguntas opcionales se omiten sin insertar fila.
 CREATE OR REPLACE TRIGGER trg_respuestas_validacion
-BEFORE INSERT OR UPDATE ON Respuestas
-FOR EACH ROW
+BEFORE INSERT OR UPDATE ON Respuestas FOR EACH ROW
 DECLARE
-    v_tipo_pregunta        Preguntas.tipo_pregunta%TYPE;
-    v_formulario_solicitud Solicitudes.idFormulario%TYPE;
-    v_pregunta_en_formulario NUMBER;
+    v_tipo NUMBER;
+    v_formulario NUMBER;
+    v_count NUMBER;
+    v_opcion_pregunta NUMBER;
+    v_especificacion NUMBER;
 BEGIN
-    SELECT tipo_pregunta
-      INTO v_tipo_pregunta
-      FROM Preguntas
-     WHERE idPregunta = :NEW.id_pregunta;
-
-    SELECT idFormulario
-      INTO v_formulario_solicitud
-      FROM Solicitudes
-     WHERE idSolicitud = :NEW.id_solicitud;
-
-    SELECT COUNT(*)
-      INTO v_pregunta_en_formulario
-      FROM Formulario_Preguntas
-     WHERE idFormulario = v_formulario_solicitud
-       AND idPregunta = :NEW.id_pregunta;
-
-    IF v_pregunta_en_formulario = 0 THEN
-        RAISE_APPLICATION_ERROR(
-            -20009,
-            'La pregunta no pertenece al formulario de la solicitud.'
-        );
-    END IF;
-
-    IF v_tipo_pregunta = 1 THEN
-        IF :NEW.texto_respuesta IS NULL OR :NEW.id_opcion IS NOT NULL THEN
-            RAISE_APPLICATION_ERROR(
-                -20010,
-                'Una pregunta ABIERTA requiere texto y no permite una opción.'
-            );
+    SELECT tipo_pregunta INTO v_tipo FROM Preguntas WHERE id_pregunta=:NEW.id_pregunta;
+    SELECT id_formulario INTO v_formulario FROM Solicitudes WHERE id_solicitud=:NEW.id_solicitud;
+    SELECT COUNT(*) INTO v_count FROM Formulario_Preguntas
+      WHERE id_formulario=v_formulario AND id_pregunta=:NEW.id_pregunta;
+    IF v_count=0 THEN RAISE_APPLICATION_ERROR(-20009,'Pregunta ajena al formulario'); END IF;
+    IF v_tipo=1 THEN
+        IF TRIM(:NEW.texto_respuesta) IS NULL OR :NEW.id_opcion IS NOT NULL THEN
+            RAISE_APPLICATION_ERROR(-20010,'ABIERTA requiere texto y no admite opcion');
         END IF;
-
-    ELSIF v_tipo_pregunta = 2 THEN
-        IF :NEW.id_opcion IS NULL OR :NEW.texto_respuesta IS NOT NULL THEN
-            RAISE_APPLICATION_ERROR(
-                -20011,
-                'Una pregunta OPCION_UNICA requiere una opción y no permite texto adicional.'
-            );
-        END IF;
-
-    ELSIF v_tipo_pregunta = 3 THEN
+    ELSIF v_tipo IN (2,3) THEN
         IF :NEW.id_opcion IS NULL THEN
-            RAISE_APPLICATION_ERROR(
-                -20012,
-                'Una pregunta MIXTA requiere seleccionar una opción.'
-            );
+            RAISE_APPLICATION_ERROR(-20011,'Debe seleccionarse una opcion');
         END IF;
-
+        SELECT id_pregunta, requiere_especificacion
+          INTO v_opcion_pregunta, v_especificacion
+          FROM Opciones WHERE id_opcion=:NEW.id_opcion;
+        IF v_opcion_pregunta <> :NEW.id_pregunta THEN
+            RAISE_APPLICATION_ERROR(-20012,'Opcion ajena a la pregunta');
+        END IF;
+        IF v_tipo=2 THEN
+            IF v_especificacion=1 OR :NEW.texto_respuesta IS NOT NULL THEN
+                RAISE_APPLICATION_ERROR(-20014,'OPCION_UNICA no admite especificacion');
+            END IF;
+        ELSIF v_especificacion=1 THEN
+            IF TRIM(:NEW.texto_respuesta) IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20017,'Esta opcion requiere especificacion');
+            END IF;
+        ELSIF :NEW.texto_respuesta IS NOT NULL THEN
+            RAISE_APPLICATION_ERROR(-20018,'La opcion seleccionada no admite texto adicional');
+        END IF;
     ELSE
-        RAISE_APPLICATION_ERROR(
-            -20016,
-            'El tipo de pregunta indicado no es válido.'
-        );
+        RAISE_APPLICATION_ERROR(-20016,'Tipo de pregunta no valido');
     END IF;
-
-    IF :NEW.id_opcion IS NOT NULL THEN
-        DECLARE
-            v_pregunta_opcion Opciones.id_pregunta%TYPE;
-            v_texto_opcion    Opciones.texto_opcion%TYPE;
-        BEGIN
-            SELECT id_pregunta, texto_opcion
-              INTO v_pregunta_opcion, v_texto_opcion
-              FROM Opciones
-             WHERE id_opcion = :NEW.id_opcion;
-
-            IF v_pregunta_opcion <> :NEW.id_pregunta THEN
-                RAISE_APPLICATION_ERROR(
-                    -20014,
-                    'La opción seleccionada no pertenece a la pregunta.'
-                );
-            END IF;
-
-            IF v_tipo_pregunta = 3 THEN
-                IF UPPER(TRIM(v_texto_opcion)) = 'OTRO' THEN
-                    IF :NEW.texto_respuesta IS NULL THEN
-                        RAISE_APPLICATION_ERROR(
-                            -20017,
-                            'La opción OTRO requiere una respuesta de texto.'
-                        );
-                    END IF;
-                ELSE
-                    IF :NEW.texto_respuesta IS NOT NULL THEN
-                        RAISE_APPLICATION_ERROR(
-                            -20018,
-                            'Una opción normal de una pregunta MIXTA no permite texto adicional.'
-                        );
-                    END IF;
-                END IF;
-            END IF;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(
-                    -20015,
-                    'La opción indicada no existe.'
-                );
-        END;
-    END IF;
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(
-            -20008,
-            'La solicitud o la pregunta indicada no existe.'
-        );
 END;
 /
 
--- ================================================================
--- TRIGGER: CÁLCULO Y VALIDACIÓN DE DEDUCCIÓN
--- ================================================================
-
--- ------------------------------------------------------------------------
--- TRIGGER trg_deducciones_calculo: Valida los montos y estados de la deducción, calcula el importe final y controla los cambios permitidos.
--- ------------------------------------------------------------------------
-CREATE OR REPLACE TRIGGER trg_deducciones_calculo
-BEFORE INSERT OR UPDATE ON Deducciones_autorizadas
-FOR EACH ROW
-DECLARE
-    v_estatus_solicitud Solicitudes.id_estatus_solicitud%TYPE;
-    v_num_control       Solicitudes.num_control%TYPE;
-    v_convocatoria      Solicitudes.id_convocatoria%TYPE;
-    v_tipo_solicitud    Solicitudes.id_Tipo_Solicitud%TYPE;
-    v_monto_pago        NUMBER(10,2);
-    v_monto_deduccion   NUMBER(10,2);
+-- Evita modificar importes de deducciones aplicadas o sus identidades.
+-- El cálculo y registro histórico se realizan en PKG_ADMINISTRADOR.
+CREATE OR REPLACE TRIGGER trg_deducciones_proteccion
+BEFORE INSERT OR UPDATE ON Deducciones_autorizadas FOR EACH ROW
 BEGIN
-    SELECT id_estatus_solicitud,
-           num_control,
-           id_convocatoria,
-           id_Tipo_Solicitud
-      INTO v_estatus_solicitud,
-           v_num_control,
-           v_convocatoria,
-           v_tipo_solicitud
-      FROM Solicitudes
-     WHERE idSolicitud = :NEW.id_solicitud;
-
     IF INSERTING THEN
-
-        IF v_estatus_solicitud <> 2 THEN
-            RAISE_APPLICATION_ERROR(
-                -20019,
-                'Solo se puede crear una deduccion para una solicitud AUTORIZADA.'
-            );
+        IF :NEW.estatus_deduccion<>2 THEN
+            RAISE_APPLICATION_ERROR(-20023,'Una deduccion nueva debe iniciar AUTORIZADO');
         END IF;
-
-        IF :NEW.estatus_deduccion <> 2 THEN
-            RAISE_APPLICATION_ERROR(
-                -20023,
-                'Una deduccion nueva debe iniciar con estatus AUTORIZADO.'
-            );
-        END IF;
-
-        :NEW.id_convocatoria   := v_convocatoria;
-        :NEW.id_Tipo_Solicitud := v_tipo_solicitud;
-
-        IF v_num_control IS NOT NULL THEN
-            IF :NEW.id_monto_reinscripcion IS NULL
-               OR :NEW.id_monto_inscripcion IS NOT NULL THEN
-                RAISE_APPLICATION_ERROR(
-                    -20020,
-                    'Una solicitud de estudiante debe utilizar un monto de reinscripcion.'
-                );
-            END IF;
-
-            SELECT monto_pago
-              INTO v_monto_pago
-              FROM Monto_Reinscripciones
-             WHERE id_monto_reinscripcion = :NEW.id_monto_reinscripcion;
-
-        ELSE
-            IF :NEW.id_monto_inscripcion IS NULL
-               OR :NEW.id_monto_reinscripcion IS NOT NULL THEN
-                RAISE_APPLICATION_ERROR(
-                    -20021,
-                    'Una solicitud de aspirante debe utilizar un monto de inscripcion.'
-                );
-            END IF;
-
-            SELECT monto_pago
-              INTO v_monto_pago
-              FROM Monto_Inscripciones
-             WHERE id_monto_inscripcion = :NEW.id_monto_inscripcion;
-        END IF;
-
-        SELECT monto_deduccion
-          INTO v_monto_deduccion
-          FROM Convocatorias_TipoSolicitudes
-         WHERE id_convocatoria = v_convocatoria
-           AND id_Tipo_Solicitud = v_tipo_solicitud;
-
-        :NEW.monto_pago      := v_monto_pago;
-        :NEW.monto_deduccion := v_monto_deduccion;
-        :NEW.monto_final     := v_monto_pago - v_monto_deduccion;
-
-        IF :NEW.fecha_autorizacion IS NULL THEN
-            :NEW.fecha_autorizacion := SYSDATE;
-        END IF;
-
     ELSE
-        -- Conserva las fechas de registro y autorización para mantener la trazabilidad.
-        IF :NEW.fecha_registro <> :OLD.fecha_registro
-           OR NVL(:NEW.fecha_autorizacion, DATE '1900-01-01') <>
-              NVL(:OLD.fecha_autorizacion, DATE '1900-01-01') THEN
-            RAISE_APPLICATION_ERROR(-20025,
-                'Las fechas originales de registro y autorizacion son inmutables.');
+        IF :OLD.estatus_deduccion=5 THEN
+            RAISE_APPLICATION_ERROR(-20025,'Deduccion APLICADO inmutable');
         END IF;
-
-        -- Transiciones permitidas: 2->4, 2->5 y 4->2.
-        IF :NEW.estatus_deduccion <> :OLD.estatus_deduccion THEN
-            IF NOT (
-                (:OLD.estatus_deduccion = 2 AND :NEW.estatus_deduccion IN (4,5))
-                OR (:OLD.estatus_deduccion = 4 AND :NEW.estatus_deduccion = 2)
-            ) THEN
-                RAISE_APPLICATION_ERROR(-20026,
-                    'Transicion de estatus de deduccion no permitida.');
-            END IF;
-
-            IF :OLD.estatus_deduccion = 4 AND :NEW.estatus_deduccion = 2 THEN
-                DECLARE
-                    v_inicio Convocatorias.fecha_inicio%TYPE;
-                    v_fin    Convocatorias.fecha_fin%TYPE;
-                BEGIN
-                    SELECT fecha_inicio, fecha_fin
-                      INTO v_inicio, v_fin
-                      FROM Convocatorias
-                     WHERE id_convocatoria = v_convocatoria;
-
-                    IF SYSDATE < TRUNC(v_inicio)
-                       OR SYSDATE >= TRUNC(v_fin) + 1 THEN
-                        RAISE_APPLICATION_ERROR(-20027,
-                            'No se puede reautorizar: convocatoria fuera de vigencia.');
-                    END IF;
-                END;
-            END IF;
+        IF :OLD.id_solicitud<>:NEW.id_solicitud OR
+           :OLD.id_convocatoria<>:NEW.id_convocatoria OR
+           :OLD.fecha_registro<>:NEW.fecha_registro THEN
+            RAISE_APPLICATION_ERROR(-20024,'Origen y fecha de registro de deduccion inmutables');
         END IF;
-
-        IF :OLD.id_solicitud <> :NEW.id_solicitud
-           OR :OLD.id_convocatoria <> :NEW.id_convocatoria
-           OR :OLD.id_Tipo_Solicitud <> :NEW.id_Tipo_Solicitud
-           OR NVL(:OLD.id_monto_inscripcion, -1) <>
-              NVL(:NEW.id_monto_inscripcion, -1)
-           OR NVL(:OLD.id_monto_reinscripcion, -1) <>
-              NVL(:NEW.id_monto_reinscripcion, -1)
-           OR :OLD.monto_pago <> :NEW.monto_pago
-           OR :OLD.monto_deduccion <> :NEW.monto_deduccion
-           OR :OLD.monto_final <> :NEW.monto_final THEN
-
-            RAISE_APPLICATION_ERROR(
-                -20024,
-                'Los datos historicos y de origen de una deduccion no pueden modificarse.'
-            );
+        IF :NEW.estatus_deduccion<>:OLD.estatus_deduccion AND NOT
+           ((:OLD.estatus_deduccion=2 AND :NEW.estatus_deduccion IN (4,5)) OR
+            (:OLD.estatus_deduccion=4 AND :NEW.estatus_deduccion=2)) THEN
+            RAISE_APPLICATION_ERROR(-20026,'Transicion de deduccion no permitida');
+        END IF;
+        IF (:NEW.id_tipo_solicitud<>:OLD.id_tipo_solicitud OR
+            :NEW.monto_pago<>:OLD.monto_pago OR
+            :NEW.monto_deduccion<>:OLD.monto_deduccion OR
+            :NEW.monto_final<>:OLD.monto_final) AND
+           :NEW.estatus_deduccion NOT IN (2,5) THEN
+            RAISE_APPLICATION_ERROR(-20027,'Importes solo modificables al autorizar o aplicar');
         END IF;
     END IF;
-
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(
-            -20022,
-            'No existe el monto o la configuracion de deduccion correspondiente a la solicitud.'
-        );
-END;
-/
-
--- ================================================================
--- TRIGGER: HISTORIAL DE SOLICITUDES
--- ================================================================
-
--- ------------------------------------------------------------------------
--- TRIGGER trg_solicitudes_historial: Registra los cambios de estatus de las solicitudes para su seguimiento.
--- ------------------------------------------------------------------------
-CREATE OR REPLACE TRIGGER trg_solicitudes_historial
-AFTER UPDATE OF id_estatus_solicitud ON Solicitudes
-FOR EACH ROW
-WHEN (OLD.id_estatus_solicitud <> NEW.id_estatus_solicitud)
-BEGIN
-    INSERT INTO Historial_Solicitudes (
-        comentario,
-        fecha_Registro,
-        id_solicitud,
-        id_estatus,
-        id_administrador,
-        id_Tipo_solicitud
-    ) VALUES (
-        NULL,
-        SYSDATE,
-        :NEW.idSolicitud,
-        :NEW.id_estatus_solicitud,
-        NULL,
-        :NEW.id_Tipo_Solicitud
-    );
-END;
-/
-
--- ================================================================
--- TRIGGER: HISTORIAL DE DEDUCCIONES
--- ================================================================
-
--- ------------------------------------------------------------------------
--- TRIGGER trg_deducciones_historial: Registra los cambios de estatus de las deducciones para su seguimiento.
--- ------------------------------------------------------------------------
-CREATE OR REPLACE TRIGGER trg_deducciones_historial
-AFTER UPDATE OF estatus_deduccion ON Deducciones_autorizadas
-FOR EACH ROW
-WHEN (OLD.estatus_deduccion <> NEW.estatus_deduccion)
-BEGIN
-    INSERT INTO Historial_Deducciones (
-        id_deduccion_autorizada,
-        id_estatus,
-        id_administrador,
-        comentario,
-        fecha_registro
-    ) VALUES (
-        :NEW.id_deduccion_autorizada,
-        :NEW.estatus_deduccion,
-        :NEW.id_administrador,
-        NULL,
-        SYSDATE
-    );
-END;
-/
-
--- ================================================================
--- TRIGGER: SINCRONIZACION DEL ESTATUS DE SOLICITUD CON DEDUCCION
--- ================================================================
-
--- ------------------------------------------------------------------------
--- TRIGGER trg_deduccion_cancelacion: Sincroniza el estado de la solicitud cuando cambia el estado de su deducción.
--- ------------------------------------------------------------------------
-CREATE OR REPLACE TRIGGER trg_deduccion_cancelacion
-AFTER UPDATE OF estatus_deduccion ON Deducciones_autorizadas
-FOR EACH ROW
-WHEN (OLD.estatus_deduccion <> NEW.estatus_deduccion
-      AND NEW.estatus_deduccion IN (2,4,5))
-DECLARE
-    v_id_historial Historial_Solicitudes.id_historial%TYPE;
-BEGIN
-    -- La solicitud sigue el estado de la deduccion: 2, 4 o 5.
-    UPDATE Solicitudes
-       SET id_estatus_solicitud = :NEW.estatus_deduccion,
-           fecha_actualizacion = SYSDATE
-     WHERE idSolicitud = :NEW.id_solicitud;
-
-    SELECT MAX(id_historial)
-      INTO v_id_historial
-      FROM Historial_Solicitudes
-     WHERE id_solicitud = :NEW.id_solicitud
-       AND id_estatus = :NEW.estatus_deduccion;
-
-    UPDATE Historial_Solicitudes
-       SET id_administrador = :NEW.id_administrador,
-           comentario = :NEW.comentario
-     WHERE id_historial = v_id_historial;
-END;
-/
-
--- ================================================================
--- TRIGGER: FECHA DE ACTUALIZACIÓN DE DEDUCCIÓN
--- ================================================================
-
--- ------------------------------------------------------------------------
--- TRIGGER trg_deducciones_fecha_update: Actualiza la fecha de modificación de una deducción.
--- ------------------------------------------------------------------------
-CREATE OR REPLACE TRIGGER trg_deducciones_fecha_update
-BEFORE UPDATE ON Deducciones_autorizadas
-FOR EACH ROW
-BEGIN
     :NEW.fecha_actualizacion := SYSDATE;
 END;
 /
+
+-- Los tres historiales solo admiten INSERT: cualquier UPDATE o DELETE aborta
+-- la sentencia, de modo que cada movimiento queda como registro permanente.
+CREATE OR REPLACE TRIGGER trg_hist_solicitudes_inmutable
+BEFORE UPDATE OR DELETE ON Historial_Solicitudes
+BEGIN
+    RAISE_APPLICATION_ERROR(-20070,'Historial de solicitudes inmutable');
+END;
+/
+CREATE OR REPLACE TRIGGER trg_hist_deducciones_inmutable
+BEFORE UPDATE OR DELETE ON Historial_Deducciones
+BEGIN
+    RAISE_APPLICATION_ERROR(-20071,'Historial de deducciones inmutable');
+END;
+/
+CREATE OR REPLACE TRIGGER trg_hist_convocatorias_inmutable
+BEFORE UPDATE OR DELETE ON Historial_Convocatorias
+BEGIN
+    RAISE_APPLICATION_ERROR(-20072,'Historial de convocatorias inmutable');
+END;
+/
+
+-- Protege la modificación directa de montos oficiales después del plazo.
+CREATE OR REPLACE TRIGGER trg_cts_plazo
+BEFORE INSERT OR UPDATE OR DELETE ON Convocatorias_TipoSolicitudes
+FOR EACH ROW
+DECLARE
+    v_limite DATE;
+    v_convocatoria NUMBER;
+BEGIN
+    IF DELETING THEN
+        v_convocatoria := :OLD.id_convocatoria;
+    ELSE
+        v_convocatoria := :NEW.id_convocatoria;
+    END IF;
+    SELECT fecha_limite_autorizacion INTO v_limite FROM Convocatorias
+    WHERE id_convocatoria=v_convocatoria;
+    IF TRUNC(SYSDATE)>TRUNC(v_limite) THEN
+        RAISE_APPLICATION_ERROR(-20073,'Plazo de configuracion de deducciones cerrado');
+    END IF;
+END;
+/
+
+-- Serializa los cambios de convocatorias tomando bloqueo sobre PERIODOS
+-- (fila fija) y rechaza cualquier intervalo que se superponga con otro.
+-- PKG_ADMINISTRADOR valida además que las fechas nuevas no excluyan
+-- solicitudes ni movimientos ya registrados.
+CREATE OR REPLACE TRIGGER trg_convocatorias_intervalo
+FOR INSERT OR UPDATE OF fecha_inicio_solicitudes,fecha_fin_solicitudes,
+    fecha_limite_autorizacion,fecha_limite_aplicacion ON Convocatorias
+COMPOUND TRIGGER
+    TYPE t_ids IS TABLE OF Convocatorias.id_convocatoria%TYPE INDEX BY PLS_INTEGER;
+    v_ids t_ids;
+    v_n PLS_INTEGER := 0;
+    BEFORE STATEMENT IS
+        v_dummy NUMBER;
+    BEGIN
+        -- Bloqueo global de configuración de periodos; previene inserciones
+        -- concurrentes que superpongan intervalos.
+        SELECT id_periodo INTO v_dummy FROM Periodos WHERE id_periodo=1 FOR UPDATE;
+    END BEFORE STATEMENT;
+    BEFORE EACH ROW IS
+    BEGIN
+        IF UPDATING AND TRUNC(SYSDATE)>TRUNC(:OLD.fecha_limite_aplicacion) THEN
+            RAISE_APPLICATION_ERROR(-20074,'Convocatoria cerrada definitivamente');
+        END IF;
+    END BEFORE EACH ROW;
+    AFTER EACH ROW IS
+    BEGIN
+        v_n:=v_n+1;
+        v_ids(v_n):=:NEW.id_convocatoria;
+    END AFTER EACH ROW;
+    AFTER STATEMENT IS
+        v_count NUMBER;
+    BEGIN
+        FOR i IN 1..v_n LOOP
+            SELECT COUNT(*) INTO v_count
+            FROM Convocatorias a JOIN Convocatorias b
+              ON a.id_convocatoria<>b.id_convocatoria
+             AND TRUNC(a.fecha_inicio_solicitudes)<=TRUNC(b.fecha_limite_aplicacion)
+             AND TRUNC(b.fecha_inicio_solicitudes)<=TRUNC(a.fecha_limite_aplicacion)
+            WHERE a.id_convocatoria=v_ids(i);
+            IF v_count>0 THEN
+                RAISE_APPLICATION_ERROR(-20075,'Convocatorias con intervalos superpuestos');
+            END IF;
+        END LOOP;
+    END AFTER STATEMENT;
+END trg_convocatorias_intervalo;
+/
+
+-- ================================================================
+-- FIN - REGLAS DE NEGOCIO VALIDADAS POR EL ESQUEMA
+-- ================================================================
+
 
 -- ================================================================
 -- DATOS INICIALES DE CATÁLOGOS
 -- ================================================================
 
-INSERT INTO Periodos (idPeriodo, Descripcion) VALUES (1, 'Agosto-Diciembre');
-INSERT INTO Periodos (idPeriodo, Descripcion) VALUES (2, 'Enero-Junio');
+INSERT INTO Periodos (id_periodo, descripcion) VALUES (1, 'Agosto-Diciembre');
+INSERT INTO Periodos (id_periodo, descripcion) VALUES (2, 'Enero-Junio');
 
-INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, Nombre, Descripcion)
-VALUES (1, 'PENDIENTE', 'Solicitud pendiente de revisión');
-INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, Nombre, Descripcion)
-VALUES (2, 'AUTORIZADO', 'Solicitud autorizada');
-INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, Nombre, Descripcion)
-VALUES (3, 'RECHAZADO', 'Solicitud rechazada');
-INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, Nombre, Descripcion)
-VALUES (4, 'CANCELADO', 'Solicitud cancelada');
-INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, Nombre, Descripcion)
-VALUES (5, 'APLICADO', 'Solicitud aplicada/pagada');
+INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, nombre, descripcion) VALUES
+(1,'PENDIENTE','Solicitud enviada por el estudiante o aspirante, en espera de revision por un administrador');
+INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, nombre, descripcion) VALUES
+(2,'AUTORIZADO','Solicitud revisada y aprobada por un administrador, con una deduccion autorizada asociada');
+INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, nombre, descripcion) VALUES
+(3,'RECHAZADO','Solicitud rechazada por un administrador; puede corregirse y reenviarse durante la recepcion de solicitudes');
+INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, nombre, descripcion) VALUES
+(4,'CANCELADO','Solicitud cuya deduccion fue cancelada; puede reenviarse en plazo o reautorizarse administrativamente');
+INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, nombre, descripcion) VALUES
+(5,'APLICADO','Solicitud cuya deduccion se aplico al importe correspondiente; estado definitivo');
+INSERT INTO Estatus_Solicitudes (id_estatus_solicitud, nombre, descripcion) VALUES
+(6,'RETIRADO','Solicitud retirada por el solicitante dentro del periodo permitido para corregirla y reenviarla');
 
-INSERT INTO Estatus_Deducciones (id_Estatus_Deducciones, Nombre, Descripcion)
-VALUES (2, 'AUTORIZADO', 'Deducción autorizada');
-INSERT INTO Estatus_Deducciones (id_Estatus_Deducciones, Nombre, Descripcion)
-VALUES (4, 'CANCELADO', 'Deducción cancelada');
-INSERT INTO Estatus_Deducciones (id_Estatus_Deducciones, Nombre, Descripcion)
-VALUES (5, 'APLICADO', 'Deducción aplicada/pagada');
+INSERT INTO Estatus_Deducciones (id_estatus_deducciones, nombre, descripcion) VALUES
+(2,'AUTORIZADO','Deduccion aprobada por un administrador, pendiente de aplicacion al importe correspondiente');
+INSERT INTO Estatus_Deducciones (id_estatus_deducciones, nombre, descripcion) VALUES
+(4,'CANCELADO','Deduccion previamente autorizada y cancelada por un administrador; puede reautorizarse dentro del plazo');
+INSERT INTO Estatus_Deducciones (id_estatus_deducciones, nombre, descripcion) VALUES
+(5,'APLICADO','Deduccion aplicada utilizando los importes oficiales vigentes en ese momento; no admite modificaciones posteriores');
 
-INSERT INTO Tipo_Preguntas (id_Tipo_Pregunta, Nombre)
-VALUES (1, 'ABIERTA');
-INSERT INTO Tipo_Preguntas (id_Tipo_Pregunta, Nombre)
-VALUES (2, 'OPCION_UNICA');
-INSERT INTO Tipo_Preguntas (id_Tipo_Pregunta, Nombre)
-VALUES (3, 'MIXTA');
+INSERT INTO Tipo_Preguntas (id_tipo_pregunta, nombre, descripcion) VALUES
+(1,'ABIERTA','Permite responder con texto libre, sin seleccionar opciones predefinidas');
+INSERT INTO Tipo_Preguntas (id_tipo_pregunta, nombre, descripcion) VALUES
+(2,'OPCION_UNICA','Permite seleccionar una sola respuesta entre las opciones previamente definidas');
+INSERT INTO Tipo_Preguntas (id_tipo_pregunta, nombre, descripcion) VALUES
+(3,'MIXTA','Permite seleccionar una opcion predefinida y escribir texto solo si esa opcion requiere especificacion');
 COMMIT;
+
+INSERT INTO Tipo_Solicitudes (id_tipo_solicitud,nombre,descripcion)
+VALUES (1,'Hijo de trabajador','Deducción para hijos de personal interno');
+INSERT INTO Tipo_Solicitudes (id_tipo_solicitud,nombre,descripcion)
+VALUES (2,'Hijo de homologado','Deducción para hijos de personal homologado');
+
+INSERT INTO Formularios (id_formulario,nombre,descripcion,instrucciones,id_tipo_solicitud)
+VALUES (1,'Hijos de trabajadores',
+        'Formulario de hijos de personal interno',
+        'Responda todas las preguntas obligatorias. Revise la convocatoria y presente en Servicios Escolares los documentos que esta indique. Requisitos:',1);
+INSERT INTO Formularios (id_formulario,nombre,descripcion,instrucciones,id_tipo_solicitud)
+VALUES (2,'Hijos de homologados',
+        'Formulario de hijos de personal homologado',
+        'Responda todas las preguntas obligatorias. Revise la convocatoria y presente en Servicios Escolares los documentos que esta indique. Requisitos:',2);
+
 
 -- ================================================================
 -- FIN DEL SCRIPT

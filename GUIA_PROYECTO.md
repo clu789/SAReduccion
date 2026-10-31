@@ -37,7 +37,7 @@ SAReduccion/
 ├── modulo-administrativo/       → Frontend del personal administrativo
 ├── src/                         → Backend Java (Spring Boot)
 ├── docker/                      → Infraestructura Docker
-├── database/                    → Scripts SQL de prueba/verificación
+├── backups/oracle/              → Respaldos Data Pump (no versionado)
 ├── Antecedentes/                → Recursos y estilos institucionales del ITT
 ├── target/                      → Artefactos compilados por Maven (auto-generado)
 │
@@ -58,10 +58,10 @@ Interfaz web estática servida por Nginx. Contiene las pantallas que usa el estu
 
 | Archivo / Carpeta | Descripción |
 |---|---|
-| `login.html` | Pantalla de inicio de sesión del alumno |
+| `login.html` | Inicio de sesión de alumno y aspirante |
 | `formulario.html` | Formulario para registrar la solicitud de reducción |
-| `panel-aspirante.html` | Panel principal del alumno autenticado |
-| `panel-estatus.html` | Consulta del estatus actual de su solicitud |
+| `panel-estatus.html` | Panel y seguimiento del alumno autenticado |
+| `panel-aspirante.html` | Panel y seguimiento del aspirante autenticado |
 | `css/` | Hojas de estilo del módulo |
 | `js/` | Lógica JavaScript (llamadas al backend, validaciones) |
 | `img/` | Imágenes e íconos del módulo |
@@ -95,17 +95,27 @@ src/main/java/com/itt/sareduccion/
 │   ├── AuthenticationService.java    → Lógica central de login
 │   ├── OracleCredentialValidator.java→ Valida credenciales contra Oracle DB
 │   ├── LoginAttemptLimiter.java      → Limita intentos de login fallidos
-│   ├── AuthRole.java                 → Roles del sistema (ALUMNO, ADMIN, etc.)
+│   ├── AuthRole.java                 → Roles del sistema (STUDENT, ADMIN, APPLICANT)
 │   ├── ApplicantPrincipal.java       → Identidad del aspirante autenticado
 │   ├── AuthenticatedPrincipal.java   → Interfaz base del usuario autenticado
+│   ├── SessionAttributes.java        → Nombres de atributos de la sesión HTTP
 │   └── SessionPrincipal.java         → Datos guardados en la sesión HTTP
 │
 ├── controller/                   → Endpoints REST (API HTTP)
-│   └── AuthController.java           → Endpoints de login/logout para ambos módulos
+│   ├── AuthController.java           → Login, /me y logout de los tres perfiles
+│   └── SolicitudAdminController.java → Consulta y resolución de solicitudes
+│
+├── service/                      → Reglas de negocio
+│   ├── SolicitudAdminService.java    → Reglas del panel administrativo
+│   └── ReglaNegocioException.java    → Conflicto de negocio (HTTP 409)
 │
 ├── model/                        → Modelos / entidades de datos
 │   ├── ApplicantIdentity.java        → Identidad del aspirante
-│   └── EstudianteDatos.java          → Datos del estudiante traídos de la BD
+│   ├── ConvocatoriaAdmin.java        → Convocatoria para el panel
+│   ├── DeduccionAdmin.java           → Deducción autorizada
+│   ├── EstudianteDatos.java          → Datos del estudiante traídos de la BD
+│   ├── RespuestaSolicitud.java       → Respuesta de un formulario
+│   └── SolicitudAdmin.java           → Solicitud vista por administración
 │
 └── repository/                   → Acceso a base de datos (JDBC)
     ├── ApplicantRepository.java      → Consultas relacionadas a aspirantes
@@ -124,32 +134,18 @@ src/main/resources/
 |---|---|
 | `init-db/` | Scripts SQL numerados que inicializan la BD al levantar Oracle por primera vez |
 | `nginx/` | Archivo `nginx.conf` que configura el servidor web para los frontends |
-| `scripts/` | Script `start-dev.sh` para levantar el entorno de desarrollo fácilmente |
 
 **Scripts de inicialización de BD (`init-db/`):**
 
 | Script | Qué hace |
 |---|---|
-| `01-configurar-esquema.sql` | Configura el esquema base de Oracle |
-| `02-crear-estructura.sql` | Crea todas las tablas del sistema |
-| `03-crear-identidades-roles.sql` | Crea usuarios y roles de Oracle |
-| `04-crear-paquetes-permisos.sql` | Asigna permisos a los roles |
-| `05-crear-cuenta-tecnica.sql` | Crea la cuenta técnica del backend (JDBC) |
-| `06-seed-sareduccion.sql` | Inserta datos iniciales del sistema |
-| `07-migracion-aspirantes.sql` | Migración de datos de aspirantes |
-| `08-correo-datos-desarrollo.sql` | Configura correos para entorno de desarrollo |
-
----
-
-### 🧪 `database/` — Scripts de Verificación
-
-Scripts SQL para comprobar que la instalación de la BD es correcta. **No modifican datos.**
-
-| Script | Qué verifica |
-|---|---|
-| `05-verificar-instalacion.sql` | Que el esquema y tablas existen correctamente |
-| `06-probar-permisos.sql` | Que los roles y permisos están bien asignados |
-| `07-probar-aspirantes.sql` | Que los datos de aspirantes son accesibles |
+| `01-configurar-esquema.sql` | Crea el esquema `SA_REDUCCION` y el directorio de respaldos |
+| `02-crear-estructura.sql` | Crea tablas, restricciones, índices, secuencias, triggers y catálogos base |
+| `03-crear-identidades-roles.sql` | Crea roles y cuentas individuales de estudiante y administrador |
+| `04-crear-cuenta-tecnica.sql` | Crea la cuenta técnica `SAR_BACKEND` del backend (JDBC) |
+| `05-crear-paquetes-permisos.sql` | Crea los cuatro paquetes PL/SQL y concede `EXECUTE` sobre los públicos |
+| `06-seed-desarrollo.sql` | Inserta datos ficticios si `SAR_LOAD_DEV_SEED=true` |
+| `init-db.sh` | Orquesta la ejecución en orden y verifica el resultado |
 
 ---
 
@@ -217,7 +213,7 @@ Recursos de diseño institucional del ITT utilizados como referencia visual para
 └──────────────────────┘    HTML/CSS/JS       │  /administrativo    │
                                              └─────────────────────┘
                                                       │
-                                               JS fetch/axios
+                                               fetch()
                                                       │ REST API
                                                       ▼
                                              ┌─────────────────────┐
@@ -239,8 +235,8 @@ Recursos de diseño institucional del ITT utilizados como referencia visual para
 1. El **navegador** accede al frontend servido por **Nginx** en el puerto `8081`.
 2. El frontend hace llamadas **REST** al backend en el puerto `8080`.
 3. El **backend Spring Boot** valida la sesión, procesa la lógica y consulta la **base de datos Oracle**.
-4. Oracle autentica usuarios con sus propios roles de BD (`OracleCredentialValidator`).
-5. Las sesiones se mantienen con cookies HTTP-only del lado del servidor.
+4. Oracle verifica las credenciales de estudiante o administrador, y el backend comprueba además que la cuenta tenga exactamente uno de los roles esperados (`ROL_SAR_ESTUDIANTE_SIM` o `ROL_SAR_ADMIN_SIM`).
+5. Las sesiones se mantienen con cookies HTTP-only del lado del servidor. Las operaciones de negocio se ejecutan con la cuenta técnica `SAR_BACKEND` a través de los paquetes PL/SQL.
 
 ---
 
@@ -294,19 +290,7 @@ cp .env.example .env
 
 ---
 
-### Opción A — Script automático (recomendado)
-
-```bash
-# Levantar SOLO Oracle (para desarrollar el backend en tu máquina):
-bash docker/scripts/start-dev.sh
-
-# Levantar TODO (Oracle + Backend + Frontend en contenedores):
-bash docker/scripts/start-dev.sh --full
-```
-
----
-
-### Opción B — Docker Compose directo
+### Comandos con Docker Compose
 
 ```bash
 # Levantar SOLO Oracle:
@@ -319,7 +303,7 @@ docker compose --profile full-stack up -d
 docker compose --profile full-stack up -d --build backend
 
 # Ver el estado de los contenedores:
-docker compose ps
+docker compose --profile full-stack ps
 
 # Ver logs de un servicio específico:
 docker compose logs -f oracle-db
@@ -363,7 +347,9 @@ El archivo `.env` **no se sube a Git** (está en `.gitignore`). Cópialo de `.en
 | `ORACLE_ADMIN_PASSWORD` | Contraseña del usuario administrador | _(requerido)_ |
 | `ORACLE_DATABASE` | Nombre del PDB de Oracle | `XEPDB1` |
 | `ORACLE_PORT` | Puerto expuesto de Oracle al host | `1522` |
+| `SAR_LOAD_DEV_SEED` | Carga los datos ficticios en una instalación nueva | `true` |
 | `APP_PORT` | Puerto del backend Spring Boot | `8080` |
+| `FRONTEND_PORT` | Puerto del frontend Nginx | `8081` |
 | `SPRING_PROFILES_ACTIVE` | Perfil de Spring activo | `dev` |
 
 ---

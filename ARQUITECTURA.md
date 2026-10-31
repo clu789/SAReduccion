@@ -27,15 +27,15 @@ El desarrollo se organiza por funcionalidades completas (interfaz, backend y bas
 
 | Equipo | Alcance | Dónde vive en el repositorio | Estado |
 | --- | --- | --- | --- |
-| 1 | Autenticación, sesiones, CSRF, captcha, rate limiting, auditoría y logs | `AuthController`, `com.itt.sareduccion.auth`, `PKG_ASPIRANTE`, scripts 03 y 04 | Parcial: faltan captcha, rate limiting para estudiante/administrador, auditoría en Oracle y verificación por correo. |
-| 2 | Panel administrativo y resolución de solicitudes | `SolicitudAdminController`, `SolicitudAdminService`, `AdministradorRepository`, `PKG_ADMINISTRADOR`, `modulo-administrativo/` | Operativo para listar, aprobar, rechazar y cancelar deducciones. |
-| 3 | Paneles de estudiante y aspirante | `PKG_ESTUDIANTE`, `modulo-solicitante/` | Parcial: datos y listados existen; faltan cancelación, edición en estados permitidos y el flujo del aspirante. |
-| 4 | Convocatorias y montos de reducción | Tablas `Convocatorias`, `Convocatorias_TipoSolicitudes`, `Monto_*` | Solo estructura; sin endpoints ni pantallas. |
-| 5 | Formularios y respuestas | `Formularios`, `Preguntas`, `Opciones`, `Respuestas`, `trg_respuestas_validacion`, `PKG_ESTUDIANTE.guardar_respuesta` | Estructura y validación listas; falta lectura dinámica y edición en los estados acordados. |
+| 1 | Autenticación, sesiones, CSRF, captcha, rate limiting, auditoría y logs | `AuthController`, `com.itt.sareduccion.auth`, `PKG_ASPIRANTE.validar_aspirante`, scripts 03 y 04 | Parcial: faltan captcha, rate limiting para estudiante/administrador, auditoría en Oracle y verificación por correo. |
+| 2 | Panel administrativo y resolución de solicitudes | `SolicitudAdminController`, `SolicitudAdminService`, `AdministradorRepository`, `PKG_ADMINISTRADOR`, `modulo-administrativo/` | Parcial: la base ofrece rechazo, autorización, cancelación y aplicación de deducciones, pero el repositorio invoca nombres de procedimiento anteriores y aún no expone la aplicación. |
+| 3 | Paneles de estudiante y aspirante | `PKG_ESTUDIANTE`, `PKG_ASPIRANTE`, `modulo-solicitante/` | Parcial: la base ya ofrece perfil, listados, alta, retiro y reenvío; faltan los endpoints y las pantallas. |
+| 4 | Convocatorias y montos de reducción | Tablas `Convocatorias`, `Historial_Convocatorias`, `Convocatorias_TipoSolicitudes`, `Monto_*`; `actualizar_fechas_convocatoria` y `actualizar_monto_oficial` | Estructura, plazos y actualizaciones listos; faltan el alta de convocatorias, la asignación inicial de montos y las pantallas. |
+| 5 | Formularios y respuestas | `Formularios`, `Preguntas`, `Opciones`, `Respuestas`, `trg_respuestas_validacion`, `PKG_SOLICITUDES_CORE.guardar_respuestas_completas` | Estructura, validación y envío atómico en JSON listos; falta la lectura dinámica del formulario y su endpoint. |
 | 6 | Notificaciones por correo | Ninguno todavía | Pendiente: el frontend llama `/api/notificaciones`, pero no existe endpoint ni servicio. |
-| 7 | Base de datos e integración oficial | `docker/init-db/`, `database/tests/`, `BaseDeDatos.md`, respaldos | Operativo. |
+| 7 | Base de datos e integración oficial | `docker/init-db/`, `init-db.sh`, `BaseDeDatos.md`, respaldos | Operativo. |
 
-La reducción se configura por convocatoria con dos categorías de personal: **interno** (`Tipo_Solicitudes` `900001`, Hijos de trabajadores) y **homologado** (`900002`, Hijos de homologados). No se distingue inscripción de reinscripción al asignar el monto; esa diferencia se resuelve al calcular la deducción.
+La reducción se configura por convocatoria y por tipo de solicitud, con dos categorías de personal: **Hijo de trabajador** (`Tipo_Solicitudes` `1`) e **Hijo de homologado** (`Tipo_Solicitudes` `2`). Ambos tipos y sus formularios `1` y `2` los carga el script `02`. No se distingue inscripción de reinscripción al asignar el monto; esa diferencia se resuelve al calcular la deducción con el monto base vigente.
 
 ## Contenedores y servicios Docker Compose
 
@@ -99,11 +99,11 @@ Implementados en `SolicitudAdminController` sobre los procedimientos de `PKG_ADM
 | `PUT` | `/api/solicitudes/{id}/correccion` | Devuelve la solicitud a corrección; hoy comparte la misma transición que el rechazo. | Sí |
 | `PUT` | `/api/deducciones/{id}/cancelar` | Cambia la deducción autorizada a `CANCELADO`; exige comentario. | Sí |
 
-Códigos de respuesta del panel: `200` en operación correcta, `401` sin sesión `ADMIN`, `403` con CSRF ausente o inválido y `409` cuando se incumple una regla de negocio. Los errores Oracle esperados (`-20823` a `-20827`, `-20019` a `-20027`) se traducen a mensajes genéricos sin exponer detalles de la base.
+Códigos de respuesta del panel: `200` en operación correcta, `401` sin sesión `ADMIN`, `403` con CSRF ausente o inválido y `409` cuando se incumple una regla de negocio. Los errores Oracle esperados (códigos `-20870` a `-20887` de `PKG_ADMINISTRADOR` y `-20001` a `-20075` de los triggers) se traducen a mensajes genéricos sin exponer detalles de la base.
 
 El módulo administrativo del frontend ya consume esta API. El módulo solicitante mantiene simulación local en el alta de solicitudes y en la carga de formularios.
 
-Reglas acordadas en `asignacion_Modulos.md` que aún no se cumplen en este conjunto de endpoints: la operación de «corrección» no distingue su transición del rechazo, no existe cancelación de solicitud solicitada por el propio estudiante o aspirante, y el historial se devuelve vacío. La edición de respuestas además choca con `PKG_ESTUDIANTE.guardar_respuesta`, que hoy solo acepta solicitudes `PENDIENTE` y no `RECHAZADA`/`CANCELADA` como pide el acuerdo.
+Reglas de `asignacion_Modulos.md` que este conjunto de endpoints todavía no cubre: la operación de «corrección» no distingue su transición del rechazo, no existe retiro solicitado por el propio estudiante o aspirante, no hay aplicación de deducciones y el historial se devuelve vacío. La base ya implementa esas operaciones en `PKG_ESTUDIANTE`, `PKG_ASPIRANTE` y `PKG_ADMINISTRADOR`; falta exponerlas en el controlador con los nombres vigentes del paquete.
 
 ## Oracle, cuentas y permisos
 
@@ -116,7 +116,7 @@ Oracle XE 21c usa el PDB existente `XEPDB1` y el volumen nombrado `sareduccion_o
 | `ALU_21281181` | Cuenta Oracle individual de prueba de estudiante y titular del rol `ROL_SAR_ESTUDIANTE_SIM`. |
 | `SA01` | Cuenta Oracle individual de prueba de administrador y titular del rol `ROL_SAR_ADMIN_SIM`. |
 
-El propietario crea el esquema y sus objetos. Los roles de estudiante y administrador permiten iniciar sesión Oracle, pero el script de paquetes retira de ellos los grants `EXECUTE`: ambos perfiles operan a través de `SAR_BACKEND` después de que el backend autentica al usuario.
+El propietario crea el esquema y sus objetos. Los roles de estudiante y administrador solo reciben `CREATE SESSION`: nunca obtienen `EXECUTE` sobre los paquetes, de modo que ambos perfiles operan a través de `SAR_BACKEND` después de que el backend autentica al usuario.
 
 ### Privilegios mínimos de la cuenta técnica
 
@@ -132,13 +132,13 @@ No dispone de `SELECT`, `INSERT`, `UPDATE` ni `DELETE` directos sobre las tablas
 
 ### Paquetes PL/SQL
 
-Los paquetes `SA_REDUCCION.PKG_ESTUDIANTE`, `SA_REDUCCION.PKG_ADMINISTRADOR` y `SA_REDUCCION.PKG_ASPIRANTE` usan `AUTHID DEFINER`. Sus firmas reciben la identidad como parámetro y no usan `SESSION_USER` para decidir qué usuario de aplicación actúa.
+El esquema declara cuatro paquetes `AUTHID DEFINER`: tres públicos (`PKG_ESTUDIANTE`, `PKG_ASPIRANTE` y `PKG_ADMINISTRADOR`) y uno interno (`PKG_SOLICITUDES_CORE`), sin `EXECUTE` para `SAR_BACKEND`. Sus firmas reciben la identidad como parámetro y no usan `SESSION_USER` para decidir qué usuario de aplicación actúa.
 
-`PKG_ESTUDIANTE` recibe `p_numero_control` en `mis_datos`, `mis_solicitudes`, `mis_deducciones`, `crear_solicitud` y `guardar_respuesta`. Valida que exista en `Estudiantes.Numero_Control`; las consultas y escrituras de solicitudes/respuestas se limitan a ese estudiante.
+`PKG_SOLICITUDES_CORE` concentra las reglas compartidas: validación de estudiante, aspirante y administrador; comprobación de que convocatoria, tipo y formulario están dentro del periodo de recepción; carga y sustitución de respuestas; registro del historial; y las operaciones `crear`, `retirar` y `reenviar`. `guardar_respuestas_completas` recibe las respuestas como arreglo JSON en `CLOB` (`[{"id_pregunta":…,"id_opcion":…,"texto_respuesta":…}]`) y exige una respuesta por cada pregunta obligatoria del formulario. Cada operación abre un `SAVEPOINT` y revierte hasta él si falla; el `COMMIT` lo controla el cliente.
 
-`PKG_ADMINISTRADOR` recibe `p_id_administrador` en `listar_estudiantes`, `listar_solicitudes`, `listar_respuestas`, `listar_deducciones`, `crear_solicitud_estudiante`, `cambiar_estatus_solicitud`, `autorizar_deduccion` y `cambiar_estatus_deduccion`. Valida que exista en `Administradores.idAdministrador` antes de cada operación.
+`PKG_ESTUDIANTE` recibe `p_numero_control` en `mis_datos`, `mis_solicitudes`, `mis_deducciones`, `crear_solicitud`, `retirar_solicitud` y `reenviar_solicitud`. Valida que exista en `Estudiantes.numero_control`; las consultas y escrituras de solicitudes y respuestas se limitan a ese estudiante.
 
-`PKG_ASPIRANTE` expone `validar_aspirante`, único subprograma del paquete:
+`PKG_ASPIRANTE` recibe `p_ficha`, `p_periodo` y `p_anio` en `mis_solicitudes`, `mis_deducciones`, `crear_solicitud`, `retirar_solicitud` y `reenviar_solicitud`, y valida la identidad contra la clave completa `(ficha, periodo, anio)`. Su subprograma de autenticación es:
 
 ```text
 PKG_ASPIRANTE.validar_aspirante(
@@ -150,13 +150,14 @@ PKG_ASPIRANTE.validar_aspirante(
 )
 ```
 
-Comprueba la coincidencia de `ficha` y `CURP` en `Aspirantes`, restringe la búsqueda al año vigente y devuelve la clave completa del registro. Errores de aplicación que produce:
+Comprueba la coincidencia de `ficha` y `CURP` en `Aspirantes`, resuelve el registro cuya convocatoria `(periodo, anio)` está recibiendo solicitudes y devuelve la clave completa. Como `Convocatorias` es única por `(id_periodo, anio)`, una ficha repetida en varios periodos no produce ambigüedad. Errores de aplicación que produce:
 
 | Código | Significado |
 | --- | --- |
 | `-20840` | Parámetros nulos o vacíos. |
-| `-20841` | Sin coincidencias. |
-| `-20842` | Coincidencia ambigua (varios periodos para la misma ficha). |
+| `-20841` | Sin coincidencias para una convocatoria abierta. |
+
+`PKG_ADMINISTRADOR` recibe `p_id_administrador` en `listar_estudiantes`, `listar_solicitudes`, `listar_convocatorias`, `listar_respuestas`, `listar_deducciones`, `crear_solicitud_estudiante`, `rechazar_solicitud`, `autorizar_deduccion`, `cancelar_deduccion`, `aplicar_deduccion`, `actualizar_fechas_convocatoria` y `actualizar_monto_oficial`. Valida que exista en `Administradores.id_administrador` antes de cada operación. `autorizar_deduccion` exige exactamente uno de los dos montos base (`p_id_monto_inscripcion` o `p_id_monto_reinscripcion`) y calcula `monto_final = monto_pago - monto_deduccion` con la deducción vigente de `Convocatorias_TipoSolicitudes`.
 
 Los parámetros de los paquetes son identificadores, no credenciales ni pruebas independientes de autenticación. El backend debe tomarlos exclusivamente del principal de una sesión autenticada, comprobar el perfil para cada endpoint y no aceptar esos valores desde una petición del cliente.
 
@@ -165,7 +166,7 @@ Los parámetros de los paquetes son identificadores, no credenciales ni pruebas 
 ### Estudiantes y administradores (cuentas Oracle)
 
 1. `POST /api/auth/login` valida las credenciales mediante una conexión JDBC temporal (`DriverManager`), comprueba `SESSION_USER` y `SESSION_ROLES`, y no usa el pool `SAR_BACKEND` para validar contraseñas.
-2. La regla de estudiante valida `ALU_<Numero_Control>` y comprueba el perfil mediante `PKG_ESTUDIANTE.mis_datos`. La regla administrativa relaciona el username con `idAdministrador` y valida el perfil llamando `PKG_ADMINISTRADOR.listar_estudiantes`; el cursor de listado se cierra sin devolver filas.
+2. La regla de estudiante valida `ALU_<numero_control>` y comprueba el perfil mediante `PKG_ESTUDIANTE.mis_datos`. La regla administrativa relaciona el username con `id_administrador` y valida el perfil llamando `PKG_ADMINISTRADOR.listar_estudiantes`; el cursor de listado se cierra sin devolver filas.
 3. Una cuenta debe tener exactamente uno de los dos roles (`ROL_SAR_ESTUDIANTE_SIM` o `ROL_SAR_ADMIN_SIM`); con ambos o con ninguno se rechaza.
 4. La sesión conserva el principal (usuario Oracle, identidad de perfil y rol) y un token CSRF; nunca conserva la contraseña. El ID de sesión se rota tras el login.
 
@@ -283,7 +284,9 @@ El orquestador es necesario porque la imagen ejecuta los `.sql` de `/container-e
 
 Sobre los datos de desarrollo: `06-seed-desarrollo.sql` se carga únicamente cuando `SAR_LOAD_DEV_SEED` vale `true` (valor por defecto en desarrollo). Al fijarlo en `false` la base queda con el esquema completo y los catálogos, pero sin datos de aplicación. La verificación final del orquestador comprueba que la presencia o ausencia de datos corresponda al valor de esa variable. El detalle de los scripts y de su orden está en [BaseDeDatos.md](BaseDeDatos.md).
 
-El catálogo `Tipo_Solicitudes` es cerrado y lo aporta el seed con exactamente dos filas: `900001` **Hijos de trabajadores** y `900002` **Hijos de homologados**. Cada convocatoria configura un monto de deducción por cada uno de esos dos tipos en `Convocatorias_TipoSolicitudes`, y cada tipo tiene un único formulario. El seed valida al final que no exista ningún tipo fuera de ese par y que solicitudes, historiales y deducciones usen solo esos identificadores; cualquier inconsistencia provoca rollback.
+El catálogo `Tipo_Solicitudes` es cerrado y lo aporta el script `02` con exactamente dos filas: `1` **Hijo de trabajador** y `2` **Hijo de homologado**, cada una con su formulario (`1` y `2`, único por tipo). Cada convocatoria configura un monto de deducción para ambos tipos en `Convocatorias_TipoSolicitudes`; ambas filas deben existir en la convocatoria antes de autorizar una deducción. El seed no vuelve a cargar los catálogos del `02`: solo aporta datos de aplicación (estudiantes, aspirantes, administradores, convocatorias, preguntas, opciones, solicitudes e historiales).
+
+Las convocatorias del seed usan identificadores explícitos `900001` (periodo 1/2026, cerrada) y `900002` (periodo 2/2026, abierta en la fecha de ejecución); el resto de entidades toma sus identificadores de las secuencias creadas en `02`, sin `ALTER SEQUENCE`. El seed se ejecuta una sola vez y aborta si ya existen convocatorias, solicitudes o estudiantes.
 
 El inicializador comprueba los objetos, los privilegios y el estado de los datos, y deja el marcador `/opt/oracle/oradata/.sareduccion-init.complete`, que el healthcheck exige.
 
@@ -297,27 +300,28 @@ El destino futuro es Oracle 12c, pero esa migración **no forma parte del alcanc
 
 ### Implementado y validado
 
-- Prueba `database/tests/05-verificar-instalacion.sql`: 21 tablas, 15 secuencias, 22 triggers, 33 índices, 3 paquetes y 3 cuerpos válidos, sin objetos inválidos.
-- Configuración de `SAR_BACKEND` y prueba `database/tests/06-probar-permisos.sql`: `CREATE SESSION`, `EXECUTE` en los tres paquetes, sin CRUD directo, sin privilegios administrativos y sin grants de paquete a los roles individuales.
+- Verificación integrada en `init-db.sh`: 22 tablas, 16 secuencias, 24 triggers, 34 índices y los cuatro paquetes con sus cuerpos `VALID`, sin objetos inválidos.
+- Configuración de `SAR_BACKEND` comprobada por el orquestador: `CREATE SESSION` y `EXECUTE` solo sobre los tres paquetes públicos, sin CRUD directo, sin privilegios de sistema adicionales, sin roles y sin grants de paquete a las cuentas individuales.
 - `EstudianteRepository.misDatos()` invoca `PKG_ESTUDIANTE.mis_datos` con `CallableStatement`, parámetros enlazados y lectura de `SYS_REFCURSOR`.
 - Login, `/me` y logout para las cuentas `ALU_21281181` y `SA01`: autenticación Oracle temporal, comprobación de roles/perfiles, rotación de sesión y protección CSRF.
 - Autenticación de aspirantes con ficha y CURP (`PKG_ASPIRANTE` + `POST /api/auth/login/aspirante`), validada con HTTP real contra el backend desplegado: periodo y año devueltos, rechazo de CURP o ficha incorrectas, exigencia de CSRF, bloqueo por intentos y ausencia de CURP en la respuesta.
-- API del panel administrativo (`SolicitudAdminController` + `SolicitudAdminService`): listado de solicitudes con filtros, estadísticas por estatus, detalle con respuestas y deducción, listado de deducciones, aprobación con autorización de deducción, rechazo, corrección y cancelación de deducción, con autorización por rol `ADMIN` y CSRF en las escrituras.
+- API del panel administrativo (`SolicitudAdminController` + `SolicitudAdminService`): listado de solicitudes con filtros, estadísticas por estatus, detalle con respuestas y deducción, listado de deducciones, aprobación con autorización de deducción, rechazo, corrección y cancelación de deducción, con autorización por rol `ADMIN` y CSRF en las escrituras. Se validó contra la versión anterior de `PKG_ADMINISTRADOR`; tras la reorganización del paquete debe ajustarse a los nombres vigentes (ver «Pendiente de desarrollar»).
 - Integración del frontend: pestañas de alumno y aspirante, manejo de CSRF y sesión, panel de aspirante y redirección por rol; el panel administrativo consume la API real.
-- Prueba `database/tests/07-probar-aspirantes.sql` cubre a nivel Oracle los escenarios que el cliente no puede provocar (año no vigente y coincidencias ambiguas entre periodos).
+- Base de datos completa para el flujo de negocio: alta atómica de solicitud con respuestas en JSON, retiro, reenvío, rechazo, autorización, cancelación y aplicación de deducciones, actualización de fechas y montos, e historiales inmutables. Los paquetes de estudiante y aspirante ya cubren creación y gestión; lo pendiente está en el backend y en las pantallas.
+- Identidad de aspirante resuelta en la base: `PKG_ASPIRANTE.validar_aspirante` descarta el registro de un periodo cuya convocatoria no está recibiendo solicitudes, por lo que la misma ficha y CURP en distintos periodos no producen ambigüedad.
 
 ### Pendiente de desarrollar
 
-- Endpoints de negocio para el módulo solicitante: alta y cancelación de solicitudes, edición de respuestas en `RECHAZADO`/`CANCELADO` y consulta de deducciones propias (equipos 3 y 5).
-- Flujo de negocio del aspirante: hoy `PKG_ASPIRANTE` solo valida identidad, sin creación ni gestión de solicitudes.
-- Módulo de convocatorias y montos: sin endpoints ni pantallas de alta y modificación (equipo 4).
+- Endpoints de negocio para el módulo solicitante: alta, retiro, reenvío y consulta de deducciones propias (equipos 3 y 5). Los procedimientos ya existen en los paquetes; faltan el controlador y las pantallas.
+- Alinear `AdministradorRepository` con los nombres vigentes de `PKG_ADMINISTRADOR`: `rechazar_solicitud`, `cancelar_deduccion` y `aplicar_deduccion` sustituyen a `cambiar_estatus_solicitud` y `cambiar_estatus_deduccion`, y falta exponer la aplicación de deducciones en la API.
+- Módulo de convocatorias: alta de convocatorias y de sus montos por tipo. Hoy solo existen `actualizar_fechas_convocatoria` y `actualizar_monto_oficial`, sin endpoints ni pantallas (equipo 4).
 - Servicio de notificaciones por correo; el frontend administrativo ya invoca `/api/notificaciones`, que no existe en el backend (equipo 6).
 - Captcha en los tres inicios de sesión y rate limiting para estudiante y administrador, no solo para aspirante (equipo 1).
 - Mecanismo central de autorización por rol e interceptor común para los endpoints de negocio (equipo 1).
 - Auditoría en Oracle de intentos de acceso y eventos de sesión, y estándar común de logs técnicos con enmascaramiento de datos (equipos 1 y 7).
 - IP real del cliente detrás de Nginx, cabeceras de seguridad y respuesta uniforme ante sesión expirada (`401`/`403`) (equipo 1).
-- Historial de la solicitud en el detalle administrativo: el contrato ya lo expone, pero se devuelve vacío porque aún no hay procedimiento en la base.
-- Separar la transición de «corrección» del rechazo y definir el estado al que vuelve una solicitud rechazada o cancelada después de corregir.
+- Historial en el detalle administrativo: el contrato lo expone vacío porque no existe procedimiento de consulta de `Historial_Solicitudes`, `Historial_Deducciones` ni `Historial_Convocatorias`.
+- Separar en el controlador la transición de «corrección» del rechazo. El estado posterior al reenvío ya está definido en la base: `RECHAZADO`, `RETIRADO` y `CANCELADO` vuelven a `PENDIENTE`.
 - Sustituir la autenticación provisional de aspirantes por verificación mediante correo electrónico con código de un solo uso.
 - Persistir el rate limiting fuera de la memoria del proceso.
 
@@ -334,8 +338,8 @@ La compatibilidad con Oracle 12c queda fuera del alcance de esta etapa, tal como
 | Módulo solicitante simulado | Las vistas de alta de solicitud y carga de formulario del solicitante siguen operando con datos locales; la consulta y resolución administrativas ya usan la API. |
 | Historial no disponible en la API | El detalle de solicitud devuelve `historial` vacío; falta el procedimiento de consulta en la base. |
 | Monto por defecto en la aprobación | Si el cliente no envía `idMontoInscripcion` ni `idMontoReinscripcion`, el servicio usa el id de la convocatoria como valor por defecto de desarrollo. |
-| Edición de respuestas inconsistente | `PKG_ESTUDIANTE.guardar_respuesta` solo admite solicitudes `PENDIENTE`, mientras que `asignacion_Modulos.md` exige permitir la edición en `RECHAZADO` y `CANCELADO`. |
-| Sin cancelación del solicitante | No existe operación para que el estudiante o aspirante cancele su solicitud `PENDIENTE`; solo el administrador cambia estados. |
+| Edición solo por reenvío | Una solicitud `PENDIENTE` no se edita: las respuestas se sustituyen al reenviar (`reenviar_solicitud`), que admite `RECHAZADO`, `RETIRADO` y `CANCELADO` dentro del periodo de recepción. Corregir una solicitud sin reenviarla no está soportado. |
+| Retiro sin endpoint | La base ya expone `retirar_solicitud` para estudiante y aspirante; el backend y las pantallas todavía no lo invocan. |
 | Sin captcha ni rate limiting general | El captcha no está implementado y el límite de intentos solo cubre el login de aspirante. |
 | Notificaciones no implementadas | No hay servicio ni endpoint de correo; `/api/notificaciones` no existe en el backend. |
 | Protección de rutas solo en cliente | La redirección por rol es de experiencia de usuario; el backend aún no autoriza operaciones del módulo solicitante. |

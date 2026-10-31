@@ -31,8 +31,8 @@ modulo-administrativo/
 
 | Página | Funcionalidad | Equipo |
 |---|---|---|
-| `login.html` | Autenticación exclusiva de administradores | **Equipo 4** |
-| `panel-admin.html` | Bandeja + aprobación / corrección de solicitudes | **Equipo 2** |
+| `login.html` | Autenticación exclusiva de administradores | **Equipo 1** |
+| `panel-admin.html` | Bandeja, detalle y resolución de solicitudes y deducciones | **Equipo 2** |
 | Notificaciones (backend) | Envío de avisos al cambiar estatus | **Equipo 6** |
 
 ---
@@ -74,13 +74,17 @@ document.addEventListener('DOMContentLoaded', () => {
 | Método | Endpoint | Descripción |
 |---|---|---|
 | `POST` | `/api/auth/login` | Autenticación de administrador |
-| `GET`  | `/api/solicitudes` | Listar todas las solicitudes |
-| `GET`  | `/api/solicitudes?estatus=PENDIENTE` | Filtrar por estatus |
+| `POST` | `/api/auth/logout` | Cierre de sesión |
+| `GET`  | `/api/solicitudes` | Listar solicitudes; filtros opcionales `estatus`, `convocatoria` y `solicitante` |
 | `GET`  | `/api/solicitudes/estadisticas` | Contadores por estatus |
-| `GET`  | `/api/solicitudes/{id}` | Detalle + respuestas + historial |
-| `PUT`  | `/api/solicitudes/{id}/aprobar` | Aprobar solicitud |
-| `PUT`  | `/api/solicitudes/{id}/correccion` | Devolver a corrección |
-| `POST` | `/api/notificaciones` | Envío manual de notificación |
+| `GET`  | `/api/solicitudes/{id}` | Detalle + respuestas + deducción |
+| `GET`  | `/api/convocatorias` | Convocatorias disponibles para los filtros |
+| `GET`  | `/api/deducciones` | Listar deducciones con filtro opcional `estatus` |
+| `PUT`  | `/api/solicitudes/{id}/aprobar` | Aprobar la solicitud y autorizar su deducción |
+| `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud; exige comentario |
+| `PUT`  | `/api/solicitudes/{id}/correccion` | Devolver a corrección; hoy comparte la transición del rechazo |
+| `PUT`  | `/api/deducciones/{id}/cancelar` | Cancelar una deducción autorizada; exige comentario |
+| `POST` | `/api/notificaciones` | Envío manual de notificación (**aún no implementado**, equipo 6) |
 
 ---
 
@@ -88,6 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 - El **modal de detalle** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
 - Las estadísticas se cargan automáticamente en `PanelAdmin.cargarEstadisticas()`.
-- El **Equipo 6** (notificaciones) puede conectar su lógica desde el backend (trigger); el frontend solo provee `Notificaciones.enviarManual()` para casos especiales.
+- El **Equipo 6** (notificaciones) debe implementar el servicio y el endpoint `/api/notificaciones`; el frontend solo provee `Notificaciones.enviarManual()` para casos especiales.
 - Los filtros por chip llaman a `PanelAdmin.cargarSolicitudes(estatus)` con el estatus seleccionado.
 - El comentario de corrección es **obligatorio** antes de llamar a `PanelAdmin.solicitarCorreccion()`.
+- El detalle devuelve `historial` vacío: falta el procedimiento de consulta en la base de datos.

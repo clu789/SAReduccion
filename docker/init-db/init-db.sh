@@ -31,6 +31,9 @@ set +x
 
 readonly init_dir=/opt/sareduccion/init-db
 readonly oracle_pdb=${SAR_ORACLE_DATABASE:-XEPDB1}
+# Numero de tablas creadas por 02-crear-estructura.sql. Si se agrega o quita
+# una tabla, actualizar esta constante y el inventario del script 02.
+readonly expected_tables=22
 
 required_variables=(
   ORACLE_PASSWORD
@@ -157,16 +160,19 @@ DECLARE
     END IF;
     DBMS_OUTPUT.PUT_LINE('OK: ' || p_name);
   END;
+  -- OJO: SQL*Plus devuelve SQLCODE mod 256 como codigo de salida. Un codigo
+  -- como -20992 (20992 = 82*256) se traduce a 0 y set -e NO abortaria.
+  -- Usar siempre codigos cuyo residuo mod 256 sea distinto de cero.
   PROCEDURE assert_min(p_actual NUMBER, p_min NUMBER, p_name VARCHAR2) IS
   BEGIN
     IF p_actual < p_min THEN
-      RAISE_APPLICATION_ERROR(-20992, 'Validacion fallida: ' || p_name);
+      RAISE_APPLICATION_ERROR(-20993, 'Validacion fallida: ' || p_name);
     END IF;
     DBMS_OUTPUT.PUT_LINE('OK: ' || p_name);
   END;
 BEGIN
   SELECT COUNT(*) INTO n FROM DBA_TABLES WHERE OWNER = '${ORACLE_APP_USER}';
-  assert_count(n, 21, '21 tablas');
+  assert_count(n, ${expected_tables}, '${expected_tables} tablas');
 
   SELECT COUNT(*) INTO n FROM DBA_OBJECTS
    WHERE OWNER = '${ORACLE_APP_USER}'

@@ -2,610 +2,476 @@
 
 ## 1. Propósito
 
-La base de datos administra las solicitudes de reducción del monto de inscripción y reinscripción. El modelo utiliza Oracle XE 21c y se construye con los scripts de inicialización:
+La base de datos administra las solicitudes de reducción del monto de inscripción y reinscripción de estudiantes y aspirantes. El modelo utiliza **Oracle XE 21c**, en el esquema `SA_REDUCCION`, y se construye principalmente con [`docker/init-db/02-crear-estructura.sql`](docker/init-db/02-crear-estructura.sql) y [`docker/init-db/05-crear-paquetes-permisos.sql`](docker/init-db/05-crear-paquetes-permisos.sql).
 
-[`docker/init-db/02-crear-estructura.sql`](docker/init-db/02-crear-estructura.sql)
-
-El script crea 21 tablas con sus claves primarias, claves foráneas, restricciones, índices, secuencias y triggers, además de los datos iniciales de catálogo. La identidad de cada perfil se resuelve con los identificadores propios de `Estudiantes`, `Aspirantes` y `Administradores`, sin una tabla de usuarios intermedia.
+La versión revisada contiene **22 tablas**, con claves primarias, foráneas, restricciones, índices, secuencias y triggers. La identidad de estudiantes, aspirantes y administradores se mantiene en sus tablas correspondientes; no existe una tabla de usuarios intermedia. La lógica de negocio se concentra en cuatro paquetes PL/SQL, uno interno y tres públicos.
 
 ## 2. Instalación y ejecución
 
-[`docker/init-db/init-db.sh`](docker/init-db/init-db.sh) es el único orquestador y ejecuta los SQL en orden. La imagen de Oracle lo lanza desde `/container-entrypoint-initdb.d` como `SYS` en la raíz del contenedor; el orquestador cambia a `XEPDB1` y aplica cada script con el usuario que corresponde (SYS o `SA_REDUCCION`), resolviendo además las variables de sustitución. Los demás SQL se montan en `/opt/sareduccion/init-db`, fuera del directorio de auto-inicialización, para que la imagen no los ejecute por su cuenta con el usuario y el contexto equivocados.
+[`docker/init-db/init-db.sh`](docker/init-db/init-db.sh) coordina la inicialización de Oracle. Los scripts se aplican en orden, con el usuario correspondiente y dentro de `XEPDB1`. La inicialización se realiza cuando se crea el volumen de Oracle por primera vez; modificar un SQL del repositorio **no modifica automáticamente una base ya instalada**.
 
-**Los scripts solo se ejecutan con un volumen Oracle vacío**, es decir, la primera vez que se crea la base. Reemplazar un archivo SQL no actualiza una base existente: los cambios posteriores deben aplicarse de forma controlada sobre la base en uso, porque el proyecto todavía no implementa un mecanismo de migraciones incrementales.
-
-**Advertencia:** `docker compose down -v` **elimina** `sareduccion_oracle_data` y con él todos los datos. No es un paso habitual de trabajo ni una forma de aplicar cambios: solo se justifica cuando se quiere reinstalar el esquema desde cero y no hay información que conservar. Si existe un respaldo reciente, este se puede restaurar después (sección 11).
+**Advertencia:** `docker compose down -v` elimina el volumen y los datos de Oracle. No debe utilizarse para actualizar el esquema de trabajo ni para aplicar cambios incrementales. Los cambios posteriores requieren una actualización controlada o una instalación nueva de pruebas.
 
 ### 2.1 Scripts de inicialización
 
-| Script | Propósito | Se ejecuta |
+| Script | Propósito | Usuario |
 | --- | --- | --- |
-| `01-configurar-esquema.sql` | Crea/configura el usuario `SA_REDUCCION` con cuota en `USERS`, y crea el directorio `SAR_BACKUP_DIR` con `READ, WRITE` para el esquema. | Instalación (SYS). |
-| `02-crear-estructura.sql` | Tablas, claves, restricciones, índices, secuencias, triggers y catálogos base. | Instalación (`SA_REDUCCION`). |
-| `03-crear-identidades-roles.sql` | Roles `ROL_SAR_ESTUDIANTE_SIM` y `ROL_SAR_ADMIN_SIM`, cuentas individuales de prueba y su rol por defecto. | Instalación (SYS). |
-| `04-crear-cuenta-tecnica.sql` | Crea/verifica `SAR_BACKEND` y le concede `CREATE SESSION`. | Instalación (SYS). |
-| `05-crear-paquetes-permisos.sql` | Los tres paquetes PL/SQL, la retirada de `EXECUTE` a los roles y los grants a `SAR_BACKEND`. | Instalación (`SA_REDUCCION`). |
-| `06-seed-desarrollo.sql` | Datos ficticios: tipos de solicitud, convocatorias, montos, formularios, estudiantes, administradores, aspirantes, solicitudes, respuestas, historiales y deducciones. | Instalación, solo si `SAR_LOAD_DEV_SEED` está activo. |
-| `init-db.sh` | Orquestador: fija el orden, resuelve las variables de sustitución, aplica cada script con el usuario correcto y verifica el resultado. | Automático en volumen vacío. |
+| `01-configurar-esquema.sql` | Crea el esquema `SA_REDUCCION` y configura el directorio de respaldos. | SYS |
+| `02-crear-estructura.sql` | Crea tablas, restricciones, índices, secuencias, triggers y catálogos base, incluidos los dos tipos de solicitud y formularios. | `SA_REDUCCION` |
+| `03-crear-identidades-roles.sql` | Crea identidades Oracle y roles de prueba. | SYS |
+| `04-crear-cuenta-tecnica.sql` | Crea la cuenta `SAR_BACKEND`. | SYS |
+| `05-crear-paquetes-permisos.sql` | Crea los cuatro paquetes PL/SQL y concede a la cuenta técnica ejecución sobre los tres paquetes públicos. | `SA_REDUCCION` |
+| `06-seed-desarrollo.sql` | Carga datos ficticios y escenarios de solicitudes, respuestas, historiales y deducciones. | `SA_REDUCCION` |
+| `init-db.sh` | Orquesta la instalación y comprueba su resultado. | Automático |
 
-El nombre de cada archivo coincide con su número de orden. El orquestador aplica los scripts 01, 03 y 04 como SYS (requieren privilegios de instancia) y los 02, 05 y 06 como `SA_REDUCCION`; los paquetes deben pertenecer a ese usuario para que `AUTHID DEFINER` quede ligado al propietario del esquema.
-
-`06-seed-desarrollo.sql` es el único script condicionado: con `SAR_LOAD_DEV_SEED=false` se omite y la base queda sin datos de aplicación. Los catálogos `Periodos`, `Estatus_Solicitudes`, `Estatus_Deducciones` y `Tipo_Preguntas` sí se insertan siempre, porque forman parte de `02-crear-estructura.sql`. `Tipo_Solicitudes`, en cambio, lo aporta el seed.
+El seed es **de una sola ejecución por esquema nuevo**. Los catálogos esenciales, los tipos de solicitud y los formularios ya existen desde el script `02`; no deben duplicarse en el `06`. En los datos ficticios, las convocatorias usan identificadores explícitos `900001` y `900002`, mientras que el resto de entidades toma sus identificadores de las secuencias creadas en `02`.
 
 ### 2.2 Verificaciones
 
-| Prueba | Alcance |
-| --- | --- |
-| `docker/init-db/init-db.sh` (bloque final) | Automática: 21 tablas, 6 objetos de paquete válidos, 3 usuarios, 2 roles asignados, privilegios de `SAR_BACKEND` y presencia/ausencia de datos según `SAR_LOAD_DEV_SEED`. |
-| `database/tests/05-verificar-instalacion.sql` | Existencia y validez de los objetos del esquema. |
-| `database/tests/06-probar-permisos.sql` | Privilegios efectivos de `SAR_BACKEND` y de los roles simulados. |
-| `database/tests/07-probar-aspirantes.sql` | Escenarios de `PKG_ASPIRANTE`: parámetros nulos, sin coincidencia, año no vigente y coincidencia ambigua entre periodos. |
+`init-db.sh` comprueba al final de la instalación que existan las 22 tablas, los 16 secuencias, los triggers y los cuatro paquetes con estatus `VALID`, sin objetos inválidos. También verifica los privilegios efectivos de `SAR_BACKEND` y de las cuentas individuales, y que la presencia de datos de aplicación corresponda a `SAR_LOAD_DEV_SEED`.
 
-Las pruebas de `database/tests/` son scripts SQL de comprobación manual: se conectan y muestran resultados, pero no se integran en una suite automatizada. Se conservan porque cubren reglas que no pueden probarse desde el backend (la cuenta técnica no tiene `INSERT`), en particular el rechazo de coincidencias ambiguas entre periodos.
+Las reglas de negocio se validan ejecutando los paquetes sobre una base nueva: creación y unicidad de solicitudes, retirada y reenvío, autorización, rechazo, cancelación, reautorización, aplicación, fechas de convocatoria, historiales y conservación de montos. Actualmente no existe una suite automatizada de estas reglas fuera de `init-db.sh`.
 
 ## 3. Modelo de datos
 
-**PK**: clave primaria; **FK**: clave foránea; **UK**: unicidad; **NULL**: opcional; **NOT NULL**: obligatorio; **CHECK**: restricción de comprobación. Todo lo indicado corresponde a [`docker/init-db/02-crear-estructura.sql`](docker/init-db/02-crear-estructura.sql). El esquema consta de 21 tablas.
+**PK**: clave primaria; **FK**: clave foránea; **UK**: unicidad; **NULL**: opcional; **NOT NULL**: obligatorio; **CHECK**: validación de valores. Los nombres y tipos siguientes corresponden al script vigente `docker/init-db/02-crear-estructura.sql`.
 
 ### 3.0 Diagrama entidad-relación
 
 ![Diagrama entidad-relación del esquema SA_REDUCCION](DataBase.png)
 
-### 3.1 Catálogos y seguridad
+**Nota:** el diagrama debe regenerarse si todavía representa la estructura anterior, especialmente por `Historial_Convocatorias`, las cuatro fechas y el estado `RETIRADO`.
+
+### 3.1 Catálogos y estados
 
 #### Tabla: `Periodos`
 
-Catálogo de periodos académicos, referenciado por `Convocatorias` y `Aspirantes`.
+Catálogo de periodos académicos.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `idPeriodo` | `NUMBER(2)` | PK `pk_periodos` | Identificador del periodo. |
-| `Descripcion` | `VARCHAR2(50)` | NOT NULL, UK `uk_periodos_descripcion` | Nombre del periodo. |
-
-No usa secuencia: los identificadores se insertan explícitamente (1 y 2).
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_periodo` | `NUMBER(2)` | PK |
+| `descripcion` | `VARCHAR2(50)` | NOT NULL |
 
 #### Tabla: `Tipo_Solicitudes`
 
-Clasificación de las solicitudes. El catálogo es cerrado y solo admite dos valores, ambos cargados por el seed: `900001` **Hijos de trabajadores** y `900002` **Hijos de homologados**.
+Categorías de solicitud: hijo de trabajador y de homologado. Se cargan en el script `02` con identificadores `1` y `2`.
 
-Estos dos tipos corresponden a las categorías de personal que define `asignacion_Modulos.md` para configurar la reducción por convocatoria:
-
-| `id_Tipo_Solicitud` | `Nombre` | Categoría de `asignacion_Modulos.md` |
-| ---: | --- | --- |
-| `900001` | Hijos de trabajadores | Personal **interno**. |
-| `900002` | Hijos de homologados | Personal **homologado**. |
-
-No existen otros tipos válidos. El seed rechaza con rollback cualquier fila adicional en la tabla y cualquier solicitud, historial o deducción que use un identificador distinto de estos dos. Los identificadores `900001` y `900002` están reservados para datos de desarrollo; las secuencias de la tabla no se modifican.
-
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_Tipo_Solicitud` | `NUMBER(10)` | PK `pk_tipo_solicitudes` | Identificador del tipo. Lo asigna `trg_tipo_solicitudes_bi` desde `seq_tipo_solicitudes`. |
-| `Nombre` | `VARCHAR2(50)` | NOT NULL | Nombre del tipo de solicitud. |
-| `Descripcion` | `VARCHAR2(200)` | NULL | Detalle del tipo. |
-
-Sus filas las aporta `06-seed-desarrollo.sql`, no `02-crear-estructura.sql`.
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_tipo_solicitud` | `NUMBER(10)` | PK |
+| `nombre` | `VARCHAR2(50)` | NOT NULL |
+| `descripcion` | `VARCHAR2(200)` | Según restricciones de tabla |
 
 #### Tabla: `Tipo_Preguntas`
 
-Modalidades admitidas para las preguntas de un formulario.
+Modalidades `ABIERTA`, `OPCION_UNICA` y `MIXTA`.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_Tipo_Pregunta` | `NUMBER(10)` | PK `pk_tipo_preguntas` | Identificador del tipo. Lo asigna `trg_tipo_preguntas_bi` desde `seq_tipo_preguntas` (inicia en 4). |
-| `Nombre` | `VARCHAR2(50)` | NOT NULL, UK `uk_tipo_preguntas_nombre` | `ABIERTA`, `OPCION_UNICA` o `MIXTA`. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_tipo_pregunta` | `NUMBER(10)` | PK |
+| `nombre` | `VARCHAR2(50)` | NOT NULL |
+| `descripcion` | `VARCHAR2(400)` | NOT NULL |
 
 #### Tabla: `Estatus_Solicitudes`
 
-Estados posibles de una solicitud.
+Estados `PENDIENTE` (1), `AUTORIZADO` (2), `RECHAZADO` (3), `CANCELADO` (4), `APLICADO` (5) y `RETIRADO` (6).
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_estatus_solicitud` | `NUMBER(10)` | PK `pk_estatus_solicitudes` | Identificador del estado. Lo asigna `trg_estatus_solicitudes_bi` desde `seq_estatus_solicitudes` (inicia en 6). |
-| `Nombre` | `VARCHAR2(100)` | NOT NULL, UK `uk_estatus_solicitudes_nombre` | `PENDIENTE`, `AUTORIZADO`, `RECHAZADO`, `CANCELADO` o `APLICADO`. |
-| `Descripcion` | `VARCHAR2(200)` | NULL | Detalle del estado. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_estatus_solicitud` | `NUMBER(10)` | PK |
+| `nombre` | `VARCHAR2(100)` | NOT NULL |
+| `descripcion` | `VARCHAR2(200)` | Según restricciones de tabla |
 
 #### Tabla: `Estatus_Deducciones`
 
-Estados posibles de una deducción autorizada. Solo se usan los valores 2, 4 y 5.
+Estados `AUTORIZADO` (2), `CANCELADO` (4) y `APLICADO` (5).
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_Estatus_Deducciones` | `NUMBER(10)` | PK `pk_estatus_deducciones` | Identificador del estado. Lo asigna `trg_estatus_deducciones_bi` desde `seq_estatus_deducciones` (inicia en 6). |
-| `Nombre` | `VARCHAR2(50)` | NOT NULL, UK `uk_estatus_deducciones_nombre` | `AUTORIZADO`, `CANCELADO` o `APLICADO`. |
-| `Descripcion` | `VARCHAR2(100)` | NULL | Detalle del estado. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_estatus_deducciones` | `NUMBER(10)` | PK |
+| `nombre` | `VARCHAR2(50)` | NOT NULL |
+| `descripcion` | `VARCHAR2(300)` | Según restricciones de tabla |
 
 ### 3.2 Personas y perfiles
 
 #### Tabla: `Estudiantes`
 
-Padrón de estudiantes, identificados por su número de control.
+Padrón de estudiantes identificado por `numero_control`.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `Numero_Control` | `VARCHAR2(10)` | PK `pk_estudiantes` | Número de control; identifica al estudiante. |
-| `Nombre` | `VARCHAR2(50)` | NOT NULL | Nombre o nombres. |
-| `PrimerAppellido` | `VARCHAR2(50)` | NOT NULL | Primer apellido. El nombre de la columna está escrito así en el esquema. |
-| `SegundoApellido` | `VARCHAR2(50)` | NULL | Segundo apellido. |
-| `Carrera` | `VARCHAR2(100)` | NULL | Programa educativo. |
-| `Semestre` | `NUMBER(2)` | NULL, CHECK `ck_estudiantes_semestre` | Semestre entre 1 y 20, o nulo. |
-
-No usa secuencia: la clave es el propio número de control. `PKG_ESTUDIANTE` valida este identificador antes de cada operación.
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `numero_control` | `VARCHAR2(10)` | PK |
+| `nombre` | `VARCHAR2(50)` | NOT NULL |
+| `primer_apellido` | `VARCHAR2(50)` | NOT NULL |
+| `segundo_apellido` | `VARCHAR2(50)` | Según restricciones de tabla |
+| `carrera` | `VARCHAR2(100)` | Según restricciones de tabla |
+| `semestre` | `NUMBER(2)` | Según restricciones de tabla |
 
 #### Tabla: `Aspirantes`
 
-Registra aspirantes de nuevo ingreso mediante la clave compuesta `(ficha, periodo, anio)`. Un mismo aspirante puede tener registros en periodos o años distintos, por lo que la ficha sola no identifica una fila.
+Padrón de aspirantes identificado por la clave compuesta `(ficha, periodo, anio)`; una ficha puede repetirse en periodos diferentes.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `ficha` | `VARCHAR2(18)` | PK (1), NOT NULL | Identificador de registro del aspirante. |
-| `periodo` | `NUMBER(2)` | PK (2), NOT NULL, FK `fk_aspirante_periodo` -> `Periodos` | Periodo del registro. |
-| `anio` | `NUMBER(4)` | PK (3), NOT NULL, CHECK `ck_aspirantes_anio` | Año del registro, entre 2000 y 2200. |
-| `Nombre` | `VARCHAR2(50)` | NOT NULL | Nombre o nombres. |
-| `PrimerApellido` | `VARCHAR2(50)` | NOT NULL | Primer apellido. |
-| `SegundoApellido` | `VARCHAR2(50)` | NULL | Segundo apellido. |
-| `Semestre` | `NUMBER(2)` | NULL, CHECK `ck_aspirantes_semestre` | Semestre entre 1 y 20, o nulo. |
-| `Curp` | `VARCHAR2(18)` | NOT NULL, CHECK `ck_aspirantes_curp` | CURP; la restricción exige longitud exacta de 18. |
-| `correo` | `VARCHAR2(254)` | NOT NULL, CHECK `ck_aspirantes_correo` | Correo de contacto admitido. |
-
-**Clave primaria compuesta.** `pk_aspirantes` es `(ficha, periodo, anio)`. Es la razón por la que la validación de acceso debe obtener las tres columnas: la búsqueda por `ficha` puede devolver más de una fila.
-
-**Columna `correo`.** Es obligatoria para todo registro nuevo y está prevista como canal de verificación futuro (código de un solo uso); hoy se usa como dato de contacto de desarrollo.
-
-**Dominios de correo admitidos.** `ck_aspirantes_correo` aplica una expresión regular insensible a mayúsculas (`'i'`) que exige la forma `usuario@dominio`, con usuario alfanumérico y puntos, y uno de estos siete dominios:
-
-| Dominios admitidos |
-| --- |
-| `yahoo.com.mx`, `gmail.com`, `hotmail.com`, `outlook.com`, `live.com`, `yahoo.com`, `icloud.com` |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `ficha` | `VARCHAR2(18)` | NOT NULL |
+| `periodo` | `NUMBER(2)` | NOT NULL |
+| `anio` | `NUMBER(4)` | NOT NULL |
+| `nombre` | `VARCHAR2(50)` | NOT NULL |
+| `primer_apellido` | `VARCHAR2(50)` | NOT NULL |
+| `segundo_apellido` | `VARCHAR2(50)` | Según restricciones de tabla |
+| `semestre` | `NUMBER(2)` | Según restricciones de tabla |
+| `curp` | `VARCHAR2(18)` | NOT NULL |
+| `correo` | `VARCHAR2(254)` | NOT NULL |
 
 #### Tabla: `Administradores`
 
-Padrón del personal administrativo.
+Padrón de administradores identificado por `id_administrador`.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `idAdministrador` | `VARCHAR2(10)` | PK `pk_administradores` | Identificador del administrador; coincide con el nombre de su cuenta Oracle de prueba (`SA01`). |
-| `Nombre` | `VARCHAR2(50)` | NOT NULL | Nombre o nombres. |
-| `PrimerApellido` | `VARCHAR2(50)` | NOT NULL | Primer apellido. |
-| `SegundoApellido` | `VARCHAR2(50)` | NULL | Segundo apellido. |
-
-No usa secuencia. `PKG_ADMINISTRADOR` valida este identificador antes de cada operación.
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_administrador` | `VARCHAR2(10)` | PK |
+| `nombre` | `VARCHAR2(50)` | NOT NULL |
+| `primer_apellido` | `VARCHAR2(50)` | NOT NULL |
+| `segundo_apellido` | `VARCHAR2(50)` | Según restricciones de tabla |
 
 ### 3.3 Convocatorias y montos
 
 #### Tabla: `Convocatorias`
 
-Periodos de apertura y cierre durante los que se admiten solicitudes.
+Convocatorias con cuatro fechas operativas: inicio y fin de recepción de solicitudes, límite de autorización y límite de aplicación. Las fechas deben estar ordenadas y sus intervalos operativos no pueden superponerse.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_convocatoria` | `NUMBER(10)` | PK `pk_convocatorias` | Identificador de la convocatoria. Lo asigna `trg_convocatorias_bi` desde `seq_convocatorias`. |
-| `fecha_inicio` | `DATE` | NOT NULL | Fecha en que inicia la convocatoria. |
-| `fecha_fin` | `DATE` | NOT NULL, CHECK `ck_convocatoria_fechas` | Fecha en que termina; debe ser mayor o igual que `fecha_inicio`. |
-| `id_periodo` | `NUMBER(2)` | NOT NULL, FK `fk_convocatoria_periodo` -> `Periodos` | Periodo al que pertenece. |
-| `anio` | `NUMBER(4)` | NOT NULL, CHECK `ck_convocatoria_anio`, UK `uk_convocatoria_periodo_anio` | Año, entre 2000 y 2200. La unicidad es por `(id_periodo, anio)`. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_convocatoria` | `NUMBER(10)` | PK |
+| `fecha_inicio_solicitudes` | `DATE` | NOT NULL |
+| `fecha_fin_solicitudes` | `DATE` | NOT NULL |
+| `fecha_limite_autorizacion` | `DATE` | NOT NULL |
+| `fecha_limite_aplicacion` | `DATE` | NOT NULL |
+| `id_periodo` | `NUMBER(2)` | NOT NULL |
+| `anio` | `NUMBER(4)` | NOT NULL |
+
+#### Tabla: `Historial_Convocatorias`
+
+Conserva los valores anteriores y nuevos de las cuatro fechas cuando un administrador las modifica. La creación inicial no genera una fila histórica.
+
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_historial_convocatoria` | `NUMBER(10)` | PK |
+| `id_convocatoria` | `NUMBER(10)` | NOT NULL |
+| `id_administrador` | `VARCHAR2(10)` | NOT NULL |
+| `fecha_registro` | `DATE` | NOT NULL, DEFAULT |
+| `inicio_anterior` | `DATE` | NOT NULL |
+| `fin_anterior` | `DATE` | NOT NULL |
+| `autorizacion_anterior` | `DATE` | NOT NULL |
+| `aplicacion_anterior` | `DATE` | NOT NULL |
+| `inicio_nuevo` | `DATE` | NOT NULL |
+| `fin_nuevo` | `DATE` | NOT NULL |
+| `autorizacion_nueva` | `DATE` | NOT NULL |
+| `aplicacion_nueva` | `DATE` | NOT NULL |
 
 #### Tabla: `Convocatorias_TipoSolicitudes`
 
-Relaciona cada convocatoria con los tipos de solicitud que ofrece y fija el monto de deducción aplicable. Es la tabla donde el administrador configura la **cantidad de reducción por categoría de personal**: una fila para personal interno (`900001`) y otra para personal homologado (`900002`), tal como se acordó en `asignacion_Modulos.md`.
+Configura el monto de deducción por convocatoria y categoría de personal, sin distinguir inscripción de reinscripción.
 
-El monto es único por tipo y convocatoria: no se distingue entre inscripción y reinscripción. Esa diferencia no se configura aquí, sino que se resuelve al calcular la deducción con `Monto_Inscripciones` (aspirante) o `Monto_Reinscripciones` (estudiante).
-
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_convocatoria` | `NUMBER(10)` | PK (1), FK `fk_cts_convocatoria` -> `Convocatorias` | Convocatoria. |
-| `id_Tipo_Solicitud` | `NUMBER(10)` | PK (2), FK `fk_cts_tipo_solicitud` -> `Tipo_Solicitudes` | Tipo de solicitud ofrecido (categoría de personal). |
-| `monto_deduccion` | `NUMBER(10,2)` | NOT NULL, CHECK `ck_cts_monto_deduccion` | Monto de deducción configurado; debe ser mayor o igual que cero. |
-| `fecha_asignacion_montos` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Fecha en que se asignó el monto. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_convocatoria` | `NUMBER(10)` | PK, FK a `Convocatorias` |
+| `id_tipo_solicitud` | `NUMBER(10)` | PK, FK a `Tipo_Solicitudes` |
+| `monto_deduccion` | `NUMBER(10,2)` | NOT NULL |
+| `fecha_asignacion_montos` | `DATE` | NOT NULL, DEFAULT |
 
 #### Tabla: `Monto_Inscripciones`
 
-Catálogo de importes de inscripción utilizados al calcular una deducción de aspirante.
+Catálogo de importes base de inscripción.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_monto_inscripcion` | `NUMBER(10)` | PK `pk_monto_inscripciones` | Identificador del monto. Lo asigna `trg_monto_inscripciones_bi` desde `seq_monto_inscripciones`. |
-| `monto_pago` | `NUMBER(10,2)` | NOT NULL, CHECK `ck_monto_inscripciones` | Importe de inscripción; debe ser mayor o igual que cero. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_monto_inscripcion` | `NUMBER(10)` | PK |
+| `monto_pago` | `NUMBER(10,2)` | NOT NULL |
 
 #### Tabla: `Monto_Reinscripciones`
 
-Catálogo de importes de reinscripción utilizados al calcular una deducción de estudiante.
+Catálogo de importes base de reinscripción.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_monto_reinscripcion` | `NUMBER(10)` | PK `pk_monto_reinscripciones` | Identificador del monto. Lo asigna `trg_monto_reinscripcion_bi` desde `seq_monto_reinscripciones`. |
-| `monto_pago` | `NUMBER(10,2)` | NOT NULL, CHECK `ck_monto_reinscripciones` | Importe de reinscripción; debe ser mayor o igual que cero. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_monto_reinscripcion` | `NUMBER(10)` | PK |
+| `monto_pago` | `NUMBER(10,2)` | NOT NULL |
 
 ### 3.4 Formularios y preguntas
 
 #### Tabla: `Formularios`
 
-Formulario asociado a cada tipo de solicitud. La relación es uno a uno.
+Formularios asociados a los dos tipos de solicitud; ambos se cargan en el script `02`.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `idFormulario` | `NUMBER(10)` | PK `pk_formularios` | Identificador del formulario. Lo asigna `trg_formularios_bi` desde `seq_formularios`. |
-| `Nombre` | `VARCHAR2(100)` | NOT NULL | Nombre del formulario. |
-| `Descripcion` | `VARCHAR2(200)` | NULL | Detalle del formulario. |
-| `id_Tipo_Solicitud` | `NUMBER(10)` | NOT NULL, FK `fk_formulario_tipo_solicitud` -> `Tipo_Solicitudes`, UK `uk_formulario_tipo_solicitud` | Tipo de solicitud al que pertenece. La unicidad impide dos formularios para el mismo tipo. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_formulario` | `NUMBER(10)` | PK |
+| `nombre` | `VARCHAR2(100)` | NOT NULL |
+| `descripcion` | `VARCHAR2(200)` | Según restricciones de tabla |
+| `instrucciones` | `VARCHAR2(4000)` | Según restricciones de tabla |
+| `id_tipo_solicitud` | `NUMBER(10)` | NOT NULL |
 
 #### Tabla: `Preguntas`
 
-Banco de preguntas que pueden asignarse a los formularios.
+Banco de preguntas de los formularios, con indicador de obligatoriedad.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `idPregunta` | `NUMBER(10)` | PK `pk_preguntas` | Identificador de la pregunta. Lo asigna `trg_preguntas_bi` desde `seq_preguntas`. |
-| `texto_Pregunta` | `VARCHAR2(4000)` | NOT NULL | Enunciado de la pregunta. |
-| `obligatoria` | `CHAR(1)` | NOT NULL, DEFAULT `'S'`, CHECK `ck_pregunta_obligatoria` | Solo admite `'S'` o `'N'`. |
-| `tipo_pregunta` | `NUMBER(10)` | NOT NULL, FK `fk_pregunta_tipo` -> `Tipo_Preguntas` | Modalidad de respuesta. Determina las reglas que aplica `trg_respuestas_validacion`. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_pregunta` | `NUMBER(10)` | PK |
+| `texto_pregunta` | `VARCHAR2(4000)` | NOT NULL |
+| `obligatoria` | `CHAR(1)` | NOT NULL, DEFAULT |
+| `tipo_pregunta` | `NUMBER(10)` | NOT NULL |
 
 #### Tabla: `Formulario_Preguntas`
 
-Asigna preguntas a un formulario y fija su orden de presentación.
+Relaciona formularios y preguntas y fija el orden de presentación.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `idFormulario` | `NUMBER(10)` | PK (1), FK `fk_fp_formulario` -> `Formularios` | Formulario. |
-| `idPregunta` | `NUMBER(10)` | PK (2), FK `fk_fp_pregunta` -> `Preguntas` | Pregunta incluida. |
-| `orden` | `NUMBER(5)` | NOT NULL, CHECK `ck_fp_orden`, UK `uk_fp_orden` | Posición dentro del formulario; debe ser mayor que cero y no se repite en el mismo formulario. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_formulario` | `NUMBER(10)` | PK, FK a `Formularios` |
+| `id_pregunta` | `NUMBER(10)` | PK, FK a `Preguntas` |
+| `orden` | `NUMBER(5)` | NOT NULL, único por formulario |
 
 #### Tabla: `Opciones`
 
-Opciones de respuesta asociadas a una pregunta de tipo `OPCION_UNICA` o `MIXTA`.
+Opciones de respuesta; `requiere_especificacion=1` exige texto adicional cuando se selecciona esa opción.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_opcion` | `NUMBER(10)` | PK `pk_opciones` | Identificador de la opción. Lo asigna `trg_opciones_bi` desde `seq_opciones`. |
-| `texto_opcion` | `VARCHAR2(255)` | NOT NULL | Texto mostrado. La opción `OTRO` tiene un tratamiento especial en `trg_respuestas_validacion`. |
-| `orden` | `NUMBER(5)` | NOT NULL, CHECK `ck_opcion_orden`, UK `uk_opcion_orden` | Posición dentro de la pregunta; debe ser mayor que cero y no se repite en la misma pregunta. |
-| `id_pregunta` | `NUMBER(10)` | NOT NULL, FK `fk_opcion_pregunta` -> `Preguntas` | Pregunta a la que pertenece. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_opcion` | `NUMBER(10)` | PK |
+| `texto_opcion` | `VARCHAR2(255)` | NOT NULL |
+| `orden` | `NUMBER(5)` | NOT NULL |
+| `id_pregunta` | `NUMBER(10)` | NOT NULL |
+| `requiere_especificacion` | `NUMBER(1)` | NOT NULL, DEFAULT |
 
 ### 3.5 Solicitudes y respuestas
 
 #### Tabla: `Solicitudes`
 
-Solicitud presentada por un estudiante o por un aspirante, siempre en una convocatoria, un tipo de solicitud y un formulario concretos.
+Una solicitud por solicitante y convocatoria. Una fila corresponde a un estudiante o aspirante, nunca a ambos.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `idSolicitud` | `NUMBER(10)` | PK `pk_solicitudes` | Identificador de la solicitud. Lo asigna `trg_solicitudes_bi` desde `seq_solicitudes`. |
-| `id_estatus_solicitud` | `NUMBER(10)` | NOT NULL, FK `fk_solicitud_estatus` -> `Estatus_Solicitudes` | Estado actual. Toda solicitud se crea en `PENDIENTE` (1). |
-| `id_convocatoria` | `NUMBER(10)` | NOT NULL, FK `fk_solicitud_convocatoria` -> `Convocatorias` | Convocatoria en la que se presenta. |
-| `num_control` | `VARCHAR2(10)` | NULL, FK `fk_solicitud_estudiante` -> `Estudiantes` | Número de control, solo si la solicitud es de estudiante. |
-| `ficha` | `VARCHAR2(18)` | NULL | Ficha, solo si la solicitud es de aspirante. |
-| `periodo` | `NUMBER(2)` | NULL | Periodo del aspirante (solo si `ficha` no es nula). |
-| `anio` | `NUMBER(4)` | NULL, CHECK `ck_solicitud_anio` | Año del aspirante, entre 2000 y 2200. Nulo para estudiantes. |
-| `fecha_Solicitud` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Fecha de creación. |
-| `fecha_actualizacion` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Última actualización; la refresca `trg_solicitudes_validacion` en cada inserción o modificación. |
-| `id_Tipo_Solicitud` | `NUMBER(10)` | NOT NULL, FK `fk_solicitud_tipo` -> `Tipo_Solicitudes` | Tipo de solicitud. |
-| `idFormulario` | `NUMBER(10)` | NOT NULL, FK `fk_solicitud_formulario` -> `Formularios` | Formulario que responde la solicitud. |
-
-**Clave foránea compuesta.** `fk_solicitud_aspirante` es `(ficha, periodo, anio) -> Aspirantes(ficha, periodo, anio)`. Como `num_control`, `ficha`, `periodo` y `anio` son opcionales, la integridad se completa con la restricción `ck_solicitud_origen`.
-
-**Restricción `ck_solicitud_origen`.** Exige que la solicitud pertenezca a un estudiante o a un aspirante, nunca a ambos:
-
-```text
-(num_control IS NOT NULL AND ficha IS NULL AND periodo IS NULL AND anio IS NULL)
-OR
-(num_control IS NULL AND ficha IS NOT NULL AND periodo IS NOT NULL AND anio IS NOT NULL)
-```
-
-**Trigger `trg_solicitudes_validacion`.** Antes de insertar o modificar comprueba que el formulario corresponda al tipo de solicitud y, cuando la solicitud es de aspirante, que el periodo y el año del aspirante coincidan con los de la convocatoria. Un fallo lanza `-20003` (desajuste periodo/año) o `-20002` (registro inexistente).
-
-**Trigger `trg_solicitudes_historial`.** Después de un cambio de `id_estatus_solicitud` inserta una fila en `Historial_Solicitudes`.
-
-#### Índices únicos funcionales de `Solicitudes`
-
-Como una fila solo tiene número de control o ficha (nunca ambos), la unicidad por origen se resuelve con dos índices basados en expresiones que anulan la columna que no aplica. Al ser `NULL` en la columna ausente, el valor no participa en la comparación y se evita la ambigüedad de un índice único sobre columnas opcionales.
-
-| Índice | Tipo | Expresiones | Evita |
-| --- | --- | --- | --- |
-| `uk_solicitud_estudiante_conv` | `FUNCTION-BASED NORMAL`, UNIQUE | `CASE WHEN "NUM_CONTROL" IS NOT NULL THEN "NUM_CONTROL" END`, `CASE WHEN "NUM_CONTROL" IS NOT NULL THEN "ID_CONVOCATORIA" END` | Dos solicitudes del mismo estudiante en la misma convocatoria. |
-| `uk_solicitud_aspirante_conv` | `FUNCTION-BASED NORMAL`, UNIQUE | `CASE WHEN "FICHA" IS NOT NULL THEN "FICHA" END`, `CASE WHEN "FICHA" IS NOT NULL THEN "PERIODO" END`, `CASE WHEN "FICHA" IS NOT NULL THEN "ANIO" END`, `CASE WHEN "FICHA" IS NOT NULL THEN "ID_CONVOCATORIA" END` | Dos solicitudes del mismo aspirante (misma ficha, periodo y año) en la misma convocatoria. |
-
-Los cuatro segmentos del índice de aspirante reproducen la clave compuesta de `Aspirantes`, de modo que la unicidad se evalúa sobre la identidad completa del aspirante y no solo sobre la ficha. Ambos límites son independientes del tipo de solicitud: un mismo origen no puede repetir convocatoria aunque cambie el tipo.
-
-Estos dos índices son la implementación en base de datos de la regla acordada en `asignacion_Modulos.md`: **una sola solicitud por solicitante y convocatoria**. Corregir respuestas debe actualizar el registro existente, no crear otro; cualquier intento de alta duplicada falla con `ORA-00001`.
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_solicitud` | `NUMBER(10)` | PK |
+| `id_estatus_solicitud` | `NUMBER(10)` | NOT NULL |
+| `id_convocatoria` | `NUMBER(10)` | NOT NULL |
+| `num_control` | `VARCHAR2(10)` | Según restricciones de tabla |
+| `ficha` | `VARCHAR2(18)` | Según restricciones de tabla |
+| `periodo` | `NUMBER(2)` | Según restricciones de tabla |
+| `anio` | `NUMBER(4)` | Según restricciones de tabla |
+| `fecha_solicitud` | `DATE` | NOT NULL, DEFAULT |
+| `fecha_actualizacion` | `DATE` | NOT NULL, DEFAULT |
+| `id_tipo_solicitud` | `NUMBER(10)` | NOT NULL |
+| `id_formulario` | `NUMBER(10)` | NOT NULL |
 
 #### Tabla: `Respuestas`
 
-Respuesta de una solicitud a una de las preguntas de su formulario.
+Respuestas asociadas a cada solicitud y pregunta; las preguntas opcionales pueden no generar respuesta.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_respuesta` | `NUMBER(10)` | PK `pk_respuestas` | Identificador de la respuesta. Lo asigna `trg_respuestas_bi` desde `seq_respuestas`. |
-| `texto_respuesta` | `VARCHAR2(4000)` | NULL | Respuesta escrita; obligatoria en preguntas `ABIERTA` y en la opción `OTRO` de una `MIXTA`. |
-| `id_solicitud` | `NUMBER(10)` | NOT NULL, FK `fk_respuesta_solicitud` -> `Solicitudes` | Solicitud respondida. |
-| `id_pregunta` | `NUMBER(10)` | NOT NULL, FK `fk_respuesta_pregunta` -> `Preguntas` | Pregunta respondida. |
-| `id_opcion` | `NUMBER(10)` | NULL, FK `fk_respuesta_opcion` -> `Opciones` | Opción elegida; obligatoria en preguntas `OPCION_UNICA` y `MIXTA`. |
-
-**Índice único `ux_respuesta_solicitud_pregunta`.** Sobre `(id_solicitud, id_pregunta)`: admite una sola respuesta por pregunta y solicitud. Es un índice único explícito, no una restricción `UNIQUE` declarada en la tabla.
-
-**Trigger `trg_respuestas_validacion`.** Antes de insertar o modificar verifica que la pregunta pertenezca al formulario de la solicitud y que la forma de la respuesta corresponda al tipo de pregunta:
-
-| Tipo de pregunta | Regla exigida |
-| --- | --- |
-| `ABIERTA` (1) | Debe traer texto y no admite `id_opcion`. |
-| `OPCION_UNICA` (2) | Debe traer `id_opcion` y no admite texto adicional. |
-| `MIXTA` (3) | Debe traer `id_opcion`; solo la opción `OTRO` admite texto adicional. |
-
-También comprueba que la opción pertenezca a la pregunta. Los rechazos usan los códigos `-20008` a `-20018`.
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_respuesta` | `NUMBER(10)` | PK |
+| `texto_respuesta` | `VARCHAR2(4000)` | Según restricciones de tabla |
+| `id_solicitud` | `NUMBER(10)` | NOT NULL |
+| `id_pregunta` | `NUMBER(10)` | NOT NULL |
+| `id_opcion` | `NUMBER(10)` | Según restricciones de tabla |
 
 ### 3.6 Historial y deducciones
 
 #### Tabla: `Historial_Solicitudes`
 
-Bitácora de los cambios de estado de una solicitud.
+Registra el estado de la solicitud, el tipo y, cuando corresponde, el administrador responsable. Incluye un registro inicial `PENDIENTE`.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_historial` | `NUMBER(10)` | PK `pk_historial_solicitudes` | Identificador del registro. Lo asigna `trg_hist_solicitudes_bi` desde `seq_historial_solicitudes`. |
-| `comentario` | `VARCHAR2(500)` | NULL | Comentario del cambio; lo completa `trg_deduccion_cancelacion` cuando el cambio proviene de una deducción. |
-| `fecha_Registro` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Fecha del movimiento. |
-| `id_solicitud` | `NUMBER(10)` | NOT NULL, FK `fk_hs_solicitud` -> `Solicitudes` | Solicitud afectada. |
-| `id_estatus` | `NUMBER(10)` | NOT NULL, FK `fk_hs_estatus` -> `Estatus_Solicitudes` | Estado registrado. La columna se llama `id_estatus`, no `id_estatus_solicitud`. |
-| `id_administrador` | `VARCHAR2(10)` | NULL, FK `fk_hs_administrador` -> `Administradores` | Administrador que ejecutó el cambio; nulo si lo originó un trigger. |
-| `id_Tipo_solicitud` | `NUMBER(10)` | NOT NULL, FK `fk_hs_tipo_solicitud` -> `Tipo_Solicitudes` | Tipo de la solicitud al momento del cambio. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_historial` | `NUMBER(10)` | PK |
+| `comentario` | `VARCHAR2(500)` | Según restricciones de tabla |
+| `fecha_registro` | `DATE` | NOT NULL, DEFAULT |
+| `id_solicitud` | `NUMBER(10)` | NOT NULL |
+| `id_estatus` | `NUMBER(10)` | NOT NULL |
+| `id_administrador` | `VARCHAR2(10)` | Según restricciones de tabla |
+| `id_tipo_solicitud` | `NUMBER(10)` | NOT NULL |
 
 #### Tabla: `Deducciones_autorizadas`
 
-Deducción autorizada sobre una solicitud ya aprobada, con su seguimiento y sus montos.
+Deducción única por solicitud, con montos base, descuento y total resultante. Los importes se recalculan al aplicar.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_deduccion_autorizada` | `NUMBER(10)` | PK `pk_deducciones_autorizadas` | Identificador de la deducción. Lo asigna `trg_deducciones_bi` desde `seq_deducciones_autorizadas`. |
-| `estatus_deduccion` | `NUMBER(10)` | NOT NULL, FK `fk_da_estatus` -> `Estatus_Deducciones` | Estado actual. Toda deducción nueva se crea `AUTORIZADO` (2). |
-| `monto_final` | `NUMBER(10,2)` | NOT NULL, CHECK `ck_da_monto_final` | Resultado de `monto_pago - monto_deduccion`; lo calcula `trg_deducciones_calculo`. |
-| `fecha_registro` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Fecha de registro; inmutable tras la creación. |
-| `id_solicitud` | `NUMBER(10)` | NOT NULL, FK `fk_da_solicitud` -> `Solicitudes`, UK `uk_da_solicitud` | Solicitud deducida. La unicidad impide más de una deducción por solicitud. |
-| `id_administrador` | `VARCHAR2(10)` | NULL, FK `fk_da_administrador` -> `Administradores` | Administrador que autorizó. |
-| `fecha_autorizacion` | `DATE` | NULL | Fecha de autorización; la fija `trg_deducciones_calculo` y no puede modificarse. |
-| `id_convocatoria` | `NUMBER(10)` | NOT NULL | Convocatoria de la solicitud; la copia el trigger. |
-| `id_Tipo_Solicitud` | `NUMBER(10)` | NOT NULL | Tipo de la solicitud; lo copia el trigger. |
-| `fecha_actualizacion` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Última modificación; la refresca `trg_deducciones_fecha_update`. |
-| `comentario` | `VARCHAR2(500)` | NULL | Comentario de la resolución. |
-| `id_monto_inscripcion` | `NUMBER(10)` | NULL, FK `fk_da_monto_inscripcion` -> `Monto_Inscripciones` | Monto de inscripción; solo en deducciones de aspirante. |
-| `id_monto_reinscripcion` | `NUMBER(10)` | NULL, FK `fk_da_monto_reinscripcion` -> `Monto_Reinscripciones` | Monto de reinscripción; solo en deducciones de estudiante. |
-| `monto_pago` | `NUMBER(10,2)` | NOT NULL, CHECK `ck_da_montos` | Importe base tomado del catálogo de montos; lo asigna el trigger. |
-| `monto_deduccion` | `NUMBER(10,2)` | NOT NULL, CHECK `ck_da_montos` | Deducción tomada de `Convocatorias_TipoSolicitudes`; la asigna el trigger. |
-
-**Clave foránea compuesta `fk_da_cts`.** `(id_convocatoria, id_Tipo_Solicitud)` -> `Convocatorias_TipoSolicitudes`. Garantiza que la configuración de montos exista para esa convocatoria y ese tipo.
-
-**Restricciones de montos.**
-
-| Restricción | Regla |
-| --- | --- |
-| `ck_da_monto_origen` | Exige exactamente un origen: o `id_monto_inscripcion` o `id_monto_reinscripcion`, nunca ambos ni ninguno. |
-| `ck_da_montos` | `monto_pago >= 0`, `monto_deduccion >= 0` y `monto_deduccion <= monto_pago`. |
-| `ck_da_monto_final` | `monto_final = monto_pago - monto_deduccion`. |
-
-**Trigger `trg_deducciones_calculo`.** Solo permite crear la deducción si la solicitud está `AUTORIZADO` (2) y la deducción nace como `AUTORIZADO` (2). Según el origen toma el monto de `Monto_Reinscripciones` (estudiante) o de `Monto_Inscripciones` (aspirante), copia convocatoria y tipo, recupera `monto_deduccion` de `Convocatorias_TipoSolicitudes` y calcula `monto_final`. En las modificaciones conserva `fecha_registro` y `fecha_autorizacion`, bloquea cambios en los datos de origen (código `-20024`) y aplica esta máquina de estados:
-
-| Transición | Condición |
-| --- | --- |
-| `2 -> 4` | Cancelar la deducción. |
-| `2 -> 5` | Marcar la deducción como aplicada. |
-| `4 -> 2` | Reautorizar; solo si la convocatoria está vigente. |
-
-Cualquier otra transición lanza `-20026`.
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_deduccion_autorizada` | `NUMBER(10)` | PK |
+| `estatus_deduccion` | `NUMBER(10)` | NOT NULL |
+| `monto_final` | `NUMBER(10,2)` | NOT NULL |
+| `fecha_registro` | `DATE` | NOT NULL, DEFAULT |
+| `id_solicitud` | `NUMBER(10)` | NOT NULL |
+| `id_administrador` | `VARCHAR2(10)` | Según restricciones de tabla |
+| `id_convocatoria` | `NUMBER(10)` | NOT NULL |
+| `id_tipo_solicitud` | `NUMBER(10)` | NOT NULL |
+| `fecha_actualizacion` | `DATE` | NOT NULL, DEFAULT |
+| `id_monto_inscripcion` | `NUMBER(10)` | Según restricciones de tabla |
+| `id_monto_reinscripcion` | `NUMBER(10)` | Según restricciones de tabla |
+| `monto_pago` | `NUMBER(10,2)` | NOT NULL |
+| `monto_deduccion` | `NUMBER(10,2)` | NOT NULL |
 
 #### Tabla: `Historial_Deducciones`
 
-Bitácora de los cambios de estado de una deducción.
+Conserva estados y fotografías de importes de cada movimiento de la deducción.
 
-| Atributo | Tipo | Restricciones | Descripción |
-| --- | --- | --- | --- |
-| `id_Historial_Deduccion` | `NUMBER(10)` | PK `pk_historial_deducciones` | Identificador del registro. Lo asigna `trg_hist_deducciones_bi` desde `seq_historial_deducciones`. |
-| `id_deduccion_autorizada` | `NUMBER(10)` | NOT NULL, FK `fk_hd_deduccion` -> `Deducciones_autorizadas` | Deducción afectada. |
-| `id_estatus` | `NUMBER(10)` | NOT NULL, FK `fk_hd_estatus` -> `Estatus_Deducciones` | Estado registrado. |
-| `id_administrador` | `VARCHAR2(10)` | NULL, FK `fk_hd_administrador` -> `Administradores` | Administrador que ejecutó el cambio. |
-| `comentario` | `VARCHAR2(500)` | NULL | Comentario del cambio. |
-| `fecha_registro` | `DATE` | NOT NULL, DEFAULT `SYSDATE` | Fecha del movimiento. |
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_historial_deduccion` | `NUMBER(10)` | PK |
+| `id_deduccion_autorizada` | `NUMBER(10)` | NOT NULL |
+| `id_estatus` | `NUMBER(10)` | NOT NULL |
+| `id_administrador` | `VARCHAR2(10)` | Según restricciones de tabla |
+| `id_tipo_solicitud` | `NUMBER(10)` | NOT NULL |
+| `monto_pago` | `NUMBER(10,2)` | NOT NULL |
+| `monto_deduccion` | `NUMBER(10,2)` | NOT NULL |
+| `monto_final` | `NUMBER(10,2)` | NOT NULL |
+| `fecha_registro` | `DATE` | NOT NULL, DEFAULT |
 
 ### 3.7 Reglas de negocio acordadas y su implementación
 
-`asignacion_Modulos.md` fija reglas que deben validarse en el backend y en la base de datos, no solo en la interfaz. Esta tabla contrasta cada regla con lo que hoy existe en Oracle; sirve para saber qué falta antes de cerrar los módulos.
+| Regla | Implementación en Oracle |
+| --- | --- |
+| Una sola solicitud por solicitante y convocatoria. | Índices únicos `uk_solicitud_estudiante_conv` y `uk_solicitud_aspirante_conv`. |
+| No se crean borradores. | La solicitud se crea con las respuestas obligatorias completas y en estado `PENDIENTE`. |
+| Retirada por solicitante. | Una solicitud `PENDIENTE` puede pasar a `RETIRADO` dentro del plazo de recepción. |
+| Corrección y reenvío. | Las solicitudes `RECHAZADO`, `RETIRADO` y `CANCELADO` pueden reenviarse dentro del plazo, conservando su identificador y regresando a `PENDIENTE`. |
+| Autorización administrativa. | El administrador autoriza y registra una deducción asociada a la solicitud. |
+| Cancelación y reautorización. | El administrador puede cancelar una deducción autorizada y reautorizarla cuando el plazo y el estado lo permitan. |
+| Aplicación definitiva. | `APLICADO` es terminal; se recalculan los montos oficiales en el momento de aplicar y se registran los valores en el historial. |
+| Fechas de convocatoria. | Cuatro fechas ordenadas, sin intervalos operativos superpuestos; se conserva historial de sus cambios. |
+| Formulario completo. | Se validan preguntas obligatorias, tipo de pregunta y la especificación exigida por determinadas opciones. |
+| Identidad de aspirante. | La clave `(ficha, periodo, anio)` distingue registros de distintos periodos; el acceso debe asociarse al periodo de la convocatoria. |
 
-| Regla acordada | Implementación actual en la base | Estado |
-| --- | --- | --- |
-| Una sola solicitud por solicitante y convocatoria. | Índices únicos `uk_solicitud_estudiante_conv` y `uk_solicitud_aspirante_conv`. | Implementada. |
-| La reducción se configura por convocatoria según categoría interno/homologado, sin distinguir inscripción y reinscripción. | `Convocatorias_TipoSolicitudes.monto_deduccion` por `(id_convocatoria, id_Tipo_Solicitud)`; los montos base viven en `Monto_Inscripciones` / `Monto_Reinscripciones`. | Implementada. |
-| Solo se puede solicitar dentro de la vigencia de la convocatoria. | `PKG_ESTUDIANTE.crear_solicitud` y `PKG_ADMINISTRADOR.crear_solicitud_estudiante` exigen `TRUNC(SYSDATE)` entre `fecha_inicio` y `fecha_fin`, además de la combinación convocatoria/tipo/formulario (`-20812`, `-20822`). | Implementada. |
-| Corregir respuestas no genera una solicitud adicional. | `PKG_ESTUDIANTE.guardar_respuesta` hace *upsert* sobre `(id_solicitud, id_pregunta)`, y los índices únicos impiden una segunda solicitud. | Implementada parcialmente: el *upsert* existe, pero la condición de estado no coincide (ver siguiente fila). |
-| El solicitante puede modificar respuestas solo si la solicitud está `RECHAZADA` o `CANCELADA`. | `PKG_ESTUDIANTE.guardar_respuesta` exige `id_estatus_solicitud = 1` (`PENDIENTE`) y convocatoria vigente (`-20813`). Es lo contrario de la regla acordada. | **Pendiente**: hay que cambiar el paquete y los triggers para admitir 3 y 4, y decidir el estado posterior al reenvío. |
-| El solicitante cancela su solicitud solo si está `PENDIENTE`; el administrador es el único que cancela una `AUTORIZADA`. | No existe procedimiento de cancelación para el solicitante. El administrador rechaza o autoriza con `cambiar_estatus_solicitud` (solo `1 -> 2` o `1 -> 3`); la cancelación de una autorizada se logra cancelando su deducción (`2 -> 4`), y `trg_deduccion_cancelacion` sincroniza el estado de la solicitud. | **Parcial**: falta la operación de cancelación del solicitante y formalizar la transición de la solicitud a `CANCELADO` (4) desde el administrador. |
-| El estado al que vuelve una solicitud rechazada o cancelada tras corregir y reenviar está **pendiente de definición**. | No está modelado. `PKG_ADMINISTRADOR.cambiar_estatus_solicitud` solo permite `1 -> 2` o `1 -> 3`, y `trg_deduccion_cancelacion` mueve entre 2, 4 y 5; ninguna operación de paquete devuelve una solicitud de `RECHAZADO` (3) o `CANCELADO` (4) a otro estado. | **Bloqueada** hasta que se defina el flujo. |
-| El aspirante también puede crear solicitudes, corregirlas y cancelarlas. | `PKG_ASPIRANTE` solo expone `validar_aspirante`; no hay operaciones de negocio para aspirantes. | **Pendiente**. |
-| Los controles de autorización se aplican en servidor. | Los paquetes reciben la identidad como parámetro y validan que exista; `SAR_BACKEND` no tiene acceso directo a tablas. La autorización por rol y por pertenencia se aplica en el backend. | Implementada en la base; la cobertura por endpoint es parcial. |
-
-Regla de mantenimiento: si un equipo cambia alguna de estas reglas en su rama, debe actualizar esta sección junto con el script oficial, para que `ARQUITECTURA.md`, `BaseDeDatos.md` y los paquetes sigan describiendo el mismo comportamiento.
+La aplicación Spring Boot debe validar autenticación, rol y pertenencia del registro. Los paquetes y restricciones de Oracle constituyen una segunda capa de protección; ocultar botones en el frontend no reemplaza ninguna de las dos.
 
 ## 4. Relaciones principales
 
 ```text
-Periodos ── Aspirantes
-         └── Convocatorias ── Convocatorias_TipoSolicitudes ── Tipo_Solicitudes
+Periodos ── Convocatorias ── Historial_Convocatorias
+         └── Aspirantes
+Convocatorias ── Convocatorias_TipoSolicitudes ── Tipo_Solicitudes
 Estudiantes ── Solicitudes ── Respuestas ── Preguntas ── Tipo_Preguntas
-Aspirantes ────┘                 └── Opciones
+Aspirantes ──────┘                 └── Opciones
 Formularios ── Formulario_Preguntas ── Preguntas
-Solicitudes ── Historial_Solicitudes ── Administradores
-          └── Deducciones_autorizadas ── Historial_Deducciones
-                    ├── Monto_Inscripciones
-                    ├── Monto_Reinscripciones
-                    └── Estatus_Deducciones
+Solicitudes ── Historial_Solicitudes
+           └── Deducciones_autorizadas ── Historial_Deducciones
+                        ├── Monto_Inscripciones
+                        └── Monto_Reinscripciones
 ```
 
 ## 5. Secuencias y triggers
 
-El script define 15 secuencias y 22 triggers, además de tres índices únicos propios (`uk_solicitud_estudiante_conv`, `uk_solicitud_aspirante_conv` y `ux_respuesta_solicitud_pregunta`). En total el esquema queda con 33 índices, contando los que Oracle crea para cada clave primaria y cada restricción de unicidad.
+El script `02` declara **16 secuencias**, una por tabla con identificador generado. La mayoría arranca en `1`; `seq_tipo_solicitudes` y `seq_formularios` arrancan en `3` y `seq_tipo_preguntas` y `seq_estatus_*` arrancan por encima de los catálogos que el propio script inserta.
 
-### 5.1 Secuencias
+| Secuencia | Valor inicial |
+| --- | ---: |
 
-Cada secuencia alimenta el trigger de asignación de identificadores de su tabla. Las que parten de un valor distinto de 1 dejan espacio a los identificadores de catálogo ya insertados.
+| `seq_tipo_solicitudes` | 3 |
 
-| Secuencia | Valor inicial | Tabla |
-| --- | ---: | --- |
-| `seq_tipo_solicitudes` | 1 | `Tipo_Solicitudes` |
-| `seq_tipo_preguntas` | 4 | `Tipo_Preguntas` |
-| `seq_estatus_solicitudes` | 6 | `Estatus_Solicitudes` |
-| `seq_estatus_deducciones` | 6 | `Estatus_Deducciones` |
-| `seq_convocatorias` | 1 | `Convocatorias` |
-| `seq_formularios` | 1 | `Formularios` |
-| `seq_preguntas` | 1 | `Preguntas` |
-| `seq_opciones` | 1 | `Opciones` |
-| `seq_monto_inscripciones` | 1 | `Monto_Inscripciones` |
-| `seq_monto_reinscripciones` | 1 | `Monto_Reinscripciones` |
-| `seq_solicitudes` | 1 | `Solicitudes` |
-| `seq_respuestas` | 1 | `Respuestas` |
-| `seq_historial_solicitudes` | 1 | `Historial_Solicitudes` |
-| `seq_deducciones_autorizadas` | 1 | `Deducciones_autorizadas` |
-| `seq_historial_deducciones` | 1 | `Historial_Deducciones` |
+| `seq_tipo_preguntas` | 4 |
 
-`Periodos`, `Estudiantes`, `Aspirantes` y `Administradores` no usan secuencia: sus claves se definen en la propia tabla.
+| `seq_estatus_solicitudes` | 6 |
 
-### 5.2 Triggers de identificadores
+| `seq_estatus_deducciones` | 6 |
 
-Quince triggers `BEFORE INSERT ... FOR EACH ROW` asignan el `NEXTVAL` de la secuencia correspondiente solo cuando la clave llega nula, de modo que un valor explícito siempre prevalece. Siguen el patrón `trg_<tabla>_bi`.
+| `seq_convocatorias` | 1 |
 
-### 5.3 Triggers de negocio
+| `seq_historial_convocatorias` | 1 |
 
-| Trigger | Momento | Efecto |
-| --- | --- | --- |
-| `trg_solicitudes_validacion` | `BEFORE INSERT OR UPDATE` en `Solicitudes` | Comprueba que el formulario corresponda al tipo de solicitud y que el periodo y el año del aspirante coincidan con los de la convocatoria; actualiza `fecha_actualizacion`. |
-| `trg_respuestas_validacion` | `BEFORE INSERT OR UPDATE` en `Respuestas` | Verifica la pertenencia de la pregunta al formulario y que la forma de la respuesta corresponda al tipo de pregunta. |
-| `trg_deducciones_calculo` | `BEFORE INSERT OR UPDATE` en `Deducciones_autorizadas` | Valida estados y montos, calcula `monto_final`, copia convocatoria y tipo, conserva las fechas originales y aplica las transiciones de estado permitidas. |
-| `trg_solicitudes_historial` | `AFTER UPDATE OF id_estatus_solicitud` en `Solicitudes` | Inserta la fila correspondiente en `Historial_Solicitudes` cuando el estado cambia. |
-| `trg_deducciones_historial` | `AFTER UPDATE OF estatus_deduccion` en `Deducciones_autorizadas` | Inserta la fila correspondiente en `Historial_Deducciones` cuando el estado cambia. |
-| `trg_deduccion_cancelacion` | `AFTER UPDATE OF estatus_deduccion` en `Deducciones_autorizadas` | Sincroniza `Solicitudes.id_estatus_solicitud` con el estado de la deducción y completa administrador y comentario en el último registro de historial. |
-| `trg_deducciones_fecha_update` | `BEFORE UPDATE` en `Deducciones_autorizadas` | Refresca `fecha_actualizacion`. |
+| `seq_formularios` | 3 |
 
-Reglas de la deducción: solo se crea sobre una solicitud `AUTORIZADO` (2) y nace como `AUTORIZADO` (2). Las transiciones permitidas son `2 -> 4`, `2 -> 5` y `4 -> 2`; la reautorización exige que la convocatoria esté vigente. Los datos de origen, los montos y las fechas de registro y autorización son inmutables.
+| `seq_preguntas` | 1 |
 
-### 5.4 Datos iniciales de catálogos
+| `seq_opciones` | 1 |
 
-Los inserta `02-crear-estructura.sql` y están presentes incluso sin datos de desarrollo.
+| `seq_monto_inscripciones` | 1 |
 
-| Catálogo | Valores insertados |
-| --- | --- |
-| `Periodos` | `1: Agosto-Diciembre`; `2: Enero-Junio` |
-| `Estatus_Solicitudes` | `1: PENDIENTE`; `2: AUTORIZADO`; `3: RECHAZADO`; `4: CANCELADO`; `5: APLICADO` |
-| `Estatus_Deducciones` | `2: AUTORIZADO`; `4: CANCELADO`; `5: APLICADO` |
-| `Tipo_Preguntas` | `1: ABIERTA`; `2: OPCION_UNICA`; `3: MIXTA` |
+| `seq_monto_reinscripciones` | 1 |
+
+| `seq_solicitudes` | 1 |
+
+| `seq_respuestas` | 1 |
+
+| `seq_historial_solicitudes` | 1 |
+
+| `seq_deducciones_autorizadas` | 1 |
+
+| `seq_historial_deducciones` | 1 |
+
+
+### 5.1 Triggers
+
+El esquema contiene **16 triggers de asignación de identificadores** y triggers adicionales de validación, protección de deducciones, inmutabilidad de historiales, control de plazos y no superposición de convocatorias. El registro histórico de estados y los cálculos de aplicación se realizan principalmente mediante paquetes PL/SQL.
+
+Los triggers `trg_cts_plazo` y `trg_convocatorias_intervalo` protegen la configuración de montos y los intervalos de las convocatorias. `trg_respuestas_validacion` comprueba que cada respuesta corresponda a la pregunta y al formulario, incluida la especificación opcional. Los triggers `trg_hist_solicitudes_inmutable`, `trg_hist_deducciones_inmutable` y `trg_hist_convocatorias_inmutable` protegen las bitácoras de modificaciones posteriores.
+
+### 5.2 Catálogos iniciales
+
+El script `02` inserta los periodos, los seis estados de solicitudes, los tres estados de deducciones, los tres tipos de pregunta, los **dos tipos de solicitud** (`1` y `2`) y los **dos formularios** (`1` y `2`). Por tanto, el seed no debe volver a insertarlos.
 
 ## 6. Flujo general
 
-1. Se identifica al estudiante por `Numero_Control`, al aspirante por `(ficha, periodo, anio)` o al administrador por `idAdministrador`.
-2. Se configuran los periodos, las convocatorias, los dos tipos de solicitud, los formularios y los montos de reducción por categoría (equipo 4).
-3. Se registra la solicitud con su convocatoria, tipo, formulario y perfil de origen. Debe estar dentro de la vigencia y ser la única de ese solicitante en esa convocatoria.
-4. Se guardan y validan las respuestas correspondientes al formulario (equipo 5). Corregir respuestas reutiliza el mismo registro de solicitud.
-5. Se revisa la solicitud y se registra su cambio de estado; el administrador puede autorizar o rechazar una solicitud pendiente (equipo 2).
-6. Si se autoriza, se registra la deducción y se calculan sus montos.
-7. Los cambios de estado de la deducción se validan, se registran en el historial y se sincronizan con la solicitud.
-8. El solicitante consulta el estado y los comentarios (equipo 3). La cancelación por el solicitante solo procede en `PENDIENTE`; la de una solicitud `AUTORIZADA` corresponde al administrador.
-
-Las reglas de los pasos 3, 4, 5 y 8 todavía no están cubiertas por completo en PL/SQL: el detalle y el estado de cada una están en la sección 3.7.
+1. El administrador configura la convocatoria y sus cuatro fechas, así como los montos de reducción por categoría.
+2. El estudiante o aspirante se identifica; Spring Boot determina la identidad y protege el acceso a sus operaciones.
+3. El solicitante selecciona la convocatoria, el tipo y el formulario; envía las respuestas completas y se registra una solicitud `PENDIENTE`.
+4. El administrador revisa las respuestas y puede rechazar o autorizar la solicitud. Si la autoriza, se registra la deducción correspondiente.
+5. El solicitante puede retirar una solicitud pendiente o reenviar una rechazada, retirada o cancelada, siempre dentro del plazo permitido.
+6. El administrador puede cancelar, reautorizar o aplicar la deducción según los estados y plazos. Al aplicarla, Oracle recalcula los importes y deja el estado definitivo `APLICADO`.
+7. Las decisiones y movimientos quedan reflejados en los historiales. El solicitante consulta sus resultados desde su panel.
 
 ## 7. Paquetes PL/SQL
 
-El esquema expone la lógica de acceso a datos mediante tres paquetes con `AUTHID DEFINER`: se ejecutan con los privilegios del propietario, de modo que `SAR_BACKEND` no necesita permisos sobre las tablas. Sus firmas reciben la identidad como parámetro; ninguno decide el usuario a partir de `SESSION_USER`.
+Los paquetes utilizan `AUTHID DEFINER`, de modo que `SAR_BACKEND` puede operar mediante procedimientos sin privilegios directos sobre las tablas.
 
-| Paquete | Ámbito | Identificador de entrada |
+| Paquete | Ámbito | Exposición |
 | --- | --- | --- |
-| `PKG_ESTUDIANTE` | Operaciones del estudiante sobre sus propias solicitudes y deducciones. | `p_numero_control`. |
-| `PKG_ADMINISTRADOR` | Listados y resoluciones administrativas. | `p_id_administrador`. |
-| `PKG_ASPIRANTE` | Validación de identidad del aspirante. | `p_ficha` + `p_curp`. |
+| `PKG_SOLICITUDES_CORE` | Validaciones compartidas, creación, retirada, reenvío y registro histórico. | Interno; no se concede a `SAR_BACKEND`. |
+| `PKG_ESTUDIANTE` | Perfil, consultas y solicitudes de estudiantes. | Público para `SAR_BACKEND`. |
+| `PKG_ASPIRANTE` | Validación, consultas y solicitudes de aspirantes. | Público para `SAR_BACKEND`. |
+| `PKG_ADMINISTRADOR` | Consultas y decisiones administrativas, fechas y montos. | Público para `SAR_BACKEND`. |
 
 ### 7.1 `PKG_ESTUDIANTE`
 
-Subprogramas: `mis_datos`, `mis_solicitudes`, `mis_deducciones`, `crear_solicitud` y `guardar_respuesta`. Cada uno valida que `p_numero_control` exista en `Estudiantes.Numero_Control` y limita las consultas y escrituras a ese estudiante.
+Incluye `mis_datos`, `mis_solicitudes`, `mis_deducciones`, `crear_solicitud`, `retirar_solicitud` y `reenviar_solicitud`. Las operaciones de escritura comprueban el origen, el estado, el formulario y el plazo correspondiente.
 
-### 7.2 `PKG_ADMINISTRADOR`
+### 7.2 `PKG_ASPIRANTE`
 
-Subprogramas: `listar_estudiantes`, `listar_solicitudes`, `listar_respuestas`, `listar_deducciones`, `crear_solicitud_estudiante`, `cambiar_estatus_solicitud`, `autorizar_deduccion` y `cambiar_estatus_deduccion`. Valida que `p_id_administrador` exista en `Administradores.idAdministrador` antes de cada operación.
+Incluye `validar_aspirante`, `mis_solicitudes`, `mis_deducciones`, `crear_solicitud`, `retirar_solicitud` y `reenviar_solicitud`. Para identificar una solicitud del aspirante se utilizan conjuntamente ficha, periodo y año, no solamente la ficha.
 
-### 7.3 `PKG_ASPIRANTE`
+### 7.3 `PKG_ADMINISTRADOR`
 
-Un único subprograma, `validar_aspirante`:
+Incluye `listar_estudiantes`, `listar_solicitudes`, `listar_convocatorias`, `listar_respuestas`, `listar_deducciones`, `crear_solicitud_estudiante`, `rechazar_solicitud`, `autorizar_deduccion`, `cancelar_deduccion`, `aplicar_deduccion`, `actualizar_fechas_convocatoria` y `actualizar_monto_oficial`.
 
-| Parámetro | Modo | Tipo | Descripción |
-| --- | --- | --- | --- |
-| `p_ficha` | IN | `VARCHAR2` | Ficha del aspirante. |
-| `p_curp` | IN | `VARCHAR2` | CURP del aspirante. |
-| `p_ficha_out` | OUT | `VARCHAR2` | Ficha confirmada, tal como figura en la tabla. |
-| `p_periodo` | OUT | `NUMBER` | Periodo del registro encontrado. |
-| `p_anio` | OUT | `NUMBER` | Año del registro encontrado. |
-
-En caso de rechazo, el paquete lanza error de aplicación en lugar de devolver filas vacías:
-
-| Código | Mensaje | Causa |
-| --- | --- | --- |
-| `-20840` | Parámetros requeridos | `p_ficha` o `p_curp` nulos o vacíos. |
-| `-20841` | Sin coincidencia | La combinación ficha + CURP no existe para el año vigente. |
-| `-20842` | Coincidencia ambigua | Existe más de un registro para esa ficha en el año vigente. |
-
-El backend traduce los tres códigos a un rechazo de autenticación genérico, de modo que un intento fallido no revele si la ficha existe.
+Las operaciones de autorización y aplicación conservan las reglas de estado y plazo. La aplicación recalcula el monto oficial y registra una nueva fotografía de los importes en `Historial_Deducciones`.
 
 ### 7.4 Cobertura por módulo y equipo
 
-Correspondencia entre los equipos de `asignacion_Modulos.md` y los objetos de base de datos que cada uno toca. El equipo 7 revisa e integra los cambios; no los desarrolla por defecto.
+| Equipo | Responsabilidad de integración |
+| --- | --- |
+| 1 — Autenticación y seguridad | Sesiones, permisos, auditoría de accesos y navegación compartida entre vistas. |
+| 2 — Panel administrativo | Consultas, revisión, rechazo, autorización, cancelación y aplicación de deducciones. |
+| 3 — Panel del estudiante y aspirante | Consultas, seguimiento, retirada y reenvío; interfaces adaptadas a teléfonos móviles. |
+| 4 — Convocatorias y montos | Configuración de fechas y montos mediante las reglas de Oracle. |
+| 5 — Formularios | Preguntas y respuestas completas, incluidas opciones que requieren especificación; interfaz adaptable a móviles. |
+| 6 — Notificaciones | Correos relacionados con eventos y estados del trámite. |
+| 7 — Base de datos | Revisión e integración oficial de scripts, restricciones, paquetes y pruebas. |
 
-| Equipo | Objetos de base de datos | Situación |
-| --- | --- | --- |
-| 1 — Autenticación y seguridad | `Aspirantes` (validación de `ficha` + `curp`), `PKG_ASPIRANTE`, cuentas y roles de los scripts 03 y 04. | Operativo. Falta la tabla/estructura de auditoría de accesos y la verificación por correo. |
-| 2 — Panel administrativo | `Solicitudes`, `Respuestas`, `Deducciones_autorizadas`, `Historial_*`, `PKG_ADMINISTRADOR`. | Operativo para listar, aprobar, rechazar y cancelar deducciones. Falta el listado de historial y la cancelación de solicitudes autorizadas como operación explícita. |
-| 3 — Panel del estudiante y aspirante | `Estudiantes`, `Solicitudes`, `Deducciones_autorizadas`, `PKG_ESTUDIANTE`. | Parcial: existen `mis_datos`, `mis_solicitudes` y `mis_deducciones`; faltan cancelación, edición en estados `RECHAZADO`/`CANCELADO` y todo el flujo de negocio del aspirante. |
-| 4 — Convocatorias y montos | `Convocatorias`, `Convocatorias_TipoSolicitudes`, `Monto_Inscripciones`, `Monto_Reinscripciones`. | Estructura disponible; no hay procedimientos ni endpoints de alta o modificación de convocatorias. |
-| 5 — Formularios | `Formularios`, `Preguntas`, `Formulario_Preguntas`, `Opciones`, `Respuestas`, `trg_respuestas_validacion`, `PKG_ESTUDIANTE.guardar_respuesta`. | Estructura y validación de forma operativas; falta la lectura del formulario por convocatoria/tipo y la edición en los estados acordados. |
-| 6 — Notificaciones | Ninguno todavía. No hay tablas, paquetes ni cola de envíos. | Pendiente. |
-| 7 — Base de datos | Scripts 01 a 06, `database/tests/`, respaldos y esta documentación. | Operativo. |
-
-Cada cambio de estructura o de PL/SQL que proponga un equipo debe llegar como modificación de los scripts oficiales de `docker/init-db/`, y el equipo 7 lo valida antes de integrarlo.
+La existencia de un procedimiento Oracle **no implica que su endpoint o su interfaz en Spring Boot ya estén implementados**. Cada equipo debe comprobar la integración real de su funcionalidad.
 
 ## 8. Privilegios mínimos de `SAR_BACKEND`
 
-`SAR_BACKEND` es la cuenta con la que el backend atiende las peticiones. Su modelo de permisos busca que un fallo de la capa de aplicación no pueda escalar a un acceso directo a datos.
+`SAR_BACKEND` dispone de `CREATE SESSION` y `EXECUTE` sobre los tres paquetes públicos: `PKG_ESTUDIANTE`, `PKG_ASPIRANTE` y `PKG_ADMINISTRADOR`. No necesita permisos CRUD directos sobre las tablas ni acceso al paquete interno `PKG_SOLICITUDES_CORE`.
 
-| Tipo | Privilegio concedido |
-| --- | --- |
-| Sistema | `CREATE SESSION`. |
-| Objeto (paquetes) | `EXECUTE` sobre `PKG_ESTUDIANTE`, `PKG_ADMINISTRADOR` y `PKG_ASPIRANTE`. |
-| Tablas | Ninguno. |
-| Roles | Ninguno. |
-| Directorios | Ninguno. |
-
-Consecuencias del modelo:
-
-- No puede leer ni escribir tablas directamente, por lo que toda operación pasa por la validación de los paquetes.
-- No puede crear objetos ni ejercer tareas administrativas.
-- No puede ejecutar Data Pump: el respaldo lógico requiere una cuenta con acceso a un directorio y se realiza con `SA_REDUCCION`.
-
-La prueba `database/tests/06-probar-permisos.sql` verifica que no existan grants CRUD ni privilegios administrativos, y que los roles simulados de estudiante y administrador no conserven `EXECUTE` sobre los paquetes.
+La identidad autenticada se determina en el backend. Los paquetes reciben identificadores de usuario como parámetros y validan la existencia y las reglas del registro; por sí solos no sustituyen la comprobación de sesión y autorización por rol en Spring Boot.
 
 ## 9. Autenticación de aspirantes en la base de datos
 
-La validación de identidad del aspirante se resuelve íntegramente en Oracle:
+`PKG_ASPIRANTE.validar_aspirante` recibe ficha y CURP y devuelve la identidad académica correspondiente. Dado que una ficha puede existir en varios periodos, la validación debe resolver el registro asociado a la convocatoria vigente, sin escoger arbitrariamente un periodo.
 
-1. El backend invoca `PKG_ASPIRANTE.validar_aspirante(ficha, curp, ...)` con parámetros enlazados.
-2. El paquete contrasta la combinación contra `Aspirantes` restringiendo el año al vigente. El año se obtiene en el propio paquete con `EXTRACT(YEAR FROM SYSDATE)`, de modo que la vigencia no depende del reloj del cliente ni de un valor enviado por el navegador.
-3. Si hay exactamente una fila, devuelve `ficha`, `periodo` y `anio`; el backend construye con ello la identidad de sesión.
-4. La CURP solo se usa durante la comparación: no se devuelve, no se registra y no se guarda en la sesión.
-
-### 9.1 Motivos de rechazo
-
-| Situación | Resultado |
-| --- | --- |
-| Ficha o CURP nulas o vacías | `-20840`. |
-| Formato no válido (ficha o CURP) | Rechazo en el backend, antes de consultar Oracle. |
-| Sin fila para la combinación en el año vigente | `-20841`. |
-| Registro existente en un año distinto al actual | `-20841`. |
-| Varias filas para la ficha en el año vigente | `-20842`. |
-| Intentos repetidos desde la misma IP y ficha | Rechazo en el backend por límite de intentos. |
-
-### 9.2 Rechazo de coincidencias ambiguas entre periodos
-
-`Aspirantes` usa `(ficha, periodo, anio)` como clave primaria, así que una misma ficha puede tener un registro en el periodo 1 y otro en el periodo 2 del mismo año. `validar_aspirante` no elige uno arbitrariamente: si la comparación de ficha y CURP devuelve más de una fila, lanza `-20842` y rechaza el acceso. La consulta nunca usa `ROWNUM` ni un `MAX` para desempatar, porque hacerlo permitiría que un aspirante entrara con la identidad de otro registro del mismo año.
-
-El escenario de coincidencia ambigua no puede provocarse desde el backend actual (la cuenta técnica no tiene `INSERT`), por lo que se verifica a nivel Oracle con `database/tests/07-probar-aspirantes.sql`.
+El backend debe mantener la CURP fuera de los logs y de las respuestas de la API, y traducir los errores de autenticación a mensajes que no revelen la existencia de registros. La verificación por correo con códigos temporales es una responsabilidad de integración del equipo 1 y no se considera implementada únicamente por existir el paquete de Oracle.
 
 ## 10. Persistencia en Docker
 
@@ -877,9 +743,9 @@ SELECT COUNT(*) AS indices  FROM user_indexes   WHERE table_name NOT LIKE 'SYS_%
 SELECT COUNT(*) AS invalidos FROM user_objects  WHERE status <> 'VALID';
 ```
 
-Resultados esperados: **21 tablas**, **33 índices** y **0 objetos inválidos**, más los conteos de filas que se quieran contrastar con el origen.
+Resultados esperados: **22 tablas** y el número de índices correspondiente al script vigente y **0 objetos inválidos**, más los conteos de filas que se quieran contrastar con el origen.
 
-> Durante la importación, Data Pump crea una **tabla maestra transitoria** llamada `SYS_IMPORT_FULL_01` con sus propios índices. Por eso un `COUNT(*)` sin filtrar sobre `user_tables` devuelve 22 y sobre `user_indexes` devuelve 43. El filtro `table_name NOT LIKE 'SYS_%'` da las cifras reales.
+> Durante la importación, Data Pump crea una **tabla maestra transitoria** llamada `SYS_IMPORT_FULL_01` con sus propios índices. Por eso un `COUNT(*)` sin filtrar sobre `user_tables` puede incluir objetos transitorios adicionales. El filtro `table_name NOT LIKE 'SYS_%'` excluye los objetos transitorios con ese prefijo; comparar el inventario restante con el esquema vigente.
 
 Los objetos restaurados pertenecen a `SA_REDUCCION_REST`: eso es exactamente lo que hace `REMAP_SCHEMA`. El esquema `SA_REDUCCION` original no se lee ni se modifica en ningún paso.
 
@@ -918,9 +784,6 @@ En resumen: el `.dmp` recupera los objetos y datos de la aplicación, y los scri
 - [Paquetes PL/SQL y permisos](docker/init-db/05-crear-paquetes-permisos.sql)
 - [Datos de desarrollo](docker/init-db/06-seed-desarrollo.sql)
 - [Orquestador de inicialización](docker/init-db/init-db.sh)
-- [Verificación de instalación](database/tests/05-verificar-instalacion.sql)
-- [Prueba de permisos](database/tests/06-probar-permisos.sql)
-- [Prueba de escenarios de aspirantes](database/tests/07-probar-aspirantes.sql)
 - [Configuración de Docker Compose](docker-compose.yml)
 - [Plantilla de variables de entorno](.env.example)
 - [Ejecución del proyecto](README.md)

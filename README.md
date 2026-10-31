@@ -52,8 +52,6 @@ Los puertos se configuran en `.env` y pueden cambiarse sin modificar `docker-com
 
 Si configuras otro valor para `FRONTEND_PORT`, reemplaza `8081` en las direcciones anteriores por el puerto elegido. Nginx sirve las páginas web y redirige `/api/` al backend.
 
-El puerto puede variar según la configuración de `FRONTEND_PORT` en `.env`.
-
 ## Usuarios de prueba
 
 Disponibles cuando se inicializa una base nueva con `SAR_LOAD_DEV_SEED=true`:
@@ -157,5 +155,9 @@ Este comando conserva los datos almacenados en los volúmenes de Docker.
 
 Para consultar información más detallada del proyecto:
 
-- [Arquitectura técnica](ARQUITECTURA.md): estructura del sistema, servicios y funcionamiento.
+- [Arquitectura técnica](ARQUITECTURA.md): estructura del sistema, servicios, autenticación y estado del desarrollo.
+- [Base de datos](BaseDeDatos.md): modelo de datos, paquetes PL/SQL, permisos y respaldo/restauración.
+- [Docker](Docker.md): servicios, volúmenes, inicialización de Oracle y problemas frecuentes.
+- [Guía del proyecto](GUIA_PROYECTO.md): estructura de carpetas, tecnologías y comandos.
+- [Asignación de equipos](asignacion_Modulos.md): responsabilidades por módulo y reglas funcionales acordadas.
 - [Base de datos](BaseDeDatos.md): modelo de datos, tablas, relaciones y configuración de Oracle.
