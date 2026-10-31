@@ -22,6 +22,50 @@
   --transition:      0.2s ease;
 }
 
+/* ── Variables de color ITT - PANEL DE ADMINISTRACIÓN (Solo equipo 2) ── */
+#pagina-panel-admin {
+  /* Paleta oficial TecNM / Portal ITT (aproximada) */
+  --adm-fondo: #EBEBEB;
+  --adm-tarjeta: #FFFFFF;
+  --adm-borde-tarjeta: #DDDDDD;
+  
+  /* Barra de navegación superior clara */
+  --adm-navbar-bg: #F8F8F8;
+  --adm-navbar-text: #777777;
+  --adm-navbar-title: #555555;
+  --adm-navbar-border: #DDDDDD;
+  
+  /* Azul institucional principal */
+  --adm-azul: #337AB7;
+  --adm-azul-hover: #2E6DA4;
+  --adm-azul-link-hover: #23527C;
+  
+  /* Naranja institucional */
+  --adm-naranja: #E8590C;
+  --adm-naranja-suave: #FF8F5A;
+  
+  /* Texto */
+  --adm-texto: #333333;
+  --adm-texto-sec: #777777;
+  --adm-titulos-encabezado-instituto: #7F7F7F;
+  
+  /* Bordes/radios */
+  --adm-radio: 3px;
+  --adm-radio-sm: 4px;
+  
+  /* Overrides para usar paleta admin */
+  --itt-gris-fondo: var(--adm-fondo);
+  --itt-blanco: var(--adm-tarjeta);
+  --itt-gris-borde: var(--adm-borde-tarjeta);
+  --itt-texto: var(--adm-texto);
+  --itt-texto-claro: var(--adm-texto-sec);
+  --itt-azul: var(--adm-azul);
+  --itt-azul-medio: var(--adm-azul);
+  --itt-azul-claro: var(--adm-azul-link-hover);
+  --itt-naranja: var(--adm-naranja);
+  --radio-btn: var(--adm-radio-sm);
+}
+
 /* ── Reset / Base ── */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -37,11 +81,25 @@ body {
   margin: 0;
 }
 
+#pagina-panel-admin body,
+#pagina-panel-admin {
+  background-color: var(--adm-fondo, #EBEBEB);
+}
+
 /* ── Tipografía ── */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   color: var(--itt-azul);
   margin-top: 0;
+}
+
+#pagina-panel-admin h1,
+#pagina-panel-admin h2,
+#pagina-panel-admin h3,
+#pagina-panel-admin h4,
+#pagina-panel-admin h5,
+#pagina-panel-admin h6 {
+  color: var(--adm-azul, #337AB7);
 }
 
 a { color: var(--itt-azul-claro); text-decoration: none; }
@@ -57,12 +115,23 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   padding: 0;
 }
 
+#pagina-panel-admin .itt-header {
+  background-color: var(--adm-navbar-bg, #F8F8F8);
+  border-bottom: 3px solid var(--adm-azul, #337AB7);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
 .itt-header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 24px;
   border-bottom: 1px solid var(--itt-gris-borde);
+}
+
+#pagina-panel-admin .itt-header-top {
+  background-color: var(--adm-navbar-bg, #F8F8F8);
+  border-bottom: 1px solid var(--adm-navbar-border, #DDDDDD);
 }
 
 .itt-header-top img.logo-header {
@@ -100,6 +169,11 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   min-height: 44px;
 }
 
+#pagina-panel-admin .itt-navbar {
+  background: var(--adm-navbar-bg, #F8F8F8);
+  border-bottom: 1px solid var(--adm-navbar-border, #DDDDDD);
+}
+
 .itt-navbar-links {
   display: flex;
   list-style: none;
@@ -119,10 +193,25 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   text-decoration: none;
 }
 
+#pagina-panel-admin .itt-navbar-links li a {
+  color: var(--adm-navbar-text, #777777);
+}
+
 .itt-navbar-links li a:hover,
 .itt-navbar-links li a.activo {
   background-color: rgba(255,255,255,.18);
   color: var(--itt-blanco);
+}
+
+#pagina-panel-admin .itt-navbar-links li a:hover {
+  background-color: rgba(51, 122, 183, 0.08);
+  color: var(--adm-azul-link-hover, #23527C);
+}
+
+#pagina-panel-admin .itt-navbar-links li a.activo {
+  background-color: rgba(51, 122, 183, 0.12);
+  color: var(--adm-azul, #337AB7);
+  border-bottom: 2px solid var(--adm-azul, #337AB7);
 }
 
 .itt-navbar-links li a.activo {
@@ -135,6 +224,10 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   gap: 10px;
   color: rgba(255,255,255,.9);
   font-size: .875rem;
+}
+
+#pagina-panel-admin .itt-navbar-user {
+  color: var(--adm-navbar-text, #777777);
 }
 
 .itt-navbar-user i { font-size: 1.1rem; }
@@ -150,6 +243,13 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   transition: background var(--transition);
 }
 .btn-cerrar-sesion:hover { background: rgba(255,255,255,.28); }
+
+#pagina-panel-admin .btn-cerrar-sesion {
+  background: rgba(51, 122, 183, 0.08);
+  border: 1px solid rgba(51, 122, 183, 0.3);
+  color: var(--adm-azul, #337AB7);
+}
+#pagina-panel-admin .btn-cerrar-sesion:hover { background: rgba(51, 122, 183, 0.15); }
 
 /* ──────────────────────────────────────────
    MAIN CONTENT
@@ -173,6 +273,13 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   overflow: hidden;
 }
 
+#pagina-panel-admin .card-itt {
+  background: var(--adm-tarjeta, #FFFFFF);
+  border: 1px solid var(--adm-borde-tarjeta, #DDDDDD);
+  border-radius: var(--adm-radio-sm, 4px);
+  box-shadow: 0 1px 2px rgba(0,0,0,.03);
+}
+
 .card-itt-header {
   background: linear-gradient(135deg, var(--itt-azul) 0%, var(--itt-azul-medio) 100%);
   color: var(--itt-blanco);
@@ -182,6 +289,11 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   gap: 10px;
   font-size: 1rem;
   font-weight: 600;
+}
+
+#pagina-panel-admin .card-itt-header {
+  background: var(--adm-azul, #337AB7);
+  color: #FFFFFF;
 }
 
 .card-itt-header i { font-size: 1.1rem; opacity: .9; }
@@ -263,11 +375,17 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 .btn-primario  { background-color: var(--itt-azul-medio); color: var(--itt-blanco); }
 .btn-primario:hover  { background-color: var(--itt-azul); }
 
+#pagina-panel-admin .btn-primario  { background-color: var(--adm-azul, #337AB7); color: #FFFFFF; }
+#pagina-panel-admin .btn-primario:hover  { background-color: var(--adm-azul-hover, #2E6DA4); }
+
 .btn-agregar   { background-color: var(--itt-verde);       color: var(--itt-blanco); }
 .btn-agregar:hover   { background-color: #44a066; }
 
 .btn-editar    { background-color: var(--itt-naranja);     color: var(--itt-blanco); }
 .btn-editar:hover    { background-color: #c8582f; }
+
+#pagina-panel-admin .btn-editar    { background-color: var(--adm-naranja, #E8590C);     color: #FFFFFF; }
+#pagina-panel-admin .btn-editar:hover    { background-color: #d14f0a; }
 
 .btn-borrar    { background-color: var(--itt-rojo);        color: var(--itt-blanco); }
 .btn-borrar:hover    { background-color: #952f2c; }
@@ -346,6 +464,11 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   text-transform: uppercase;
   letter-spacing: .04em;
   border: none;
+}
+
+#pagina-panel-admin .tabla-itt thead th {
+  background: var(--adm-azul, #337AB7);
+  color: #FFFFFF;
 }
 
 .tabla-itt tbody tr {
@@ -507,6 +630,11 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   margin-top: auto;
 }
 
+#pagina-panel-admin .itt-footer {
+  background-color: var(--adm-azul, #337AB7);
+  color: rgba(255,255,255,.9);
+}
+
 .itt-footer a { color: rgba(255,255,255,.85); }
 .itt-footer a:hover { color: var(--itt-blanco); }
 
@@ -539,3 +667,6 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   .stepper { flex-direction: column; align-items: flex-start; gap: 10px; }
   .step-linea { display: none; }
 }
+
+#pagina-panel-admin .itt-header-top{justify-content:center;}
+#pagina-panel-admin .itt-header-top .logo-header{margin-left:auto;margin-right:auto;}
