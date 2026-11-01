@@ -464,7 +464,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
   SELECT * INTO s FROM Solicitudes WHERE id_solicitud=p_solicitud FOR UPDATE;
   comprobar_plazo(s.id_convocatoria,'AUTORIZAR');
   IF s.id_estatus_solicitud NOT IN (1,4) THEN RAISE_APPLICATION_ERROR(-20875,'Solicitud no pendiente ni cancelada'); END IF;
-  IF TRIM(p_comentario) IS NULL THEN RAISE_APPLICATION_ERROR(-20876,'Indicar comentario de autorizacion'); END IF;
+  -- El comentario de autorizacion es opcional: se guarda en el historial solo
+  -- cuando el administrador lo captura. Rechazo y cancelacion siguen
+  -- exigiendo motivo.
   IF s.id_estatus_solicitud=1 THEN
    SELECT COUNT(*) INTO v_est FROM Deducciones_autorizadas WHERE id_solicitud=p_solicitud AND estatus_deduccion<>4;
    IF v_est>0 THEN RAISE_APPLICATION_ERROR(-20877,'Deduccion previa no cancelada'); END IF;
@@ -498,7 +500,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
  BEGIN
   SAVEPOINT sp_cancelar;
   PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
-  IF TRIM(p_motivo) IS NULL THEN RAISE_APPLICATION_ERROR(-20879,'Motivo de cancelacion obligatorio'); END IF;
+  -- El motivo de cancelacion es opcional: se registra en el historial solo
+  -- cuando el administrador lo captura. El rechazo sigue exigiendolo.
   -- Orden de bloqueos consistente: primero solicitud y despues deduccion.
   SELECT * INTO s FROM Solicitudes WHERE id_solicitud=(SELECT id_solicitud FROM Deducciones_autorizadas
    WHERE id_deduccion_autorizada=p_deduccion) FOR UPDATE;
@@ -507,7 +510,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
   IF d.estatus_deduccion<>2 OR s.id_estatus_solicitud<>2 THEN
    RAISE_APPLICATION_ERROR(-20880,'Solo se cancela una deduccion autorizada');
   END IF;
-  UPDATE Deducciones_autorizadas SET estatus_deduccion=4,id_administrador=p_id_administrador
+  -- No se reemplaza id_administrador: esa columna conserva a quien autorizo
+  -- y el administrador que cancela queda en Historial_Deducciones.
+  UPDATE Deducciones_autorizadas SET estatus_deduccion=4
    WHERE id_deduccion_autorizada=p_deduccion;
   UPDATE Solicitudes SET id_estatus_solicitud=4 WHERE id_solicitud=d.id_solicitud;
   PKG_SOLICITUDES_CORE.registrar_solicitud(d.id_solicitud,p_id_administrador,p_motivo);
@@ -530,7 +535,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
   END IF;
   obtener_montos(s.id_convocatoria,s.id_tipo_solicitud,d.id_monto_inscripcion,d.id_monto_reinscripcion,
    v_pago,v_desc,v_final);
-  UPDATE Deducciones_autorizadas SET estatus_deduccion=5,id_administrador=p_id_administrador,
+  -- Aplicar no cambia al administrador que autorizo: la aplicacion queda
+  -- registrada en Historial_Deducciones con el administrador que la ejecuta.
+  UPDATE Deducciones_autorizadas SET estatus_deduccion=5,
    monto_pago=v_pago,monto_deduccion=v_desc,monto_final=v_final WHERE id_deduccion_autorizada=p_deduccion;
   UPDATE Solicitudes SET id_estatus_solicitud=5 WHERE id_solicitud=d.id_solicitud;
   PKG_SOLICITUDES_CORE.registrar_solicitud(d.id_solicitud,p_id_administrador,'Deduccion aplicada');

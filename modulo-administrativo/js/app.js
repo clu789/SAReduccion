@@ -798,7 +798,8 @@ const PanelAdmin = {
 
   /* ── Decisión: Aprobar (PENDIENTE) o Reautorizar (CANCELADO) ──
      Ambas pegan al mismo endpoint /aprobar: es la misma operación de BD
-     (autorizar_deduccion), solo cambia el texto mostrado en el panel. ── */
+     (autorizar_deduccion), solo cambia el texto mostrado en el panel.
+     El comentario es opcional para estas dos operaciones. ── */
   async aprobar() {
     return this._autorizarComun(
       '¿Confirma la aprobación de esta solicitud? Se autorizará la deducción.',
@@ -820,11 +821,8 @@ const PanelAdmin = {
       Alerta.mostrar('alerta-decision', 'advertencia', 'Seleccione el monto base a utilizar.');
       return;
     }
-    const comentario = document.getElementById('comentario-correccion')?.value?.trim();
-    if (!comentario) {
-      Alerta.mostrar('alerta-decision', 'advertencia', 'Escriba un comentario para continuar.');
-      return;
-    }
+    // El comentario es opcional al aprobar o reautorizar; solo rechazar lo exige.
+    const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
     if (!await Modal.confirmar(mensajeConfirm)) return;
 
     const idActual = this._solicitudActual.idSolicitud;
@@ -872,14 +870,11 @@ const PanelAdmin = {
     }
   },
 
-  /* ── Decisión: Cancelar deducción de una solicitud AUTORIZADA ── */
+  /* ── Decisión: Cancelar deducción de una solicitud AUTORIZADA ──
+     El comentario es opcional; si se escribe, se guarda en el historial. ── */
   async cancelarDeduccion() {
     if (!this._solicitudActual || !this._solicitudActual.deduccion) return;
-    const comentario = document.getElementById('comentario-correccion')?.value?.trim();
-    if (!comentario) {
-      Alerta.mostrar('alerta-decision', 'advertencia', 'Escriba un comentario para cancelar la deducción.');
-      return;
-    }
+    const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
     if (!await Modal.confirmar('¿Confirma cancelar la deducción autorizada? La solicitud pasará a CANCELADO.')) return;
 
     const idDeduccion = this._solicitudActual.deduccion.idDeduccion;

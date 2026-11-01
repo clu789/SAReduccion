@@ -94,10 +94,10 @@ Implementados en `SolicitudAdminController` sobre los procedimientos de `PKG_ADM
 | `GET` | `/api/solicitudes/estadisticas` | Contadores por estatus (`pendiente`, `autorizado`, `rechazado`, `cancelado`, `aplicado`). | No |
 | `GET` | `/api/solicitudes/{id}` | Detalle de la solicitud, sus respuestas y su deducción, si existe. | No |
 | `GET` | `/api/deducciones` | Lista deducciones con filtro opcional `estatus`. | No |
-| `PUT` | `/api/solicitudes/{id}/aprobar` | Cambia la solicitud a `AUTORIZADO` y autoriza su deducción en la misma operación. | Sí |
+| `PUT` | `/api/solicitudes/{id}/aprobar` | Cambia la solicitud a `AUTORIZADO` y autoriza su deducción en la misma operación; el comentario es opcional. | Sí |
 | `PUT` | `/api/solicitudes/{id}/rechazar` | Cambia la solicitud a `RECHAZADO`; exige comentario. | Sí |
 | `PUT` | `/api/solicitudes/{id}/correccion` | Devuelve la solicitud a corrección; hoy comparte la misma transición que el rechazo. | Sí |
-| `PUT` | `/api/deducciones/{id}/cancelar` | Cambia la deducción autorizada a `CANCELADO`; exige comentario. | Sí |
+| `PUT` | `/api/deducciones/{id}/cancelar` | Cambia la deducción autorizada a `CANCELADO`; el comentario es opcional. | Sí |
 
 Códigos de respuesta del panel: `200` en operación correcta, `401` sin sesión `ADMIN`, `403` con CSRF ausente o inválido y `409` cuando se incumple una regla de negocio. Los errores Oracle esperados (códigos `-20870` a `-20887` de `PKG_ADMINISTRADOR` y `-20001` a `-20075` de los triggers) se traducen a mensajes genéricos sin exponer detalles de la base.
 
@@ -292,9 +292,9 @@ El inicializador comprueba los objetos, los privilegios y el estado de los datos
 
 **La inicialización automática se ejecuta una sola vez**, cuando la imagen crea la base sobre un volumen vacío. Reiniciar o recrear los contenedores sin borrar el volumen no vuelve a ejecutar los scripts, y editar un `.sql` o una variable de `.env` tampoco actualiza una base ya inicializada.
 
-Para aplicar un cambio de estructura o de paquetes sobre una base con información que deba conservarse hacen falta cambios controlados —o scripts de migración incrementales aplicados manualmente—; el proyecto **aún no implementa un mecanismo de migraciones**. La recreación desde cero (`docker compose down -v`) es una operación destructiva que borra `sareduccion_oracle_data` y no forma parte del flujo habitual. El procedimiento y sus precauciones están en [BaseDeDatos.md](BaseDeDatos.md).
+Para aplicar un cambio de estructura o de paquetes sobre una base con información que deba conservarse no existe un mecanismo automático: la recreación desde cero (`docker compose down -v`) es una operación destructiva que borra `sareduccion_oracle_data` y no forma parte del flujo habitual. El procedimiento y sus precauciones están en [BaseDeDatos.md](BaseDeDatos.md).
 
-El destino futuro es Oracle 12c, pero esa migración **no forma parte del alcance de ningún equipo en esta etapa**. El desarrollo corresponde a una versión de prueba; cuando se entreguen los objetos oficiales se evaluarán por separado su compatibilidad, integración y permisos en el entorno de destino. Ni los scripts ni el driver se han validado contra una versión 12c concreta.
+El destino futuro es Oracle 12c, pero ese cambio de versión **no forma parte del alcance de ningún equipo en esta etapa**. El desarrollo corresponde a una versión de prueba; cuando se entreguen los objetos oficiales se evaluarán por separado su compatibilidad, integración y permisos en el entorno de destino. Ni los scripts ni el driver se han validado contra una versión 12c concreta.
 
 ## Estado del desarrollo
 
@@ -343,7 +343,7 @@ La compatibilidad con Oracle 12c queda fuera del alcance de esta etapa, tal como
 | Sin captcha ni rate limiting general | El captcha no está implementado y el límite de intentos solo cubre el login de aspirante. |
 | Notificaciones no implementadas | No hay servicio ni endpoint de correo; `/api/notificaciones` no existe en el backend. |
 | Protección de rutas solo en cliente | La redirección por rol es de experiencia de usuario; el backend aún no autoriza operaciones del módulo solicitante. |
-| Sin migraciones incrementales | Los scripts de `docker/init-db/` solo se aplican sobre un volumen vacío; actualizar una base existente exige cambios manuales o reinstalarla. |
+| Cambios de esquema manuales | Los scripts de `docker/init-db/` solo se aplican sobre un volumen vacío; actualizar una base existente exige reinstalarla desde un respaldo. |
 
 ## Diagnóstico rápido
 

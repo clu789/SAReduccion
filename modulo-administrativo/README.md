@@ -80,10 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
 | `GET`  | `/api/solicitudes/{id}` | Detalle + respuestas + deducción |
 | `GET`  | `/api/convocatorias` | Convocatorias disponibles para los filtros |
 | `GET`  | `/api/deducciones` | Listar deducciones con filtro opcional `estatus` |
-| `PUT`  | `/api/solicitudes/{id}/aprobar` | Aprobar la solicitud y autorizar su deducción |
+| `PUT`  | `/api/solicitudes/{id}/aprobar` | Aprobar la solicitud y autorizar su deducción; el comentario es opcional |
 | `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud; exige comentario |
 | `PUT`  | `/api/solicitudes/{id}/correccion` | Devolver a corrección; hoy comparte la transición del rechazo |
-| `PUT`  | `/api/deducciones/{id}/cancelar` | Cancelar una deducción autorizada; exige comentario |
+| `PUT`  | `/api/deducciones/{id}/cancelar` | Cancelar una deducción autorizada; el comentario es opcional |
 | `POST` | `/api/notificaciones` | Envío manual de notificación (**aún no implementado**, equipo 6) |
 
 ---
@@ -94,5 +94,5 @@ document.addEventListener('DOMContentLoaded', () => {
 - Las estadísticas se cargan automáticamente en `PanelAdmin.cargarEstadisticas()`.
 - El **Equipo 6** (notificaciones) debe implementar el servicio y el endpoint `/api/notificaciones`; el frontend solo provee `Notificaciones.enviarManual()` para casos especiales.
 - Los filtros por chip llaman a `PanelAdmin.cargarSolicitudes(estatus)` con el estatus seleccionado.
-- El comentario de corrección es **obligatorio** antes de llamar a `PanelAdmin.solicitarCorreccion()`.
+- El comentario es **obligatorio solo al rechazar**; es **opcional** al aprobar, reautorizar y cancelar la deducción. El monto base siempre es obligatorio en aprobar y reautorizar.
 - El detalle devuelve `historial` vacío: falta el procedimiento de consulta en la base de datos.

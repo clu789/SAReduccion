@@ -13,7 +13,7 @@
 | # | Problema | Detalle |
 |---|---|---|
 | 4 | **No hay cómo obtener los ids de monto** | autorizar_deduccion exige exactamente uno de p_id_monto_inscripcion/p_id_monto_reinscripcion (si no, -20871). listar_deducciones no los expone y SAR_BACKEND no tiene SELECT. Hoy el servicio usa solicitud.getIdConvocatoria() como id de monto → NO_DATA_FOUND en obtener_montos |
-| 5 | **Comentario obligatorio** | autorizar_deduccion aborta con -20876 si el comentario está vacío. aprobar() no lo valida y el frontend lo manda opcional |
+| 5 | **Comentario obligatorio — resuelto** | El comentario es opcional al autorizar, reautorizar y cancelar; solo el rechazo lo exige (-20874). |
 | 6 | **Reautorización bloqueada** | El servicio solo permite aprobar desde PENDIENTE; el paquete acepta NOT IN (1,4), es decir también CANCELADO para reautorizar |
 | 7 | **Rechazo sin motivo** | rechazar_solicitud exige p_comentario no vacío (-20874). Hoy el servicio lo valida pero no lo **envía**, porque la firma antigua no lo tenía |
 | 8 | **/correccion es idéntico a /rechazar** | La BD solo tiene una transición a RECHAZADO(3). Hay que decidir si se mantiene como alias documentado o se retira |

@@ -339,6 +339,8 @@ Conserva estados y fotografías de importes de cada movimiento de la deducción.
 | Retirada por solicitante. | Una solicitud `PENDIENTE` puede pasar a `RETIRADO` dentro del plazo de recepción. |
 | Corrección y reenvío. | Las solicitudes `RECHAZADO`, `RETIRADO` y `CANCELADO` pueden reenviarse dentro del plazo, conservando su identificador y regresando a `PENDIENTE`. |
 | Autorización administrativa. | El administrador autoriza y registra una deducción asociada a la solicitud. |
+| Autoría de la deducción. | `Deducciones_Autorizadas.id_administrador` conserva a quien autorizó: aplicar y cancelar no la modifican, y el administrador que ejecuta queda en `Historial_Deducciones`. El trigger `trg_deducciones_proteccion` lo impide (`-20028`, `-20029`). |
+| Comentarios administrativos. | Opcional al autorizar, reautorizar y cancelar la deducción; obligatorio solo al rechazar (`-20874`). |
 | Cancelación y reautorización. | El administrador puede cancelar una deducción autorizada y reautorizarla cuando el plazo y el estado lo permitan. |
 | Aplicación definitiva. | `APLICADO` es terminal; se recalculan los montos oficiales en el momento de aplicar y se registran los valores en el historial. |
 | Fechas de convocatoria. | Cuatro fechas ordenadas, sin intervalos operativos superpuestos; se conserva historial de sus cambios. |

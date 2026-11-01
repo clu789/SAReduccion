@@ -875,11 +875,18 @@ BEGIN
 END;
 /
 
--- Evita modificar importes de deducciones aplicadas o sus identidades.
--- El cálculo y registro histórico se realizan en PKG_ADMINISTRADOR.
+-- Evita modificar importes de deducciones aplicadas, su administrador
+-- autorizante o sus identidades. El cálculo y registro histórico se
+-- realizan en PKG_ADMINISTRADOR.
 CREATE OR REPLACE TRIGGER trg_deducciones_proteccion
 BEFORE INSERT OR UPDATE ON Deducciones_autorizadas FOR EACH ROW
 BEGIN
+    -- El administrador que autoriza es obligatorio y solo cambia cuando una
+    -- deduccion cancelada se reautoriza (4->2); asi el registro conserva a
+    -- quien tomo la decision original aunque otro administrador la aplique.
+    IF :NEW.id_administrador IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20028,'Una deduccion exige administrador que autorice');
+    END IF;
     IF INSERTING THEN
         IF :NEW.estatus_deduccion<>2 THEN
             RAISE_APPLICATION_ERROR(-20023,'Una deduccion nueva debe iniciar AUTORIZADO');
@@ -892,6 +899,10 @@ BEGIN
            :OLD.id_convocatoria<>:NEW.id_convocatoria OR
            :OLD.fecha_registro<>:NEW.fecha_registro THEN
             RAISE_APPLICATION_ERROR(-20024,'Origen y fecha de registro de deduccion inmutables');
+        END IF;
+        IF NVL(:NEW.id_administrador,'#')<>NVL(:OLD.id_administrador,'#')
+           AND NOT (:OLD.estatus_deduccion=4 AND :NEW.estatus_deduccion=2) THEN
+            RAISE_APPLICATION_ERROR(-20029,'El administrador que autoriza solo cambia al reautorizar');
         END IF;
         IF :NEW.estatus_deduccion<>:OLD.estatus_deduccion AND NOT
            ((:OLD.estatus_deduccion=2 AND :NEW.estatus_deduccion IN (4,5)) OR

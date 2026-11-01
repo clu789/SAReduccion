@@ -7,12 +7,15 @@
 -- El 02 ya carga Tipo_Solicitudes (1,2), Formularios (1,2), Periodos,
 -- Tipo_Preguntas y catalogos de estados: NO se duplican aqui.
 -- Identidades obligatorias: estudiante 21281181, aspirante F2026A001
--- CURP MOPA080512MDFRNN01 (periodo 2, 2026), administrador SA01.
+-- CURP MOPA080512MDFRNN01 (periodo 2, 2026); administrador SA01 para autorizar
+-- y SA02 para cancelar y aplicar deducciones.
 -- Las contrasenas de las cuentas Oracle se configuran fuera del seed.
 -- Convocatoria 1: periodo 1/2026 cerrado; convocatoria 2: periodo 2/2026
 -- abierta en la fecha de ejecucion (fechas relativas). Sin superposicion.
 -- Todas las solicitudes y deducciones se crean y cambian con los paquetes de
 -- 05-crear-paquetes-permisos.sql, nunca con DML directo.
+-- La deduccion conserva al administrador que la autorizo (SA01); el que cancela
+-- o aplica (SA02) queda unicamente en Historial_Deducciones, nunca en la fila.
 SET SERVEROUTPUT ON SIZE UNLIMITED
 SET SQLBLANKLINES ON
 SET DEFINE OFF
@@ -135,25 +138,29 @@ INSERT INTO Monto_Reinscripciones(id_monto_reinscripcion,monto_pago)
 VALUES(seq_monto_reinscripciones.NEXTVAL,1600);
 
 PROMPT === Preguntas y opciones con IDs generados por secuencia ===
+-- Ocho preguntas: cuatro por formulario. La clave del trabajador (o del
+-- homologado) se pregunta primero, seguida del nombre completo.
 DECLARE
  p1 NUMBER;p2 NUMBER;p3 NUMBER;p4 NUMBER;
- p5 NUMBER;p6 NUMBER;p7 NUMBER;
- o1 NUMBER;o2 NUMBER;o3 NUMBER;o4 NUMBER;o5 NUMBER;o6 NUMBER;o7 NUMBER;o8 NUMBER;
+ p5 NUMBER;p6 NUMBER;p7 NUMBER;p8 NUMBER;
+ o1 NUMBER;o2 NUMBER;o3 NUMBER;o4 NUMBER;o5 NUMBER;o6 NUMBER;
 BEGIN
  INSERT INTO Preguntas(id_pregunta,texto_pregunta,obligatoria,tipo_pregunta)
- VALUES(seq_preguntas.NEXTVAL,'Nombre del trabajador con el que tiene parentesco','S',1) RETURNING id_pregunta INTO p1;
+ VALUES(seq_preguntas.NEXTVAL,'Clave del trabajador','S',1) RETURNING id_pregunta INTO p1;
  INSERT INTO Preguntas(id_pregunta,texto_pregunta,obligatoria,tipo_pregunta)
- VALUES(seq_preguntas.NEXTVAL,'Parentesco con el trabajador','S',3) RETURNING id_pregunta INTO p2;
+ VALUES(seq_preguntas.NEXTVAL,'Nombre completo del trabajador','S',1) RETURNING id_pregunta INTO p2;
  INSERT INTO Preguntas(id_pregunta,texto_pregunta,obligatoria,tipo_pregunta)
- VALUES(seq_preguntas.NEXTVAL,'Modalidad de estudios','S',2) RETURNING id_pregunta INTO p3;
+ VALUES(seq_preguntas.NEXTVAL,'Parentesco con el trabajador','S',3) RETURNING id_pregunta INTO p3;
  INSERT INTO Preguntas(id_pregunta,texto_pregunta,obligatoria,tipo_pregunta)
  VALUES(seq_preguntas.NEXTVAL,'Observaciones adicionales (opcional)','N',1) RETURNING id_pregunta INTO p4;
  INSERT INTO Preguntas(id_pregunta,texto_pregunta,obligatoria,tipo_pregunta)
- VALUES(seq_preguntas.NEXTVAL,'Nombre del trabajador homologado','S',1) RETURNING id_pregunta INTO p5;
+ VALUES(seq_preguntas.NEXTVAL,'Clave del trabajador homologado','S',1) RETURNING id_pregunta INTO p5;
  INSERT INTO Preguntas(id_pregunta,texto_pregunta,obligatoria,tipo_pregunta)
- VALUES(seq_preguntas.NEXTVAL,'Tipo de parentesco homologado','S',3) RETURNING id_pregunta INTO p6;
+ VALUES(seq_preguntas.NEXTVAL,'Nombre completo del trabajador homologado','S',1) RETURNING id_pregunta INTO p6;
  INSERT INTO Preguntas(id_pregunta,texto_pregunta,obligatoria,tipo_pregunta)
- VALUES(seq_preguntas.NEXTVAL,'Cuenta con comprobante','S',2) RETURNING id_pregunta INTO p7;
+ VALUES(seq_preguntas.NEXTVAL,'Parentesco con el trabajador homologado','S',3) RETURNING id_pregunta INTO p7;
+ INSERT INTO Preguntas(id_pregunta,texto_pregunta,obligatoria,tipo_pregunta)
+ VALUES(seq_preguntas.NEXTVAL,'Cuenta con comprobante de homologacion','S',2) RETURNING id_pregunta INTO p8;
  INSERT INTO Formulario_Preguntas(id_formulario,id_pregunta,orden) VALUES(1,p1,1);
  INSERT INTO Formulario_Preguntas(id_formulario,id_pregunta,orden) VALUES(1,p2,2);
  INSERT INTO Formulario_Preguntas(id_formulario,id_pregunta,orden) VALUES(1,p3,3);
@@ -161,30 +168,27 @@ BEGIN
  INSERT INTO Formulario_Preguntas(id_formulario,id_pregunta,orden) VALUES(2,p5,1);
  INSERT INTO Formulario_Preguntas(id_formulario,id_pregunta,orden) VALUES(2,p6,2);
  INSERT INTO Formulario_Preguntas(id_formulario,id_pregunta,orden) VALUES(2,p7,3);
+ INSERT INTO Formulario_Preguntas(id_formulario,id_pregunta,orden) VALUES(2,p8,4);
  INSERT INTO Opciones(id_opcion,texto_opcion,orden,id_pregunta,requiere_especificacion)
- VALUES(seq_opciones.NEXTVAL,'Hijo o hija',1,p2,0) RETURNING id_opcion INTO o1;
+ VALUES(seq_opciones.NEXTVAL,'Hijo o hija',1,p3,0) RETURNING id_opcion INTO o1;
  INSERT INTO Opciones(id_opcion,texto_opcion,orden,id_pregunta,requiere_especificacion)
- VALUES(seq_opciones.NEXTVAL,'Otro (especifique)',2,p2,1) RETURNING id_opcion INTO o2;
+ VALUES(seq_opciones.NEXTVAL,'Otro (especifique)',2,p3,1) RETURNING id_opcion INTO o2;
  INSERT INTO Opciones(id_opcion,texto_opcion,orden,id_pregunta,requiere_especificacion)
- VALUES(seq_opciones.NEXTVAL,'Escolarizada',1,p3,0) RETURNING id_opcion INTO o3;
+ VALUES(seq_opciones.NEXTVAL,'Hijo o hija',1,p7,0) RETURNING id_opcion INTO o3;
  INSERT INTO Opciones(id_opcion,texto_opcion,orden,id_pregunta,requiere_especificacion)
- VALUES(seq_opciones.NEXTVAL,'Mixta',2,p3,0) RETURNING id_opcion INTO o4;
+ VALUES(seq_opciones.NEXTVAL,'Otro (especifique)',2,p7,1) RETURNING id_opcion INTO o4;
  INSERT INTO Opciones(id_opcion,texto_opcion,orden,id_pregunta,requiere_especificacion)
- VALUES(seq_opciones.NEXTVAL,'Hijo o hija',1,p6,0) RETURNING id_opcion INTO o5;
+ VALUES(seq_opciones.NEXTVAL,'Si',1,p8,0) RETURNING id_opcion INTO o5;
  INSERT INTO Opciones(id_opcion,texto_opcion,orden,id_pregunta,requiere_especificacion)
- VALUES(seq_opciones.NEXTVAL,'Otro (especifique)',2,p6,1) RETURNING id_opcion INTO o6;
- INSERT INTO Opciones(id_opcion,texto_opcion,orden,id_pregunta,requiere_especificacion)
- VALUES(seq_opciones.NEXTVAL,'Si',1,p7,0) RETURNING id_opcion INTO o7;
- INSERT INTO Opciones(id_opcion,texto_opcion,orden,id_pregunta,requiere_especificacion)
- VALUES(seq_opciones.NEXTVAL,'No',2,p7,0) RETURNING id_opcion INTO o8;
+ VALUES(seq_opciones.NEXTVAL,'No',2,p8,0) RETURNING id_opcion INTO o6;
 END;
 /
 
 PROMPT === Solicitudes creadas y cambiadas mediante paquetes PL/SQL ===
 DECLARE
  v_conv NUMBER; v_mi NUMBER;v_mr NUMBER;
- v_p1 NUMBER;v_p2 NUMBER;v_p3 NUMBER;v_p5 NUMBER;v_p6 NUMBER;v_p7 NUMBER;
- v_o1 NUMBER;v_o2 NUMBER;v_o3 NUMBER;v_o4 NUMBER;v_o5 NUMBER;v_o6 NUMBER;v_o7 NUMBER;
+ v_p1 NUMBER;v_p2 NUMBER;v_p3 NUMBER;v_p5 NUMBER;v_p6 NUMBER;v_p7 NUMBER;v_p8 NUMBER;
+ v_o1 NUMBER;v_o2 NUMBER;v_o3 NUMBER;v_o4 NUMBER;v_o5 NUMBER;v_o6 NUMBER;
  j1 CLOB;j1_otro CLOB;j2 CLOB;j2_otro CLOB;
  v_ficha VARCHAR2(18);v_periodo NUMBER;v_anio NUMBER;
  FUNCTION resp_abierta(p_p NUMBER,p_texto VARCHAR2) RETURN VARCHAR2 IS
@@ -241,23 +245,30 @@ BEGIN
  SELECT id_convocatoria INTO v_conv FROM Convocatorias WHERE id_periodo=2 AND anio=2026;
  SELECT MIN(id_monto_inscripcion) INTO v_mi FROM Monto_Inscripciones;
  SELECT MIN(id_monto_reinscripcion) INTO v_mr FROM Monto_Reinscripciones;
- SELECT id_pregunta INTO v_p1 FROM Preguntas WHERE texto_pregunta='Nombre del trabajador con el que tiene parentesco';
- SELECT id_pregunta INTO v_p2 FROM Preguntas WHERE texto_pregunta='Parentesco con el trabajador';
- SELECT id_pregunta INTO v_p3 FROM Preguntas WHERE texto_pregunta='Modalidad de estudios';
- SELECT id_pregunta INTO v_p5 FROM Preguntas WHERE texto_pregunta='Nombre del trabajador homologado';
- SELECT id_pregunta INTO v_p6 FROM Preguntas WHERE texto_pregunta='Tipo de parentesco homologado';
- SELECT id_pregunta INTO v_p7 FROM Preguntas WHERE texto_pregunta='Cuenta con comprobante';
- SELECT id_opcion INTO v_o1 FROM Opciones WHERE id_pregunta=v_p2 AND orden=1;
- SELECT id_opcion INTO v_o2 FROM Opciones WHERE id_pregunta=v_p2 AND orden=2;
- SELECT id_opcion INTO v_o3 FROM Opciones WHERE id_pregunta=v_p3 AND orden=1;
- SELECT id_opcion INTO v_o4 FROM Opciones WHERE id_pregunta=v_p3 AND orden=2;
- SELECT id_opcion INTO v_o5 FROM Opciones WHERE id_pregunta=v_p6 AND orden=1;
- SELECT id_opcion INTO v_o6 FROM Opciones WHERE id_pregunta=v_p6 AND orden=2;
- SELECT id_opcion INTO v_o7 FROM Opciones WHERE id_pregunta=v_p7 AND orden=1;
- j1:='['||resp_abierta(v_p1,'Trabajador de ejemplo')||','||resp_opcion(v_p2,v_o1)||','||resp_opcion(v_p3,v_o3)||']';
- j1_otro:='['||resp_abierta(v_p1,'Trabajador de ejemplo')||','||resp_opcion(v_p2,v_o2,'Tutor legal')||','||resp_opcion(v_p3,v_o4)||']';
- j2:='['||resp_abierta(v_p5,'Trabajador homologado de ejemplo')||','||resp_opcion(v_p6,v_o5)||','||resp_opcion(v_p7,v_o7)||']';
- j2_otro:='['||resp_abierta(v_p5,'Trabajador homologado de ejemplo')||','||resp_opcion(v_p6,v_o6,'Tutor legal')||','||resp_opcion(v_p7,v_o7)||']';
+ SELECT id_pregunta INTO v_p1 FROM Preguntas WHERE texto_pregunta='Clave del trabajador';
+ SELECT id_pregunta INTO v_p2 FROM Preguntas WHERE texto_pregunta='Nombre completo del trabajador';
+ SELECT id_pregunta INTO v_p3 FROM Preguntas WHERE texto_pregunta='Parentesco con el trabajador';
+ SELECT id_pregunta INTO v_p5 FROM Preguntas WHERE texto_pregunta='Clave del trabajador homologado';
+ SELECT id_pregunta INTO v_p6 FROM Preguntas WHERE texto_pregunta='Nombre completo del trabajador homologado';
+ SELECT id_pregunta INTO v_p7 FROM Preguntas WHERE texto_pregunta='Parentesco con el trabajador homologado';
+ SELECT id_pregunta INTO v_p8 FROM Preguntas WHERE texto_pregunta='Cuenta con comprobante de homologacion';
+ SELECT id_opcion INTO v_o1 FROM Opciones WHERE id_pregunta=v_p3 AND orden=1;
+ SELECT id_opcion INTO v_o2 FROM Opciones WHERE id_pregunta=v_p3 AND orden=2;
+ SELECT id_opcion INTO v_o3 FROM Opciones WHERE id_pregunta=v_p7 AND orden=1;
+ SELECT id_opcion INTO v_o4 FROM Opciones WHERE id_pregunta=v_p7 AND orden=2;
+ SELECT id_opcion INTO v_o5 FROM Opciones WHERE id_pregunta=v_p8 AND orden=1;
+ SELECT id_opcion INTO v_o6 FROM Opciones WHERE id_pregunta=v_p8 AND orden=2;
+ -- Cada formulario se responde en el orden en que lo presenta el sistema:
+ -- clave del trabajador, nombre completo, parentesco y, en el homologado,
+ -- el comprobante. Las observaciones son opcionales y no se envian.
+ j1:='['||resp_abierta(v_p1,'CLAVE-001')||','||resp_abierta(v_p2,'Trabajador de ejemplo')||
+  ','||resp_opcion(v_p3,v_o1)||']';
+ j1_otro:='['||resp_abierta(v_p1,'CLAVE-001')||','||resp_abierta(v_p2,'Trabajador de ejemplo')||
+  ','||resp_opcion(v_p3,v_o2,'Tutor legal')||']';
+ j2:='['||resp_abierta(v_p5,'CLAVE-H001')||','||resp_abierta(v_p6,'Trabajador homologado de ejemplo')||
+  ','||resp_opcion(v_p7,v_o3)||','||resp_opcion(v_p8,v_o5)||']';
+ j2_otro:='['||resp_abierta(v_p5,'CLAVE-H001')||','||resp_abierta(v_p6,'Trabajador homologado de ejemplo')||
+  ','||resp_opcion(v_p7,v_o4,'Tutor legal')||','||resp_opcion(v_p8,v_o5)||']';
 
  -- Debe identificar 2/2026, aunque la misma ficha+CURP exista en 1/2026.
  PKG_ASPIRANTE.validar_aspirante('F2026A001','MOPA080512MDFRNN01',v_ficha,v_periodo,v_anio);
@@ -323,7 +334,27 @@ BEGIN
  SELECT COUNT(*) INTO n FROM Solicitudes s JOIN Convocatorias c ON c.id_convocatoria=s.id_convocatoria
   WHERE s.ficha IS NOT NULL AND (s.periodo<>c.id_periodo OR s.anio<>c.anio);
  IF n<>0 THEN RAISE_APPLICATION_ERROR(-20929,'Aspirante asociado a convocatoria equivocada'); END IF;
- DBMS_OUTPUT.PUT_LINE('OK | 9 estudiantes, 9 registros aspirantes, 17 solicitudes, estados e historiales');
+ -- El administrador autorizante no se pierde al cancelar ni al aplicar: la
+ -- deduccion debe seguir apuntando a quien la autorizo y el ejecutor solo
+ -- queda en el historial.
+ SELECT COUNT(*) INTO n FROM Deducciones_autorizadas WHERE id_administrador IS NULL;
+ IF n<>0 THEN RAISE_APPLICATION_ERROR(-20932,'Deduccion sin administrador autorizante'); END IF;
+ SELECT COUNT(*) INTO n FROM Deducciones_autorizadas d
+  WHERE d.estatus_deduccion IN (4,5) AND NOT EXISTS (
+   SELECT 1 FROM Historial_Deducciones h
+    WHERE h.id_deduccion_autorizada=d.id_deduccion_autorizada AND h.id_estatus=2
+     AND h.id_administrador=d.id_administrador);
+ IF n<>0 THEN RAISE_APPLICATION_ERROR(-20933,'La deduccion no conserva a quien la autorizo'); END IF;
+ SELECT COUNT(*) INTO n FROM Deducciones_autorizadas d
+  WHERE d.estatus_deduccion=5 AND NOT EXISTS (
+   SELECT 1 FROM Historial_Deducciones h
+    WHERE h.id_deduccion_autorizada=d.id_deduccion_autorizada AND h.id_estatus=5);
+ IF n<>0 THEN RAISE_APPLICATION_ERROR(-20934,'Deduccion aplicada sin ejecutor en el historial'); END IF;
+ SELECT COUNT(*) INTO n FROM (
+  SELECT h.id_deduccion_autorizada FROM Historial_Deducciones h
+   WHERE h.id_estatus=5 GROUP BY h.id_deduccion_autorizada HAVING COUNT(*)>1);
+ IF n<>0 THEN RAISE_APPLICATION_ERROR(-20935,'Deduccion aplicada mas de una vez'); END IF;
+ DBMS_OUTPUT.PUT_LINE('OK | 9 estudiantes, 9 registros aspirantes, 17 solicitudes, 8 deducciones, estados, autorizantes e historiales');
 END;
 /
 COMMIT;

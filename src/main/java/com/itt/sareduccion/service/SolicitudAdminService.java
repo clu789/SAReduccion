@@ -177,13 +177,12 @@ public class SolicitudAdminService {
      * su deduccion. Admite solicitudes PENDIENTE o CANCELADO, igual que
      * {@code autorizar_deduccion} (el panel expone esto con dos botones
      * distintos — "Aprobar" y "Reautorizar" — pero ambos llaman este metodo).
-     * El monto se elige segun el tipo de solicitante.
+     * El monto se elige segun el tipo de solicitante. El comentario es
+     * opcional: si no se captura, el historial queda sin motivo.
      */
     public void aprobar(String idAdministrador, long idSolicitud, Long idMontoInscripcion,
             Long idMontoReinscripcion, String comentario) {
-        if (comentario == null || comentario.trim().isEmpty()) {
-            throw new ReglaNegocioException("El comentario es obligatorio para autorizar la solicitud");
-        }
+        String motivo = comentario == null || comentario.trim().isEmpty() ? null : comentario.trim();
         SolicitudAdmin solicitud = buscar(idAdministrador, idSolicitud);
         if (solicitud == null) {
             throw new ReglaNegocioException("Solicitud no encontrada");
@@ -214,7 +213,7 @@ public class SolicitudAdminService {
             // autorizar_deduccion realiza por si sola la transicion de estatus
             // de la solicitud (1 o 4 -> 2); no se llama ningun cambio de estatus aparte.
             administradorRepository.autorizarDeduccion(idAdministrador, idSolicitud, idMontoInscripcion,
-                    idMontoReinscripcion, comentario);
+                    idMontoReinscripcion, motivo);
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aprobar la solicitud");
         }
@@ -231,10 +230,12 @@ public class SolicitudAdminService {
         }
     }
 
+    /**
+     * Cancela una deduccion autorizada y sincroniza la solicitud a CANCELADO.
+     * El comentario es opcional: si se captura, queda en el historial.
+     */
     public void cancelarDeduccion(String idAdministrador, long idDeduccion, String comentario) {
-        if (comentario == null || comentario.trim().isEmpty()) {
-            throw new ReglaNegocioException("El comentario es obligatorio para cancelar una deduccion");
-        }
+        String motivo = comentario == null || comentario.trim().isEmpty() ? null : comentario.trim();
         DeduccionAdmin deduccion = null;
         for (DeduccionAdmin candidata : administradorRepository.listarDeducciones(idAdministrador)) {
             if (candidata.getIdDeduccion() != null && candidata.getIdDeduccion().longValue() == idDeduccion) {
@@ -250,7 +251,7 @@ public class SolicitudAdminService {
         }
 
         try {
-            administradorRepository.cancelarDeduccion(idAdministrador, idDeduccion, comentario);
+            administradorRepository.cancelarDeduccion(idAdministrador, idDeduccion, motivo);
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo cancelar la deduccion");
         }

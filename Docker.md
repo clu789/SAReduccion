@@ -263,8 +263,8 @@ docker compose --profile full-stack ps
 ### Se cambiaron los scripts SQL, pero no se reflejan
 
 Los scripts se ejecutan solo con un volumen vacío. No elimines el volumen en
-una base con información importante; aplica el cambio mediante un procedimiento
-de migración o restauración controlado.
+una base con información importante; para cambiar el esquema, restaura el
+respaldo en una base nueva y vuelve a inicializar desde ahí.
 
 ### El backend no conecta con Oracle
 

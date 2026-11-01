@@ -245,7 +245,7 @@ Cada equipo funcional desarrolla su módulo de extremo a extremo: interfaz, vali
 
 No se asignan como funcionalidades de esta etapa: cambio, recuperación o desbloqueo de contraseñas de cuentas Oracle; gestión avanzada de sesiones concurrentes o cierre de todas las sesiones; revalidación periódica del perfil Oracle durante sesiones ya iniciadas; WAF avanzado en Nginx; almacén compartido de sesiones para múltiples instancias del backend; ni un panel de desbloqueo administrativo de usuarios. Se podrán reconsiderar si las condiciones de despliegue lo requieren.
 
-**No se incluye la migración de Oracle XE 21c a Oracle 12c como responsabilidad de ningún equipo.** El desarrollo actual corresponde a una versión de prueba. Cuando se entreguen los objetos oficiales, se evaluarán por separado su compatibilidad, integración y permisos en el entorno de destino.
+**No se incluye el cambio de Oracle XE 21c a Oracle 12c como responsabilidad de ningún equipo.** El desarrollo actual corresponde a una versión de prueba. Cuando se entreguen los objetos oficiales, se evaluarán por separado su compatibilidad, integración y permisos en el entorno de destino.
 
 ## 4. Flujo funcional de integración
 
