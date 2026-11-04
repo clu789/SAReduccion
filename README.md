@@ -73,12 +73,12 @@ Si Oracle no alcanza el estado `healthy` o los servicios no inician correctament
 docker compose logs -f oracle-db
 ```
 
-Si el problema está relacionado con la inicialización de Oracle, se puede intentar iniciar los servicios por separado:
+Si el problema está relacionado con la inicialización de Oracle, se puede iniciar Oracle por separado. Esto no corrige el error, pero aísla la causa y muestra el mensaje real en lugar del genérico `dependency failed to start`:
 
-**1. Iniciar Oracle:**
+**1. Iniciar Oracle y esperar a que quede saludable:**
 
 ```bash
-docker compose up -d oracle-db
+docker compose up -d oracle-db --wait --wait-timeout 600
 ```
 
 **2. Comprobar su estado:**
@@ -87,7 +87,7 @@ docker compose up -d oracle-db
 docker compose ps
 ```
 
-Esperar hasta que Oracle aparezca como `healthy`.
+Si Oracle queda en `health: starting`, todavía está inicializando. Si pasa a `unhealthy`, el comando anterior termina indicando `container sareduccion-oracle is unhealthy` y el problema está en Oracle, no en el backend ni en el frontend.
 
 **3. Iniciar el resto de los servicios:**
 
@@ -96,6 +96,14 @@ docker compose --profile full-stack up -d --build
 ```
 
 Si Oracle permanece en estado `unhealthy`, es necesario revisar los errores de los registros antes de continuar. Iniciar los servicios por separado no corrige errores en los scripts SQL ni problemas de recursos.
+
+**Si Oracle quedó en `unhealthy`, el volumen de datos quedó a medio inicializar** y la inicialización no se repite en los siguientes arranques. Para empezar de nuevo hay que eliminar el volumen:
+
+```bash
+docker compose --profile full-stack down -v
+```
+
+Este comando borra la base de datos local. No debe ejecutarse si hay datos que conservar.
 
 ## 4. Comandos útiles
 
