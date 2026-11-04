@@ -6,7 +6,7 @@
 # ── Credenciales y configuración local ──────────────────────
 # .env nunca debe versionarse; la plantilla es .env.example
 .env
-.env.*
+.env.*g
 !.env.example
 env
 *.env.local

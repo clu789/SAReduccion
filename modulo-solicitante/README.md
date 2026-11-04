@@ -13,7 +13,8 @@ Se comunica con el backend (Spring Boot) mediante peticiones `fetch()` a la API 
 ```
 modulo-solicitante/
 ├── login.html          → Inicio de sesión (alumno / aspirante)
-├── panel-estatus.html  → Consulta del estado de la solicitud
+├── panel-estatus.html  → Panel y estado de la solicitud (alumno)
+├── panel-aspirante.html→ Panel y estado de la solicitud (aspirante)
 ├── formulario.html     → Captura de la solicitud (stepper 3 pasos)
 ├── css/
 │   ├── itt-base.css    → Variables, componentes y utilidades base ITT
@@ -32,9 +33,10 @@ modulo-solicitante/
 
 | Página | Funcionalidad | Equipo |
 |---|---|---|
-| `login.html` | Autenticación alumno / aspirante | **Equipo 5** |
-| `panel-estatus.html` | Consulta del estado del trámite | **Equipo 1** |
-| `formulario.html` | Captura y envío de la solicitud | **Equipo 3** |
+| `login.html` | Autenticación de alumno y de aspirante | **Equipo 1** |
+| `panel-estatus.html` | Consulta del estado del trámite (alumno) | **Equipo 3** |
+| `panel-aspirante.html` | Consulta del estado del trámite (aspirante) | **Equipo 3** |
+| `formulario.html` | Captura y envío de la solicitud | **Equipo 5** |
 
 ---
 
@@ -75,11 +77,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| `POST` | `/api/auth/login` | Autenticación de usuario |
+| `GET`  | `/api/auth/me` | Identidad de la sesión y token CSRF |
+| `POST` | `/api/auth/login` | Autenticación de alumno |
+| `POST` | `/api/auth/login/aspirante` | Autenticación de aspirante con ficha y CURP |
+| `POST` | `/api/auth/logout` | Cierre de sesión |
 | `GET`  | `/api/solicitudes/mi-solicitud` | Solicitud activa del usuario |
 | `GET`  | `/api/formularios/activo` | Preguntas del formulario vigente |
-| `POST` | `/api/solicitudes` | Crear nueva solicitud |
-| `PUT`  | `/api/solicitudes/{id}` | Actualizar respuestas (corrección) |
+| `POST` | `/api/solicitudes` | Crear nueva solicitud con sus respuestas |
+| `PUT`  | `/api/solicitudes/{id}` | Reenviar respuestas de una solicitud `RECHAZADO`, `RETIRADO` o `CANCELADO` |
+
+Solo los endpoints de autenticación están implementados. Las operaciones de solicitud están planificadas en el frontend y pendientes en el backend; la base de datos ya las ofrece mediante `PKG_ESTUDIANTE` y `PKG_ASPIRANTE`.
 
 ---
 

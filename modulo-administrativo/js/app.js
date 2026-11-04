@@ -199,6 +199,8 @@ const Alerta = {
    MODAL
 ───────────────────────────────────────── */
 const Modal = {
+  _confirmResolve: null,
+
   abrir(modalId) {
     const el = document.getElementById(modalId);
     if (el) el.classList.add('activo');
@@ -206,13 +208,40 @@ const Modal = {
   cerrar(modalId) {
     const el = document.getElementById(modalId);
     if (el) el.classList.remove('activo');
+    // Si cierran #modal-confirmar sin pasar por resolverConfirmar() (la X o
+    // el fondo), se resuelve como "cancelado" para no dejar la promesa colgada.
+    if (modalId === 'modal-confirmar' && this._confirmResolve) {
+      const resolve = this._confirmResolve;
+      this._confirmResolve = null;
+      resolve(false);
+    }
   },
   iniciarCierre() {
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.classList.remove('activo');
+        if (e.target === overlay) this.cerrar(overlay.id);
       });
     });
+  },
+
+  /* ── Reemplazo de confirm() nativo con el modal propio del panel.
+     Uso: const ok = await Modal.confirmar('¿Seguro?'); if (!ok) return; ── */
+  confirmar(mensaje, titulo = 'Confirmar acción') {
+    return new Promise((resolve) => {
+      const tituloEl = document.getElementById('confirmar-titulo');
+      const textoEl = document.getElementById('confirmar-texto');
+      if (tituloEl) tituloEl.innerHTML = `<i class="fa fa-question-circle"></i> ${titulo}`;
+      if (textoEl) textoEl.textContent = mensaje;
+      this._confirmResolve = resolve;
+      this.abrir('modal-confirmar');
+    });
+  },
+
+  resolverConfirmar(valor) {
+    const resolve = this._confirmResolve;
+    this._confirmResolve = null;
+    this.cerrar('modal-confirmar');
+    if (resolve) resolve(valor);
   },
 };
 
@@ -279,6 +308,7 @@ const ESTATUS_BADGE = {
   RECHAZADO:  'badge-rechazado',
   CANCELADO:  'badge-cancelado',
   APLICADO:   'badge-aplicado',
+  RETIRADO:   'badge-retirado',
 };
 
 const ESTATUS_ICONO = {
@@ -287,10 +317,12 @@ const ESTATUS_ICONO = {
   RECHAZADO:  { clase: 'rechazado',  icon: 'fa-times' },
   CANCELADO:  { clase: 'cancelado',  icon: 'fa-ban' },
   APLICADO:   { clase: 'aplicado',   icon: 'fa-flag-checkered' },
+  RETIRADO:   { clase: 'retirado',   icon: 'fa-undo' },
 };
 
 const PanelAdmin = {
   solicitudes: [],      // Datos cargados desde la API
+  montos: [],            // Catálogo de montos (inscripción + reinscripción)
   filtroActual: 'todos',
   filtroConvocatoria: '',
   filtroSolicitante: '',
@@ -306,11 +338,34 @@ const PanelAdmin = {
     AuthSession.bindLogout('login.html', 'alerta-admin');
 
     await this.cargarConvocatorias();
-    await Promise.all([this.cargarEstadisticas(), this.cargarSolicitudes()]);
+    await Promise.all([this.cargarEstadisticas(), this.cargarSolicitudes(), this.cargarMontos()]);
     this.iniciarFiltros();
     this.iniciarBuscador();
     this.iniciarOrdenamiento();
     Modal.iniciarCierre();
+  },
+
+  /* ── Catálogo de montos base (inscripción/reinscripción) ── */
+  async cargarMontos() {
+    try {
+      this.montos = await Http.get('/montos');
+    } catch (err) {
+      this.montos = [];
+      console.warn('No se pudieron cargar los montos:', err.message);
+    }
+  },
+
+  /* ── Llena el <select> de monto según el tipo de solicitante ── */
+  poblarSelectMonto(tipoSolicitante) {
+    const select = document.getElementById('select-monto');
+    if (!select) return;
+    const tipoMonto = tipoSolicitante === 'ESTUDIANTE' ? 'REINSCRIPCION' : 'INSCRIPCION';
+    const opciones = (this.montos || []).filter(m => m.tipoMonto === tipoMonto);
+
+    select.innerHTML = '<option value="">Seleccione un monto…</option>' + opciones.map(m => {
+      const monto = Number(m.montoPago).toLocaleString('es-MX', { minimumFractionDigits: 2 });
+      return `<option value="${m.idMonto}">${m.idMonto} — $${monto}</option>`;
+    }).join('');
   },
 
   /* ── Catálogo de convocatorias y selección inicial ── */
@@ -366,6 +421,7 @@ const PanelAdmin = {
       this.actualizarContador('stat-pendiente',  stats.pendiente  ?? 0);
       this.actualizarContador('stat-autorizado', stats.autorizado ?? 0);
       this.actualizarContador('stat-rechazado',  stats.rechazado  ?? 0);
+      this.actualizarContador('stat-retirado',   stats.retirado   ?? 0);
     } catch (err) {
       console.warn('No se pudieron cargar estadísticas:', err.message);
     }
@@ -452,7 +508,7 @@ const PanelAdmin = {
   valorOrden(solicitud, columna) {
     switch (columna) {
       case 'idSolicitud':        return Number(solicitud.idSolicitud);
-      case 'solicitante':        return (solicitud.solicitante || solicitud.nombreSolicitante || '').toUpperCase();
+      case 'solicitante':        return (solicitud.nombreSolicitante || solicitud.solicitante || '').toUpperCase();
       case 'tipoSolicitante':    return (solicitud.tipoSolicitante || '').toUpperCase();
       case 'tipoSolicitud':      return (solicitud.tipoSolicitud || '').toUpperCase();
       case 'estatus':            return (solicitud.estatus || '').toUpperCase();
@@ -485,7 +541,7 @@ const PanelAdmin = {
 
       return `<tr>
         <td>${s.idSolicitud}</td>
-        <td>${s.solicitante || s.nombreSolicitante || '—'}</td>
+        <td>${s.nombreSolicitante || s.solicitante || '—'}</td>
         <td>${s.tipoSolicitante   || '—'}</td>
         <td>${s.tipoSolicitud      || '—'}</td>
         <td>${actualizado}</td>
@@ -580,7 +636,7 @@ const PanelAdmin = {
     const folio = document.getElementById('resp-folio');
     const solicitante = document.getElementById('resp-solicitante');
     if (folio) folio.textContent = solicitud.idSolicitud ?? '—';
-    if (solicitante) solicitante.textContent = solicitud.solicitante || solicitud.nombreSolicitante || '—';
+    if (solicitante) solicitante.textContent = solicitud.nombreSolicitante || solicitud.solicitante || '—';
 
     const lista = document.getElementById('lista-respuestas');
     if (!lista) return;
@@ -603,7 +659,7 @@ const PanelAdmin = {
     // Datos generales
     const campos = {
       'det-folio':      solicitud.idSolicitud,
-      'det-nombre':     solicitud.solicitante || solicitud.nombreSolicitante,
+      'det-nombre':     solicitud.nombreSolicitante || solicitud.solicitante,
       'det-tipo':       solicitud.tipoSolicitante,
       'det-tipo-solicitud': solicitud.tipoSolicitud,
       'det-convocatoria': solicitud.idConvocatoria,
@@ -626,7 +682,7 @@ const PanelAdmin = {
     // Deducción (solo si existe)
     this.renderDeduccion(solicitud.deduccion);
 
-    // Historial (pendiente de endpoint en Fase 3)
+    // Historial de la solicitud (quien lo hizo: nombre del admin, o "Alumno")
     const historialEl = document.getElementById('historial-lista');
     if (historialEl) {
       if (solicitud.historial && solicitud.historial.length) {
@@ -640,7 +696,7 @@ const PanelAdmin = {
               <div class="historial-icono ${clase}"><i class="fa ${icon}"></i></div>
               <div class="historial-info">
                 <div class="hist-titulo">${h.estatusNombre || h.estatus}</div>
-                <div class="hist-meta">${h.fecha || ''} ${h.administrador ? '· ' + h.administrador : ''}</div>
+                <div class="hist-meta">${this.formatearFecha(h.fecha)} · ${h.administrador || 'Alumno'}</div>
                 ${comentarioHtml}
               </div>
             </li>`;
@@ -689,28 +745,43 @@ const PanelAdmin = {
   /* ── Muestra u oculta botones según el estatus de la solicitud ── */
   ajustarAcciones(solicitud) {
     const botones = {
-      aprobar:  document.getElementById('btn-aprobar'),
-      rechazar: document.getElementById('btn-rechazar'),
-      cancelar: document.getElementById('btn-cancelar-deduccion'),
+      aprobar:     document.getElementById('btn-aprobar'),
+      rechazar:    document.getElementById('btn-rechazar'),
+      reautorizar: document.getElementById('btn-reautorizar'),
+      cancelar:    document.getElementById('btn-cancelar-deduccion'),
+      aplicar:     document.getElementById('btn-aplicar-deduccion'),
     };
     const grupoComentario = document.getElementById('grupo-comentario');
+    const grupoMonto = document.getElementById('grupo-monto');
     const areaDecision = document.getElementById('area-decision');
 
     const esPendiente  = solicitud.estatus === 'PENDIENTE';
+    const esCancelado  = solicitud.estatus === 'CANCELADO';
     const esAutorizado = solicitud.estatus === 'AUTORIZADO' && solicitud.deduccion;
 
     Object.values(botones).forEach(b => { if (b) b.style.display = 'none'; });
     if (grupoComentario) grupoComentario.style.display = 'none';
-    if (areaDecision) areaDecision.style.display = (esPendiente || esAutorizado) ? '' : 'none';
+    if (grupoMonto) grupoMonto.style.display = 'none';
+    if (areaDecision) areaDecision.style.display = (esPendiente || esCancelado || esAutorizado) ? '' : 'none';
+
+    if (esPendiente || esCancelado) {
+      this.poblarSelectMonto(solicitud.tipoSolicitante);
+      if (grupoMonto) grupoMonto.style.display = '';
+    }
 
     if (esPendiente) {
       if (botones.aprobar)  botones.aprobar.style.display = '';
       if (botones.rechazar) botones.rechazar.style.display = '';
       if (grupoComentario)  grupoComentario.style.display = '';
     }
-    if (esAutorizado && botones.cancelar) {
-      botones.cancelar.style.display = '';
-      if (grupoComentario) grupoComentario.style.display = '';
+    if (esCancelado) {
+      if (botones.reautorizar) botones.reautorizar.style.display = '';
+      if (grupoComentario)     grupoComentario.style.display = '';
+    }
+    if (esAutorizado) {
+      if (botones.cancelar) botones.cancelar.style.display = '';
+      if (botones.aplicar)  botones.aplicar.style.display = '';
+      if (grupoComentario)  grupoComentario.style.display = '';
     }
   },
 
@@ -720,25 +791,56 @@ const PanelAdmin = {
     this._solicitudActual = null;
     const comentario = document.getElementById('comentario-correccion');
     if (comentario) comentario.value = '';
+    const selectMonto = document.getElementById('select-monto');
+    if (selectMonto) selectMonto.value = '';
     Alerta.limpiar('alerta-decision');
   },
 
-  /* ── Decisión: Aprobar ── */
+  /* ── Decisión: Aprobar (PENDIENTE) o Reautorizar (CANCELADO) ──
+     Ambas pegan al mismo endpoint /aprobar: es la misma operación de BD
+     (autorizar_deduccion), solo cambia el texto mostrado en el panel.
+     El comentario es opcional para estas dos operaciones. ── */
   async aprobar() {
+    return this._autorizarComun(
+      '¿Confirma la aprobación de esta solicitud? Se autorizará la deducción.',
+      'Solicitud aprobada correctamente.'
+    );
+  },
+
+  async reautorizar() {
+    return this._autorizarComun(
+      '¿Confirma reautorizar la deducción de esta solicitud cancelada?',
+      'Deducción reautorizada correctamente.'
+    );
+  },
+
+  async _autorizarComun(mensajeConfirm, mensajeExito) {
     if (!this._solicitudActual) return;
-    if (!confirm('¿Confirma la aprobación de esta solicitud? Se autorizará la deducción.')) return;
+    const idMonto = document.getElementById('select-monto')?.value;
+    if (!idMonto) {
+      Alerta.mostrar('alerta-decision', 'advertencia', 'Seleccione el monto base a utilizar.');
+      return;
+    }
+    // El comentario es opcional al aprobar o reautorizar; solo rechazar lo exige.
+    const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
+    if (!await Modal.confirmar(mensajeConfirm)) return;
 
     const idActual = this._solicitudActual.idSolicitud;
+    const esEstudiante = this._solicitudActual.tipoSolicitante === 'ESTUDIANTE';
+    const body = {
+      comentario,
+      idMontoInscripcion: esEstudiante ? null : Number(idMonto),
+      idMontoReinscripcion: esEstudiante ? Number(idMonto) : null,
+    };
     Spinner.show();
     try {
-      const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
-      await Http.put(`/solicitudes/${idActual}/aprobar`, { comentario });
+      await Http.put(`/solicitudes/${idActual}/aprobar`, body);
       this.cerrarDetalle();
-      Alerta.mostrar('alerta-bandeja', 'exito', 'Solicitud aprobada correctamente.', 4000);
+      Alerta.mostrar('alerta-bandeja', 'exito', mensajeExito, 4000);
       await this.cargarSolicitudes();
       await this.cargarEstadisticas();
     } catch (err) {
-      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo aprobar la solicitud.');
+      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo completar la operación.');
     } finally {
       Spinner.hide();
     }
@@ -768,15 +870,12 @@ const PanelAdmin = {
     }
   },
 
-  /* ── Decisión: Cancelar deducción de una solicitud AUTORIZADA ── */
+  /* ── Decisión: Cancelar deducción de una solicitud AUTORIZADA ──
+     El comentario es opcional; si se escribe, se guarda en el historial. ── */
   async cancelarDeduccion() {
     if (!this._solicitudActual || !this._solicitudActual.deduccion) return;
-    const comentario = document.getElementById('comentario-correccion')?.value?.trim();
-    if (!comentario) {
-      Alerta.mostrar('alerta-decision', 'advertencia', 'Escriba un comentario para cancelar la deducción.');
-      return;
-    }
-    if (!confirm('¿Confirma cancelar la deducción autorizada? La solicitud pasará a CANCELADO.')) return;
+    const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
+    if (!await Modal.confirmar('¿Confirma cancelar la deducción autorizada? La solicitud pasará a CANCELADO.')) return;
 
     const idDeduccion = this._solicitudActual.deduccion.idDeduccion;
     Spinner.show();
@@ -788,6 +887,27 @@ const PanelAdmin = {
       await this.cargarEstadisticas();
     } catch (err) {
       Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo cancelar la deducción.');
+    } finally {
+      Spinner.hide();
+    }
+  },
+
+  /* ── Decisión: Aplicar una deducción autorizada (estado definitivo) ──
+     No exige comentario: aplicar_deduccion no lo recibe en la BD. ── */
+  async aplicarDeduccion() {
+    if (!this._solicitudActual || !this._solicitudActual.deduccion) return;
+    if (!await Modal.confirmar('¿Confirma aplicar esta deducción? La solicitud pasará a APLICADO y no podrá modificarse.')) return;
+
+    const idDeduccion = this._solicitudActual.deduccion.idDeduccion;
+    Spinner.show();
+    try {
+      await Http.put(`/deducciones/${idDeduccion}/aplicar`, {});
+      this.cerrarDetalle();
+      Alerta.mostrar('alerta-bandeja', 'exito', 'Deducción aplicada correctamente.', 4000);
+      await this.cargarSolicitudes();
+      await this.cargarEstadisticas();
+    } catch (err) {
+      Alerta.mostrar('alerta-decision', 'error', err.message || 'No se pudo aplicar la deducción.');
     } finally {
       Spinner.hide();
     }
