@@ -19,7 +19,7 @@ cp .env.example .env
 
 Editar `.env` y configurar las contraseñas de Oracle y las demás variables necesarias.
 
-El archivo `.env` es local y está excluido por `.gitignore`: no debe confirmarse ni compartirse en el repositorio. Solo `.env.example` se versiona, como plantilla sin credenciales.
+El archivo `.env` es local y está excluido por `.gitignore`: no debe confirmarse ni compartirse en el repositorio. Solo `.env.example` se versiona, como plantilla de configuración.
 
 ## 3. Ejecutar el proyecto
 
