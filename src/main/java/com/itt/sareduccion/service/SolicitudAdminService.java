@@ -53,8 +53,12 @@ public class SolicitudAdminService {
 
     private final AdministradorRepository administradorRepository;
 
-    public SolicitudAdminService(AdministradorRepository administradorRepository) {
+    private final NotificacionService notificacionService;
+
+    public SolicitudAdminService(AdministradorRepository administradorRepository,
+            NotificacionService notificacionService) {
         this.administradorRepository = administradorRepository;
+        this.notificacionService = notificacionService;
     }
 
     public List<SolicitudAdmin> listar(String idAdministrador, Integer estatus, Long convocatoria,
@@ -217,6 +221,7 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aprobar la solicitud");
         }
+        notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.APROBACION);
     }
 
     public void rechazar(String idAdministrador, long idSolicitud, String comentario) {
@@ -228,6 +233,7 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo rechazar la solicitud");
         }
+        notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.RECHAZO);
     }
 
     /**
@@ -255,6 +261,7 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo cancelar la deduccion");
         }
+        notificacionService.avisarCambio(idAdministrador, deduccion.getIdSolicitud(), NotificacionService.Evento.CANCELACION);
     }
 
     /** Aplica una deduccion autorizada: estado definitivo e inmutable. */

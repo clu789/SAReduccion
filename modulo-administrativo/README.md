@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
 | `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud; exige comentario |
 | `PUT`  | `/api/solicitudes/{id}/correccion` | Devolver a corrección; hoy comparte la transición del rechazo |
 | `PUT`  | `/api/deducciones/{id}/cancelar` | Cancelar una deducción autorizada; el comentario es opcional |
-| `POST` | `/api/notificaciones` | Envío manual de notificación (**aún no implementado**, equipo 6) |
+| `POST` | `/api/notificaciones` | Envío manual de un aviso al aspirante |
 
 ---
 
@@ -92,7 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 - El **modal de detalle** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
 - Las estadísticas se cargan automáticamente en `PanelAdmin.cargarEstadisticas()`.
-- El **Equipo 6** (notificaciones) debe implementar el servicio y el endpoint `/api/notificaciones`; el frontend solo provee `Notificaciones.enviarManual()` para casos especiales.
+- El detalle de la solicitud incluye un formulario de aviso por correo. Requiere una sesión de administrador y el token CSRF. La API recibe `idSolicitud` y `mensaje` y devuelve `204` cuando SMTP acepta el aviso.
+- Para probarlo, configura `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` y `SAR_MAIL_FROM` en el `.env` local. Si el servidor de prueba lo requiere, agrega `SMTP_AUTH=true`, `SMTP_STARTTLS_ENABLE=true`, `SPRING_MAIL_USERNAME` y `SPRING_MAIL_PASSWORD`. Usa un servidor SMTP que capture mensajes y una solicitud ficticia de aspirante.
+- Si la base ya fue inicializada, actualiza el paquete `PKG_ADMINISTRADOR` con el script `docker/init-db/05-crear-paquetes-permisos.sql` siguiendo el proceso de integración de Oracle. Docker solo ejecuta los scripts de inicialización sobre una base nueva.
+- La consulta usa el correo de `Aspirantes`. Una solicitud sin correo disponible devuelve `422`. Una falla de SMTP devuelve `503`.
 - Los filtros por chip llaman a `PanelAdmin.cargarSolicitudes(estatus)` con el estatus seleccionado.
 - El comentario es **obligatorio solo al rechazar**; es **opcional** al aprobar, reautorizar y cancelar la deducción. El monto base siempre es obligatorio en aprobar y reautorizar.
 - El detalle devuelve `historial` vacío: falta el procedimiento de consulta en la base de datos.
+
+El backend también envía avisos automáticos al aprobar (incluida la reautorización), rechazar o cancelar una deducción. El cambio de estado se confirma en Oracle antes de consultar el destinatario y enviar el correo. Las incidencias de correo se registran sin revertir la decisión administrativa.

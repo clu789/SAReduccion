@@ -32,7 +32,7 @@ El desarrollo se organiza por funcionalidades completas (interfaz, backend y bas
 | 3 | Paneles de estudiante y aspirante | `PKG_ESTUDIANTE`, `PKG_ASPIRANTE`, `modulo-solicitante/` | Parcial: la base ya ofrece perfil, listados, alta, retiro y reenvío; faltan los endpoints y las pantallas. |
 | 4 | Convocatorias y montos de reducción | Tablas `Convocatorias`, `Historial_Convocatorias`, `Convocatorias_TipoSolicitudes`, `Monto_*`; `actualizar_fechas_convocatoria` y `actualizar_monto_oficial` | Estructura, plazos y actualizaciones listos; faltan el alta de convocatorias, la asignación inicial de montos y las pantallas. |
 | 5 | Formularios y respuestas | `Formularios`, `Preguntas`, `Opciones`, `Respuestas`, `trg_respuestas_validacion`, `PKG_SOLICITUDES_CORE.guardar_respuestas_completas` | Estructura, validación y envío atómico en JSON listos; falta la lectura dinámica del formulario y su endpoint. |
-| 6 | Notificaciones por correo | Ninguno todavía | Pendiente: el frontend llama `/api/notificaciones`, pero no existe endpoint ni servicio. |
+| 6 | Notificaciones por correo | `NotificacionController`, `NotificacionService`, panel administrativo | Envío manual y avisos automáticos para aspirantes. Pendiente la fuente de correo para estudiantes. |
 | 7 | Base de datos e integración oficial | `docker/init-db/`, `init-db.sh`, `BaseDeDatos.md`, respaldos | Operativo. |
 
 La reducción se configura por convocatoria y por tipo de solicitud, con dos categorías de personal: **Hijo de trabajador** (`Tipo_Solicitudes` `1`) e **Hijo de homologado** (`Tipo_Solicitudes` `2`). Ambos tipos y sus formularios `1` y `2` los carga el script `02`. No se distingue inscripción de reinscripción al asignar el monto; esa diferencia se resuelve al calcular la deducción con el monto base vigente.
@@ -315,7 +315,7 @@ El destino futuro es Oracle 12c, pero ese cambio de versión **no forma parte de
 - Endpoints de negocio para el módulo solicitante: alta, retiro, reenvío y consulta de deducciones propias (equipos 3 y 5). Los procedimientos ya existen en los paquetes; faltan el controlador y las pantallas.
 - Alinear `AdministradorRepository` con los nombres vigentes de `PKG_ADMINISTRADOR`: `rechazar_solicitud`, `cancelar_deduccion` y `aplicar_deduccion` sustituyen a `cambiar_estatus_solicitud` y `cambiar_estatus_deduccion`, y falta exponer la aplicación de deducciones en la API.
 - Módulo de convocatorias: alta de convocatorias y de sus montos por tipo. Hoy solo existen `actualizar_fechas_convocatoria` y `actualizar_monto_oficial`, sin endpoints ni pantallas (equipo 4).
-- Servicio de notificaciones por correo; el frontend administrativo ya invoca `/api/notificaciones`, que no existe en el backend (equipo 6).
+- Integrar la fuente institucional de correos de estudiantes con el servicio de notificaciones (equipo 6).
 - Captcha en los tres inicios de sesión y rate limiting para estudiante y administrador, no solo para aspirante (equipo 1).
 - Mecanismo central de autorización por rol e interceptor común para los endpoints de negocio (equipo 1).
 - Auditoría en Oracle de intentos de acceso y eventos de sesión, y estándar común de logs técnicos con enmascaramiento de datos (equipos 1 y 7).
@@ -341,7 +341,7 @@ La compatibilidad con Oracle 12c queda fuera del alcance de esta etapa, tal como
 | Edición solo por reenvío | Una solicitud `PENDIENTE` no se edita: las respuestas se sustituyen al reenviar (`reenviar_solicitud`), que admite `RECHAZADO`, `RETIRADO` y `CANCELADO` dentro del periodo de recepción. Corregir una solicitud sin reenviarla no está soportado. |
 | Retiro sin endpoint | La base ya expone `retirar_solicitud` para estudiante y aspirante; el backend y las pantallas todavía no lo invocan. |
 | Sin captcha ni rate limiting general | El captcha no está implementado y el límite de intentos solo cubre el login de aspirante. |
-| Notificaciones no implementadas | No hay servicio ni endpoint de correo; `/api/notificaciones` no existe en el backend. |
+| Cobertura de notificaciones | Los avisos usan el correo de aspirantes registrado en Oracle. Los estudiantes quedan pendientes de una fuente institucional de correo. |
 | Protección de rutas solo en cliente | La redirección por rol es de experiencia de usuario; el backend aún no autoriza operaciones del módulo solicitante. |
 | Cambios de esquema manuales | Los scripts de `docker/init-db/` solo se aplican sobre un volumen vacío; actualizar una base existente exige reinstalarla desde un respaldo. |
 

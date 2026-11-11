@@ -64,6 +64,19 @@ public class AdministradorRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public String consultarCorreoSolicitud(String idAdministrador, long idSolicitud) {
+        return jdbcTemplate.execute((ConnectionCallback<String>) connection -> {
+            try (CallableStatement statement = connection.prepareCall(
+                    "{call SA_REDUCCION.PKG_ADMINISTRADOR.consultar_correo_solicitud(?, ?, ?)}")) {
+                statement.setString(1, idAdministrador);
+                statement.setLong(2, idSolicitud);
+                statement.registerOutParameter(3, Types.VARCHAR);
+                statement.execute();
+                return statement.getString(3);
+            }
+        });
+    }
+
     public void validarPerfil(String idAdministrador) {
         jdbcTemplate.execute((ConnectionCallback<Void>) connection -> {
             validarPerfil(connection, idAdministrador);

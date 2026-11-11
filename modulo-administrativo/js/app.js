@@ -41,7 +41,7 @@ const Http = {
 
   async post(endpoint, body) {
     const headers = { 'Content-Type': 'application/json' };
-    if (endpoint === '/auth/login' || endpoint === '/auth/logout') {
+    if (endpoint === '/auth/login' || endpoint === '/auth/logout' || endpoint === '/notificaciones') {
       if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
       headers['X-CSRF-TOKEN'] = this.csrfToken;
     }
@@ -655,6 +655,9 @@ const PanelAdmin = {
 
   renderDetalle(solicitud) {
     this._solicitudActual = solicitud;
+    const aviso = document.getElementById('form-notificacion');
+    aviso.reset();
+    aviso.querySelector('[role="status"]').textContent = '';
 
     // Datos generales
     const campos = {
@@ -920,12 +923,29 @@ const PanelAdmin = {
               aquí solo se registra manualmente si es necesario)
 ───────────────────────────────────────── */
 const Notificaciones = {
-  async enviarManual(idSolicitud, mensaje) {
+  async enviarManual(event) {
+    event.preventDefault();
+    const solicitud = PanelAdmin._solicitudActual;
+    if (!solicitud) return;
+
+    const form = event.currentTarget;
+    const mensaje = form.elements.mensaje;
+    const boton = form.querySelector('button');
+    const estado = form.querySelector('[role="status"]');
+    boton.disabled = true;
+    estado.textContent = 'Enviando aviso…';
     try {
-      await Http.post(`/notificaciones`, { idSolicitud, mensaje });
-      Alerta.mostrar('alerta-bandeja', 'exito', 'Notificación enviada.', 3000);
+      await Http.post('/notificaciones', { idSolicitud: solicitud.idSolicitud, mensaje: mensaje.value });
+      if (PanelAdmin._solicitudActual === solicitud) {
+        form.reset();
+        estado.textContent = 'Aviso enviado al servidor de correo.';
+      }
     } catch (err) {
-      Alerta.mostrar('alerta-bandeja', 'error', 'Error al enviar la notificación.');
+      if (PanelAdmin._solicitudActual === solicitud) {
+        estado.textContent = err.payload?.mensaje || 'No se pudo enviar el aviso.';
+      }
+    } finally {
+      boton.disabled = false;
     }
   },
 };

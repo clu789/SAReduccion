@@ -275,6 +275,14 @@
             </button>
           </div>
         </div>
+        <form id="form-notificacion" onsubmit="Notificaciones.enviarManual(event)">
+          <div class="form-grupo">
+            <label for="mensaje-notificacion">Aviso por correo</label>
+            <textarea id="mensaje-notificacion" name="mensaje" rows="3" maxlength="2000" required></textarea>
+          </div>
+          <button type="submit" class="btn-itt btn-secundario">Enviar aviso</button>
+          <p role="status"></p>
+        </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-itt btn-secundario" onclick="PanelAdmin.cerrarDetalle()">

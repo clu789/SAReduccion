@@ -315,6 +315,7 @@ END PKG_ASPIRANTE;
 -- comprueba existencia: no puede inferir la identidad web de SAR_BACKEND.
 -- ============================================================================
 CREATE OR REPLACE PACKAGE PKG_ADMINISTRADOR AUTHID DEFINER AS
+ PROCEDURE consultar_correo_solicitud(p_id_administrador VARCHAR2,p_solicitud NUMBER,p_correo OUT VARCHAR2);
  PROCEDURE listar_estudiantes(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE listar_solicitudes(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
  PROCEDURE listar_convocatorias(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR);
@@ -336,6 +337,16 @@ CREATE OR REPLACE PACKAGE PKG_ADMINISTRADOR AUTHID DEFINER AS
 END PKG_ADMINISTRADOR;
 /
 CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
+ PROCEDURE consultar_correo_solicitud(p_id_administrador VARCHAR2,p_solicitud NUMBER,p_correo OUT VARCHAR2) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+  SELECT a.correo INTO p_correo
+    FROM Solicitudes s
+    LEFT JOIN Aspirantes a ON a.ficha=s.ficha AND a.periodo=s.periodo AND a.anio=s.anio
+   WHERE s.id_solicitud=p_solicitud;
+ EXCEPTION WHEN NO_DATA_FOUND THEN p_correo:=NULL;
+ END;
+
  PROCEDURE comprobar_plazo(p_conv NUMBER,p_tipo VARCHAR2) IS
   c Convocatorias%ROWTYPE;v_lim DATE;
  BEGIN
