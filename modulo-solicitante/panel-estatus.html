@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Estado de Mi Solicitud | SAReducción ITT</title>
-  <meta name="description" content="Consulta el estado actual de tu solicitud de reducción de monto de inscripción en el Instituto Tecnológico de Toluca." />
+  <title>Mi Panel | SAReducción ITT</title>
+  <meta name="description" content="Consulta tu perfil, las convocatorias disponibles y el seguimiento de tus solicitudes de reducción de monto de inscripción en el Instituto Tecnológico de Toluca." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
@@ -25,8 +25,9 @@
     </div>
     <nav class="itt-navbar" aria-label="Navegación principal">
       <ul class="itt-navbar-links">
-        <li><a href="panel-estatus.html" class="activo"><i class="fa fa-tachometer"></i> Mi Solicitud</a></li>
-        <li><a href="formulario.html"><i class="fa fa-file-text"></i> Nueva Solicitud</a></li>
+        <li><a href="panel-estatus.html" class="activo"><i class="fa fa-tachometer"></i> Mi Panel</a></li>
+        <li><a href="#seccion-convocatorias"><i class="fa fa-bullhorn"></i> Convocatorias</a></li>
+        <li><a href="#seccion-solicitudes"><i class="fa fa-list-alt"></i> Mis Solicitudes</a></li>
       </ul>
       <div class="itt-navbar-user">
         <i class="fa fa-user-circle"></i>
@@ -40,83 +41,62 @@
 
   <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
   <main class="itt-main">
-    <h2><i class="fa fa-list-alt" style="color:var(--itt-azul-claro);"></i> Estado de Mi Solicitud</h2>
+    <h2><i class="fa fa-user" style="color:var(--itt-azul-claro);"></i> Mi Panel de Estudiante</h2>
 
     <!-- Alertas -->
-    <div id="alerta-estatus"></div>
+    <div id="alerta-panel" aria-live="polite"></div>
 
-    <!-- Tarjeta de información del alumno -->
+    <!-- Perfil -->
     <div class="info-alumno-card">
       <div class="info-avatar"><i class="fa fa-user"></i></div>
       <div class="info-datos">
         <div class="info-nombre" id="info-nombre">Cargando...</div>
-        <div class="info-meta">
-          <span><i class="fa fa-id-card"></i> <span id="info-control">—</span></span>
-          <span><i class="fa fa-graduation-cap"></i> <span id="info-semestre">—</span> semestre</span>
-        </div>
+        <div class="info-meta" id="info-meta"></div>
       </div>
-      <div style="margin-left:auto;align-self:center;">
-        <span id="badge-estatus-actual" class="badge-estatus badge-pendiente">Cargando...</span>
+      <div class="info-estatus">
+        <span id="badge-estatus-actual" class="badge-estatus badge-revision">Cargando...</span>
       </div>
     </div>
 
-    <!-- Folio actual -->
-    <div class="card-itt mb-24">
+    <!-- Convocatorias disponibles -->
+    <section class="card-itt" id="seccion-convocatorias">
       <div class="card-itt-header">
-        <i class="fa fa-file-text-o"></i> Información de la Solicitud
+        <i class="fa fa-bullhorn"></i> Convocatorias Disponibles
       </div>
-      <div class="card-itt-body">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;">
-          <div>
-            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Folio</div>
-            <div id="info-folio" style="font-weight:700;font-size:1rem;color:var(--itt-azul);">—</div>
-          </div>
-          <div>
-            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Fecha de Solicitud</div>
-            <div id="info-fecha-solicitud" style="font-weight:500;">—</div>
-          </div>
-          <div>
-            <div style="font-size:.75rem;color:var(--itt-texto-claro);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;">Última Actualización</div>
-            <div id="info-fecha-actualizacion" style="font-weight:500;">—</div>
-          </div>
-        </div>
+      <div class="card-itt-body" id="lista-convocatorias">
+        <div class="alerta alerta-info mb-0"><i class="fa fa-spinner fa-spin"></i><span>Cargando convocatorias...</span></div>
       </div>
-    </div>
+    </section>
 
-    <!-- Timeline de estatus -->
-    <div class="card-itt">
-      <div class="card-itt-header">
-        <i class="fa fa-history"></i> Historial del Trámite
+    <!-- Solicitudes y seguimiento -->
+    <section id="seccion-solicitudes">
+      <h2 class="titulo-seccion"><i class="fa fa-list-alt" style="color:var(--itt-azul-claro);"></i> Mis Solicitudes</h2>
+      <div id="lista-solicitudes">
+        <div class="card-itt"><div class="card-itt-body">
+          <div class="alerta alerta-info mb-0"><i class="fa fa-spinner fa-spin"></i><span>Cargando solicitudes...</span></div>
+        </div></div>
       </div>
-      <div class="card-itt-body">
-        <div id="estatus-timeline" class="estatus-timeline">
-          <!-- Renderizado por JS -->
-          <div class="estatus-item activo">
-            <div class="estatus-item-fecha">—</div>
-            <div class="estatus-item-titulo">Cargando historial...</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Acciones disponibles para el alumno -->
-    <div class="card-itt" id="seccion-acciones" style="display:none;">
-      <div class="card-itt-header">
-        <i class="fa fa-wrench"></i> Acciones Disponibles
-      </div>
-      <div class="card-itt-body">
-        <div class="alerta alerta-advertencia">
-          <i class="fa fa-exclamation-triangle"></i>
-          <span>Su solicitud requiere corrección. Por favor revise los comentarios del administrador y actualice su información.</span>
-        </div>
-        <div style="margin-top:12px;">
-          <a href="formulario.html" class="btn-itt btn-editar">
-            <i class="fa fa-pencil"></i> Corregir Solicitud
-          </a>
-        </div>
-      </div>
-    </div>
+    </section>
   </main>
+
+  <!-- ═══ MODAL: CONFIRMAR RETIRO ═══ -->
+  <div id="modal-retirar" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="titulo-retirar">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="titulo-retirar"><i class="fa fa-undo"></i> Retirar solicitud</h3>
+        <button type="button" class="modal-cerrar" data-modal-cerrar="modal-retirar" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="alerta-retiro"></div>
+        <p class="mt-0">¿Desea retirar la solicitud con folio <strong id="retiro-folio">—</strong>?</p>
+        <p class="mb-0 texto-claro">La solicitud dejará de estar en revisión. Podrá reenviarla, con o sin cambios, mientras siga abierto el periodo de recepción.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-itt btn-secundario" data-modal-cerrar="modal-retirar">Cancelar</button>
+        <button type="button" class="btn-itt btn-borrar" id="btn-confirmar-retiro"><i class="fa fa-undo"></i> Sí, retirar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══ FOOTER ═══ -->
   <footer class="itt-footer">

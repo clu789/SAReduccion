@@ -226,3 +226,166 @@
 .info-alumno-card .info-meta span {
   display: flex; align-items: center; gap: 4px;
 }
+
+.info-alumno-card .info-estatus {
+  margin-left: auto;
+  align-self: center;
+}
+
+/* ── Panel del solicitante (Equipo 3) ── */
+.titulo-seccion {
+  font-size: 1.2rem;
+  margin: 28px 0 14px;
+}
+
+.subtitulo-seccion {
+  font-size: .95rem;
+  color: var(--itt-azul);
+  margin: 4px 0 14px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--itt-azul-claro);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.texto-claro { color: var(--itt-texto-claro); font-size: .875rem; }
+.mt-12 { margin-top: 12px; }
+
+/* Datos en rejilla (etiqueta + valor) */
+.grid-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.dato-etiqueta {
+  font-size: .75rem;
+  color: var(--itt-texto-claro);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 3px;
+}
+
+.dato-valor {
+  font-weight: 500;
+  color: var(--itt-texto);
+  word-break: break-word;
+}
+
+/* Estatus adicionales del trámite */
+.badge-cancelado { background: #fff0e0; color: #8a3e00; border: 1px solid var(--itt-naranja); }
+.badge-aplicado  { background: #c3e6cb; color: #0f4d1c; border: 1px solid #2e8b57; }
+.badge-retirado  { background: #ececec; color: #4a4a4a; border: 1px solid #a8a8a8; }
+
+/* Convocatorias disponibles */
+.convocatoria-item + .convocatoria-item {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--itt-gris-borde);
+}
+
+.convocatoria-encabezado { margin-bottom: 12px; }
+
+.convocatoria-titulo {
+  font-weight: 700;
+  color: var(--itt-azul);
+  font-size: 1rem;
+  margin-bottom: 3px;
+}
+
+.convocatoria-fechas {
+  font-size: .82rem;
+  color: var(--itt-texto-claro);
+}
+
+.convocatoria-tipo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #f8fafc;
+  border: 1px solid var(--itt-gris-borde);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.convocatoria-tipo-nombre {
+  font-weight: 700;
+  color: var(--itt-azul-medio);
+  margin-bottom: 2px;
+}
+
+.convocatoria-tipo-detalle {
+  font-size: .82rem;
+  color: var(--itt-texto-claro);
+}
+
+/* Tarjeta de cada solicitud */
+.solicitud-card-header {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.solicitud-card-header > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.deduccion-resumen {
+  background: linear-gradient(135deg, #eaf7ee 0%, #f4fbf6 100%);
+  border: 1px solid #b9e2c7;
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.deduccion-titulo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-weight: 700;
+  color: #2e6b42;
+  margin-bottom: 12px;
+}
+
+.acciones-solicitud {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--itt-gris-borde);
+}
+
+.acciones-solicitud .btn-itt { margin-top: 4px; }
+
+.btn-itt[disabled] { opacity: .6; cursor: not-allowed; transform: none; }
+
+/* ── Teléfonos ── */
+@media (max-width: 600px) {
+  .itt-navbar-links { width: 100%; }
+  .itt-navbar-links li { flex: 1 1 auto; }
+  .itt-navbar-links li a { text-align: center; padding: 8px 10px; }
+  .itt-navbar-user { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+
+  .itt-main h2 { font-size: 1.2rem; }
+  .card-itt-body { padding: 16px; }
+
+  .info-alumno-card { flex-direction: column; align-items: center; text-align: center; }
+  .info-alumno-card .info-meta { justify-content: center; }
+  .info-alumno-card .info-estatus { margin-left: 0; }
+
+  .grid-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+  .convocatoria-tipo { flex-direction: column; align-items: stretch; }
+  .convocatoria-tipo .btn-itt,
+  .acciones-solicitud .btn-itt { width: 100%; justify-content: center; }
+
+  .modal-footer { flex-direction: column-reverse; }
+  .modal-footer .btn-itt { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 380px) {
+  .grid-datos { grid-template-columns: 1fr; }
+}

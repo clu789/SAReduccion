@@ -21,6 +21,16 @@ const Config = {
 ───────────────────────────────────────── */
 const Http = {
   csrfToken: null,
+  /** Momento de la última respuesta del servidor; la sesión expira por inactividad en el backend. */
+  ultimaActividad: Date.now(),
+
+  /** Registra la actividad y notifica una sesión expirada (401) en endpoints de negocio. */
+  registrarRespuesta(endpoint, status) {
+    this.ultimaActividad = Date.now();
+    if (status === 401 && !endpoint.startsWith('/auth/')) {
+      SesionInactividad.expirada();
+    }
+  },
 
   /**
    * Realiza una petición GET.
@@ -35,8 +45,9 @@ const Http = {
     });
     const data = await resp.json().catch(() => ({}));
     if (data.csrfToken) this.csrfToken = data.csrfToken;
+    this.registrarRespuesta(endpoint, resp.status);
     if (!resp.ok) {
-      const error = new Error('No se pudo comprobar la sesión.');
+      const error = new Error(data.error || 'No se pudo comprobar la sesión.');
       error.status = resp.status;
       error.payload = data;
       throw error;
@@ -64,8 +75,9 @@ const Http = {
     });
     const data = resp.status === 204 ? null : await resp.json().catch(() => ({}));
     if (data?.csrfToken) this.csrfToken = data.csrfToken;
+    this.registrarRespuesta(endpoint, resp.status);
     if (!resp.ok) {
-      const error = new Error('No se pudo completar la solicitud.');
+      const error = new Error(data?.error || 'No se pudo completar la solicitud.');
       error.status = resp.status;
       error.payload = data;
       throw error;
@@ -83,19 +95,37 @@ const Http = {
   },
 
   /**
-   * Realiza una petición PUT con body JSON.
+   * Realiza una petición PUT con body JSON. Las operaciones de cambio
+   * siempre envían el token CSRF de la sesión.
    */
   async put(endpoint, body) {
+    if (!this.csrfToken) await this.authSession();
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken || '' },
       credentials: 'same-origin',
-      body: JSON.stringify(body),
+      body: JSON.stringify(body ?? {}),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    return resp.json();
+    const data = await resp.json().catch(() => ({}));
+    this.registrarRespuesta(endpoint, resp.status);
+    if (!resp.ok) {
+      const error = new Error(data.error || 'No se pudo completar la operación.');
+      error.status = resp.status;
+      error.payload = data;
+      throw error;
+    }
+    return data;
   },
 };
+
+/** Mensaje para el usuario ante errores de las operaciones de negocio. */
+function mensajeOperacion(error, generico) {
+  if (error.status === 401) return 'Su sesión expiró. Inicie sesión nuevamente.';
+  if (error.status === 403) return 'La sesión de seguridad cambió. Recargue la página e intente de nuevo.';
+  if (error.status === 404) return 'La solicitud no existe o no le pertenece.';
+  if (error.status === 409 && error.payload?.error) return error.payload.error;
+  return generico;
+}
 
 const AuthSession = {
   /** Ruta de la interfaz propia de cada rol. */
@@ -108,18 +138,24 @@ const AuthSession = {
     }
   },
 
+  /**
+   * Exige uno de los roles indicados. Devuelve la sesión si es válida;
+   * en caso contrario redirige y devuelve false.
+   * @param {string|string[]} expectedRole
+   */
   async requireRole(expectedRole, loginPath) {
+    const permitidos = Array.isArray(expectedRole) ? expectedRole : [expectedRole];
     try {
       const session = await Http.authSession();
       if (!session.authenticated) {
         window.location.replace(loginPath);
         return false;
       }
-      if (session.role !== expectedRole) {
+      if (!permitidos.includes(session.role)) {
         window.location.replace(this.panelFor(session.role, loginPath));
         return false;
       }
-      return true;
+      return session;
     } catch (error) {
       window.location.replace(loginPath);
       return false;
@@ -332,6 +368,9 @@ const LoginEstudiante = {
     if (!form) return;
 
     TabsTipoUsuario.init();
+    if (new URLSearchParams(window.location.search).get('sesion') === 'expirada') {
+      Alerta.mostrar('alerta-login', 'advertencia', 'Su sesión expiró. Inicie sesión nuevamente.');
+    }
     // Si ya existe una sesión activa, dirigir a la interfaz de su rol.
     AuthSession.redirectByRole('alerta-login');
 
@@ -434,79 +473,463 @@ const LoginEstudiante = {
 };
 
 /* ─────────────────────────────────────────
-   MÓDULO: PANEL DE ESTATUS DEL ESTUDIANTE
-   Equipo 1
+   UTILIDADES DE PRESENTACIÓN
 ───────────────────────────────────────── */
-const PanelEstatus = {
-  async init() {
-    const timeline = document.getElementById('estatus-timeline');
-    if (!timeline) return;
-    if (!await AuthSession.requireRole('STUDENT', 'login.html')) return;
-    AuthSession.bindLogout('login.html', 'alerta-estatus');
+const Html = {
+  /** Escapa texto antes de insertarlo con innerHTML (comentarios, nombres, etc.). */
+  escapar(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  },
+};
 
+const Formato = {
+  /** Convierte 'AAAA-MM-DD' (fecha local) o 'AAAA-MM-DDTHH:mm:ss' en Date. */
+  aFecha(valor) {
+    const texto = String(valor);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+      return new Date(Number(texto.slice(0, 4)), Number(texto.slice(5, 7)) - 1, Number(texto.slice(8, 10)));
+    }
+    return new Date(texto);
+  },
+  fecha(valor) {
+    if (!valor) return '—';
+    const fecha = this.aFecha(valor);
+    if (Number.isNaN(fecha.getTime())) return String(valor);
+    return fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+  },
+  fechaHora(valor) {
+    if (!valor) return '—';
+    const fecha = this.aFecha(valor);
+    if (Number.isNaN(fecha.getTime())) return String(valor);
+    return fecha.toLocaleString('es-MX', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  },
+  moneda(valor) {
+    if (valor === null || valor === undefined) return '—';
+    return Number(valor).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  },
+};
+
+const EstatusSolicitud = {
+  mapa: {
+    PENDIENTE:  ['badge-pendiente', 'Pendiente de revisión', 'fa-hourglass-half'],
+    AUTORIZADO: ['badge-aprobado',  'Autorizado',            'fa-check'],
+    RECHAZADO:  ['badge-rechazado', 'Rechazado',             'fa-times'],
+    CANCELADO:  ['badge-cancelado', 'Cancelado',             'fa-ban'],
+    APLICADO:   ['badge-aplicado',  'Aplicado',              'fa-check-circle'],
+    RETIRADO:   ['badge-retirado',  'Retirado',              'fa-undo'],
+  },
+  datos(estatus) {
+    return this.mapa[estatus] || ['badge-revision', estatus || 'Sin estatus', 'fa-info-circle'];
+  },
+  etiqueta(estatus) {
+    return this.datos(estatus)[1];
+  },
+  badge(estatus) {
+    const [clase, texto, icono] = this.datos(estatus);
+    return `<span class="badge-estatus ${clase}"><i class="fa ${icono}"></i> ${Html.escapar(texto)}</span>`;
+  },
+};
+
+/* ─────────────────────────────────────────
+   SESIÓN EXPIRADA E INACTIVIDAD
+   Equipo 3 · usa /api/auth/me y /api/auth/logout del equipo 1.
+   El backend cierra la sesión tras 30 minutos sin peticiones
+   (server.servlet.session.timeout); se avisa 5 minutos antes.
+───────────────────────────────────────── */
+const SesionInactividad = {
+  duracionMs: 30 * 60 * 1000,
+  avisoMs: 5 * 60 * 1000,
+  loginPath: 'login.html',
+  intervalo: null,
+  finalizada: false,
+
+  iniciar(loginPath) {
+    this.loginPath = loginPath;
+    this.crearModales();
+    this.intervalo = setInterval(() => this.revisar(), 15000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) this.revisar();
+    });
+  },
+
+  revisar() {
+    if (this.finalizada) return;
+    const restante = this.duracionMs - (Date.now() - Http.ultimaActividad);
+    if (restante <= 0) {
+      this.expirada();
+    } else if (restante <= this.avisoMs) {
+      const minutos = document.getElementById('inactividad-minutos');
+      if (minutos) minutos.textContent = String(Math.max(1, Math.ceil(restante / 60000)));
+      Modal.abrir('modal-inactividad');
+    }
+  },
+
+  async continuar() {
+    try {
+      const session = await Http.authSession();
+      if (!session.authenticated) {
+        this.expirada();
+        return;
+      }
+      Modal.cerrar('modal-inactividad');
+    } catch (error) {
+      this.expirada();
+    }
+  },
+
+  /** Muestra el aviso de sesión expirada y redirige al inicio de sesión. */
+  expirada() {
+    if (this.finalizada) return;
+    this.finalizada = true;
+    clearInterval(this.intervalo);
+    this.crearModales();
+    Modal.cerrar('modal-inactividad');
+    Modal.abrir('modal-sesion-expirada');
+    setTimeout(() => this.irALogin(), 5000);
+  },
+
+  irALogin() {
+    window.location.replace(`${this.loginPath}?sesion=expirada`);
+  },
+
+  crearModales() {
+    if (document.getElementById('modal-sesion-expirada')) return;
+    const contenedor = document.createElement('div');
+    contenedor.innerHTML = `
+      <div id="modal-inactividad" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="titulo-inactividad">
+        <div class="modal-box">
+          <div class="modal-header"><h3 id="titulo-inactividad"><i class="fa fa-clock-o"></i> Sesión por expirar</h3></div>
+          <div class="modal-body">
+            <div class="alerta alerta-advertencia mb-0">
+              <i class="fa fa-exclamation-triangle"></i>
+              <span>Por inactividad, su sesión se cerrará en <strong id="inactividad-minutos">5</strong> minuto(s).
+              ¿Desea continuar?</span>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-itt btn-secundario" id="btn-inactividad-salir"><i class="fa fa-sign-out"></i> Salir</button>
+            <button type="button" class="btn-itt btn-primario" id="btn-inactividad-continuar"><i class="fa fa-refresh"></i> Continuar sesión</button>
+          </div>
+        </div>
+      </div>
+      <div id="modal-sesion-expirada" class="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="titulo-sesion-expirada">
+        <div class="modal-box">
+          <div class="modal-header"><h3 id="titulo-sesion-expirada"><i class="fa fa-lock"></i> Sesión expirada</h3></div>
+          <div class="modal-body">
+            <div class="alerta alerta-error mb-0">
+              <i class="fa fa-times-circle"></i>
+              <span>Su sesión expiró o ya no tiene acceso. Será dirigido al inicio de sesión.</span>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-itt btn-primario" id="btn-sesion-expirada-login"><i class="fa fa-sign-in"></i> Iniciar sesión</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(contenedor);
+    document.getElementById('btn-inactividad-continuar').addEventListener('click', () => this.continuar());
+    document.getElementById('btn-inactividad-salir').addEventListener('click', () => AuthSession.logout(this.loginPath, 'alerta-panel'));
+    document.getElementById('btn-sesion-expirada-login').addEventListener('click', () => this.irALogin());
+  },
+};
+
+/* ─────────────────────────────────────────
+   MÓDULO: PANEL DEL ESTUDIANTE Y ASPIRANTE
+   Equipo 3 · perfil, convocatorias, seguimiento, retiro y reenvío.
+   API: /api/solicitante/* (identidad tomada de la sesión).
+───────────────────────────────────────── */
+const PanelSolicitante = {
+  rolPorPagina: {
+    'pagina-panel-estatus':   'STUDENT',
+    'pagina-panel-aspirante': 'APPLICANT',
+  },
+  idRetiro: null,
+
+  async init() {
+    if (!document.getElementById('lista-solicitudes')) return;
+    const session = await AuthSession.requireRole(this.rolPorPagina[document.body.id], 'login.html');
+    if (!session) return;
+    AuthSession.bindLogout('login.html', 'alerta-panel');
+    SesionInactividad.iniciar('login.html');
+    this.bindAcciones();
+    await this.cargar();
+  },
+
+  async cargar() {
     Spinner.show();
     try {
-      // GET /api/solicitudes/mi-solicitud  →  solicitud activa del usuario en sesión
-      // const solicitud = await Http.get('/solicitudes/mi-solicitud');
-      const solicitud = {
-        estatus: 'PENDIENTE',
-        historial: [
-          { fecha: '2026-10-01', estatusNombre: 'PENDIENTE', estatus: 'PENDIENTE', comentario: 'Solicitud enviada' }
-        ]
-      };
-      this.renderTimeline(solicitud);
-      this.renderBadge(solicitud.estatus);
+      const [perfil, convocatorias, solicitudes] = await Promise.all([
+        Http.get('/solicitante/perfil'),
+        Http.get('/solicitante/convocatorias'),
+        Http.get('/solicitante/solicitudes'),
+      ]);
+      this.renderPerfil(perfil, solicitudes);
+      this.renderConvocatorias(convocatorias);
+      this.renderSolicitudes(solicitudes);
     } catch (err) {
-      Alerta.mostrar('alerta-estatus', 'info', 'No se encontró ninguna solicitud activa.');
+      if (err.status !== 401) {
+        Alerta.mostrar('alerta-panel', 'error',
+          mensajeOperacion(err, 'No se pudo cargar la información del panel. Intente más tarde.'));
+      }
     } finally {
       Spinner.hide();
     }
   },
 
-  renderBadge(estatus) {
+  renderPerfil(perfil, solicitudes) {
+    const esEstudiante = perfil.tipo === 'ESTUDIANTE';
+    this.setTexto('nombre-usuario-nav', perfil.nombre || perfil.identificador);
+    this.setTexto('info-nombre', perfil.nombreCompleto || perfil.identificador);
+
+    const meta = [
+      `<span><i class="fa fa-id-card"></i> ${esEstudiante ? 'No. de control' : 'Ficha'}: ${Html.escapar(perfil.identificador)}</span>`,
+    ];
+    if (esEstudiante && perfil.carrera) {
+      meta.push(`<span><i class="fa fa-university"></i> ${Html.escapar(perfil.carrera)}</span>`);
+    }
+    if (perfil.semestre) {
+      meta.push(`<span><i class="fa fa-graduation-cap"></i> ${Html.escapar(perfil.semestre)}° semestre</span>`);
+    }
+    if (!esEstudiante && perfil.anio) {
+      meta.push(`<span><i class="fa fa-calendar"></i> ${Html.escapar(perfil.periodoDescripcion)} ${Html.escapar(perfil.anio)}</span>`);
+    }
+    const metaEl = document.getElementById('info-meta');
+    if (metaEl) metaEl.innerHTML = meta.join('');
+
     const badge = document.getElementById('badge-estatus-actual');
-    if (!badge) return;
-    const mapa = {
-      PENDIENTE:  ['badge-pendiente',  'Pendiente de revisión'],
-      CORRECCION: ['badge-correccion', 'Corrección requerida'],
-      APROBADO:   ['badge-aprobado',   'Aprobado'],
-      RECHAZADO:  ['badge-rechazado',  'Rechazado'],
-    };
-    const [cls, texto] = mapa[estatus] || ['badge-revision', estatus];
-    badge.className = `badge-estatus ${cls}`;
-    badge.textContent = texto;
+    if (badge) {
+      badge.outerHTML = solicitudes.length
+        ? EstatusSolicitud.badge(solicitudes[0].estatus).replace('<span ', '<span id="badge-estatus-actual" ')
+        : '<span id="badge-estatus-actual" class="badge-estatus badge-revision"><i class="fa fa-info-circle"></i> Sin solicitudes</span>';
+    }
   },
 
-  renderTimeline(solicitud) {
-    const timeline = document.getElementById('estatus-timeline');
-    if (!timeline || !solicitud.historial) return;
+  renderConvocatorias(convocatorias) {
+    const contenedor = document.getElementById('lista-convocatorias');
+    if (!contenedor) return;
+    if (!convocatorias.length) {
+      contenedor.innerHTML = `<div class="alerta alerta-info mb-0"><i class="fa fa-info-circle"></i>
+        <span>Por ahora no hay convocatorias en periodo de recepción de solicitudes.</span></div>`;
+      return;
+    }
 
-    timeline.innerHTML = solicitud.historial.map(item => {
-      const estaActivo   = item === solicitud.historial[solicitud.historial.length - 1];
-      const esRechazado  = item.estatus === 'RECHAZADO' || item.estatus === 'CORRECCION';
-      const esCompletado = item.estatus === 'APROBADO';
+    const grupos = new Map();
+    convocatorias.forEach((c) => {
+      if (!grupos.has(c.idConvocatoria)) grupos.set(c.idConvocatoria, []);
+      grupos.get(c.idConvocatoria).push(c);
+    });
 
-      const claseItem = estaActivo
-        ? (esRechazado ? 'rechazado' : 'activo')
-        : 'completado';
+    contenedor.innerHTML = [...grupos.values()].map((tipos) => {
+      const c = tipos[0];
+      const encabezado = `
+        <div class="convocatoria-encabezado">
+          <div>
+            <div class="convocatoria-titulo">Convocatoria ${Html.escapar(c.periodoDescripcion)} ${Html.escapar(c.anio)}</div>
+            <div class="convocatoria-fechas"><i class="fa fa-calendar"></i>
+              Recepción de solicitudes: ${Formato.fecha(c.fechaInicio)} al ${Formato.fecha(c.fechaFin)}</div>
+          </div>
+        </div>`;
 
-      const comentarioHtml = item.comentario
-        ? `<div class="estatus-item-comentario"><i class="fa fa-comment"></i> ${item.comentario}</div>`
+      if (c.idSolicitudExistente) {
+        return `<div class="convocatoria-item">${encabezado}
+          <div class="alerta alerta-info mb-0"><i class="fa fa-info-circle"></i>
+            <span>Ya tiene registrada la solicitud con folio <a href="#solicitud-${Html.escapar(c.idSolicitudExistente)}">${Html.escapar(c.idSolicitudExistente)}</a>
+            en esta convocatoria. Solo se permite una solicitud por convocatoria.</span></div>
+        </div>`;
+      }
+
+      const opciones = tipos.map((t) => {
+        const url = `formulario.html?convocatoria=${encodeURIComponent(t.idConvocatoria)}`
+          + `&tipo=${encodeURIComponent(t.idTipoSolicitud)}&formulario=${encodeURIComponent(t.idFormulario)}`;
+        return `
+          <div class="convocatoria-tipo">
+            <div>
+              <div class="convocatoria-tipo-nombre">${Html.escapar(t.tipoSolicitud)}</div>
+              <div class="convocatoria-tipo-detalle">${Html.escapar(t.tipoDescripcion || '')}</div>
+              <div class="convocatoria-tipo-detalle">Reducción: <strong>${Formato.moneda(t.montoDeduccion)}</strong></div>
+            </div>
+            <a class="btn-itt btn-agregar" href="${url}"><i class="fa fa-plus-circle"></i> Iniciar solicitud</a>
+          </div>`;
+      }).join('');
+      return `<div class="convocatoria-item">${encabezado}${opciones}</div>`;
+    }).join('');
+  },
+
+  renderSolicitudes(solicitudes) {
+    const contenedor = document.getElementById('lista-solicitudes');
+    if (!solicitudes.length) {
+      contenedor.innerHTML = `<div class="card-itt"><div class="card-itt-body">
+        <div class="alerta alerta-info mb-0"><i class="fa fa-info-circle"></i>
+        <span>Aún no tiene solicitudes registradas. Si hay una convocatoria abierta, puede iniciar su trámite en la sección anterior.</span></div>
+      </div></div>`;
+      return;
+    }
+    contenedor.innerHTML = solicitudes.map((s) => this.solicitudHtml(s)).join('');
+  },
+
+  solicitudHtml(s) {
+    return `
+      <article class="card-itt solicitud-card" id="solicitud-${Html.escapar(s.idSolicitud)}">
+        <div class="card-itt-header solicitud-card-header">
+          <span><i class="fa fa-file-text-o"></i> Folio ${Html.escapar(s.idSolicitud)}</span>
+          ${EstatusSolicitud.badge(s.estatus)}
+        </div>
+        <div class="card-itt-body">
+          <div class="grid-datos mb-16">
+            ${this.dato('Convocatoria', `${Html.escapar(s.periodoDescripcion)} ${Html.escapar(s.anio)}`)}
+            ${this.dato('Tipo de solicitud', Html.escapar(s.tipoSolicitud))}
+            ${this.dato('Fecha de solicitud', Formato.fecha(s.fechaSolicitud))}
+            ${this.dato('Última actualización', Formato.fechaHora(s.fechaActualizacion))}
+            ${this.dato('Recepción de solicitudes', `${Formato.fecha(s.fechaInicioRecepcion)} al ${Formato.fecha(s.fechaFinRecepcion)}`)}
+          </div>
+          ${this.deduccionHtml(s.deduccion)}
+          <h3 class="subtitulo-seccion"><i class="fa fa-history"></i> Seguimiento del trámite</h3>
+          <div class="estatus-timeline">${this.timelineHtml(s)}</div>
+          ${this.accionesHtml(s)}
+        </div>
+      </article>`;
+  },
+
+  dato(etiqueta, valorHtml) {
+    return `<div><div class="dato-etiqueta">${etiqueta}</div><div class="dato-valor">${valorHtml}</div></div>`;
+  },
+
+  deduccionHtml(d) {
+    if (!d) return '';
+    const aviso = d.estatus === 'CANCELADO'
+      ? `<div class="alerta alerta-advertencia mb-0 mt-12"><i class="fa fa-exclamation-triangle"></i>
+          <span>La deducción fue cancelada y permanece así hasta una nueva aprobación de la administración.</span></div>`
+      : '';
+    return `
+      <div class="deduccion-resumen mb-16">
+        <div class="deduccion-titulo"><i class="fa fa-money"></i> Deducción ${EstatusSolicitud.badge(d.estatus)}</div>
+        <div class="grid-datos">
+          ${this.dato('Monto base', Formato.moneda(d.montoPago))}
+          ${this.dato('Reducción', Formato.moneda(d.montoDeduccion))}
+          ${this.dato('Monto a pagar', `<strong>${Formato.moneda(d.montoFinal)}</strong>`)}
+        </div>
+        ${aviso}
+      </div>`;
+  },
+
+  timelineHtml(s) {
+    // El alta de la solicitud no genera movimiento en el historial de Oracle.
+    const movimientos = [
+      { estatus: 'PENDIENTE', fecha: s.fechaSolicitud, administrativo: false, texto: 'Solicitud registrada' },
+      ...s.historial,
+    ];
+    return movimientos.map((m, idx) => {
+      const ultimo = idx === movimientos.length - 1;
+      const clase = !ultimo ? 'completado'
+        : (['RECHAZADO', 'CANCELADO'].includes(m.estatus) ? 'rechazado' : 'activo');
+      const origen = m.texto || (m.administrativo ? 'Movimiento de la administración' : 'Movimiento del solicitante');
+      const comentario = m.comentario
+        ? `<div class="estatus-item-comentario"><i class="fa fa-comment"></i>
+            ${m.administrativo ? '<strong>Comentario de la administración:</strong> ' : ''}${Html.escapar(m.comentario)}</div>`
         : '';
-
       return `
-        <div class="estatus-item ${claseItem}">
-          <div class="estatus-item-fecha">${item.fecha || ''}</div>
-          <div class="estatus-item-titulo">${item.estatusNombre || item.estatus}</div>
-          ${comentarioHtml}
+        <div class="estatus-item ${clase}">
+          <div class="estatus-item-fecha">${Formato.fechaHora(m.fecha)} · ${Html.escapar(origen)}</div>
+          <div class="estatus-item-titulo">${Html.escapar(EstatusSolicitud.etiqueta(m.estatus))}</div>
+          ${comentario}
         </div>`;
     }).join('');
+  },
+
+  accionesHtml(s) {
+    const fin = Formato.fecha(s.fechaFinRecepcion);
+    if (s.puedeRetirar) {
+      return `
+        <div class="acciones-solicitud">
+          <div class="alerta alerta-info"><i class="fa fa-info-circle"></i>
+            <span>Su solicitud está en revisión y no puede editarse. Si necesita corregirla, puede retirarla hasta el ${fin}
+            y después reenviarla dentro del mismo plazo.</span></div>
+          <button type="button" class="btn-itt btn-borrar" data-retirar="${Html.escapar(s.idSolicitud)}">
+            <i class="fa fa-undo"></i> Retirar solicitud</button>
+        </div>`;
+    }
+    if (s.puedeReenviar) {
+      const motivo = {
+        RECHAZADO: 'Su solicitud fue rechazada. Revise los comentarios de la administración, corrija la información y reenvíela.',
+        CANCELADO: 'La deducción de su solicitud fue cancelada. Puede corregir la información y reenviarla.',
+        RETIRADO:  'Retiró esta solicitud. Puede reenviarla con o sin cambios.',
+      }[s.estatus];
+      const url = `formulario.html?reenviar=${encodeURIComponent(s.idSolicitud)}`
+        + `&convocatoria=${encodeURIComponent(s.idConvocatoria)}`
+        + `&tipo=${encodeURIComponent(s.idTipoSolicitud)}&formulario=${encodeURIComponent(s.idFormulario)}`;
+      return `
+        <div class="acciones-solicitud">
+          <div class="alerta alerta-advertencia"><i class="fa fa-exclamation-triangle"></i>
+            <span>${motivo} El reenvío está disponible hasta el ${fin}.</span></div>
+          <a class="btn-itt btn-editar" href="${url}"><i class="fa fa-pencil"></i> Corregir y reenviar</a>
+        </div>`;
+    }
+    if (s.estatus === 'AUTORIZADO') {
+      return `<div class="acciones-solicitud"><div class="alerta alerta-exito mb-0"><i class="fa fa-check-circle"></i>
+        <span>Su solicitud fue autorizada. La deducción se aplicará en su pago; cualquier cancelación la realiza la administración.</span></div></div>`;
+    }
+    if (s.estatus === 'APLICADO') {
+      return `<div class="acciones-solicitud"><div class="alerta alerta-exito mb-0"><i class="fa fa-check-circle"></i>
+        <span>La deducción ya fue aplicada. El trámite concluyó.</span></div></div>`;
+    }
+    if (!s.recepcionAbierta) {
+      return `<div class="acciones-solicitud"><div class="alerta alerta-info mb-0"><i class="fa fa-info-circle"></i>
+        <span>El periodo de recepción terminó el ${fin}; ya no es posible retirar ni reenviar esta solicitud.</span></div></div>`;
+    }
+    return '';
+  },
+
+  bindAcciones() {
+    document.getElementById('lista-solicitudes').addEventListener('click', (e) => {
+      const boton = e.target.closest('[data-retirar]');
+      if (!boton) return;
+      this.idRetiro = boton.dataset.retirar;
+      this.setTexto('retiro-folio', this.idRetiro);
+      Alerta.limpiar('alerta-retiro');
+      Modal.abrir('modal-retirar');
+    });
+    document.querySelectorAll('[data-modal-cerrar]').forEach((boton) => {
+      boton.addEventListener('click', () => Modal.cerrar(boton.dataset.modalCerrar));
+    });
+    const confirmar = document.getElementById('btn-confirmar-retiro');
+    if (confirmar) confirmar.addEventListener('click', () => this.retirar());
+  },
+
+  async retirar() {
+    if (!this.idRetiro) return;
+    const confirmar = document.getElementById('btn-confirmar-retiro');
+    confirmar.disabled = true;
+    Spinner.show();
+    try {
+      await Http.put(`/solicitante/solicitudes/${encodeURIComponent(this.idRetiro)}/retirar`, {});
+      Modal.cerrar('modal-retirar');
+      Alerta.mostrar('alerta-panel', 'exito',
+        `La solicitud con folio ${Html.escapar(this.idRetiro)} fue retirada. Puede reenviarla mientras siga abierto el periodo de recepción.`);
+      this.idRetiro = null;
+      await this.cargar();
+    } catch (err) {
+      if (err.status !== 401) {
+        Alerta.mostrar('alerta-retiro', 'error', Html.escapar(mensajeOperacion(err, 'No se pudo retirar la solicitud. Intente más tarde.')));
+      }
+    } finally {
+      confirmar.disabled = false;
+      Spinner.hide();
+    }
+  },
+
+  setTexto(id, valor) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = (valor === null || valor === undefined || valor === '') ? '—' : String(valor);
   },
 };
 
 /* ─────────────────────────────────────────
    MÓDULO: FORMULARIO DE SOLICITUD
-   Equipo 3
+   Equipo 5
 ───────────────────────────────────────── */
 const FormularioSolicitud = {
   pasoActual: 1,
@@ -515,7 +938,7 @@ const FormularioSolicitud = {
   async init() {
     const form = document.getElementById('form-solicitud');
     if (!form) return;
-    if (!await AuthSession.requireRole('STUDENT', 'login.html')) return;
+    if (!await AuthSession.requireRole(['STUDENT', 'APPLICANT'], 'login.html')) return;
     AuthSession.bindLogout('login.html', 'alerta-formulario');
 
     await this.cargarFormulario();
@@ -666,35 +1089,6 @@ const FormularioSolicitud = {
 };
 
 /* ─────────────────────────────────────────
-   MÓDULO: PANEL DE ASPIRANTE (vista mínima)
-   Autenticación provisional por ficha + CURP
-───────────────────────────────────────── */
-const PanelAspirante = {
-  async init() {
-    const contenedor = document.getElementById('aspirante-datos');
-    if (!contenedor) return;
-    if (!await AuthSession.requireRole('APPLICANT', 'login.html')) return;
-    AuthSession.bindLogout('login.html', 'alerta-aspirante');
-
-    try {
-      const session = await Http.authSession();
-      const nav = document.getElementById('nombre-usuario-nav');
-      if (nav) nav.textContent = session.identity || 'Aspirante';
-      this.setTexto('aspirante-ficha', session.identity);
-      this.setTexto('aspirante-periodo', session.periodo);
-      this.setTexto('aspirante-anio', session.anio);
-    } catch (error) {
-      Alerta.mostrar('alerta-aspirante', 'error', 'No se pudo cargar la información de la sesión.');
-    }
-  },
-
-  setTexto(id, valor) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = (valor === null || valor === undefined) ? '—' : String(valor);
-  },
-};
-
-/* ─────────────────────────────────────────
    INICIALIZACIÓN AUTOMÁTICA
 ───────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
@@ -705,8 +1099,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   switch (pagina) {
     case 'pagina-login-estudiante': LoginEstudiante.init();   break;
-    case 'pagina-panel-estatus':    PanelEstatus.init();      break;
-    case 'pagina-panel-aspirante':  PanelAspirante.init();    break;
+    case 'pagina-panel-estatus':
+    case 'pagina-panel-aspirante':  PanelSolicitante.init();  break;
     case 'pagina-formulario':       FormularioSolicitud.init(); break;
   }
 });
