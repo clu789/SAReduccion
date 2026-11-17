@@ -655,8 +655,40 @@ const PanelSolicitante = {
     if (!session) return;
     AuthSession.bindLogout('login.html', 'alerta-panel');
     SesionInactividad.iniciar('login.html');
+    this.bindMenuUsuario();
+    this.bindVistas();
     this.bindAcciones();
     await this.cargar();
+    this.irAHash();
+  },
+
+  /* Vistas por hash: #solicitudes (predeterminada), #convocatorias y #solicitud-ID. */
+  bindVistas() {
+    window.addEventListener('hashchange', () => this.irAHash());
+    this.irAHash();
+  },
+
+  irAHash() {
+    const hash = window.location.hash.slice(1);
+    this.mostrarVista(hash === 'convocatorias' ? 'convocatorias' : 'solicitudes');
+    if (hash.startsWith('solicitud-')) {
+      const tarjeta = document.getElementById(hash);
+      if (tarjeta) tarjeta.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo(0, 0);
+    }
+  },
+
+  mostrarVista(nombre) {
+    document.querySelectorAll('section.vista').forEach((seccion) => {
+      seccion.hidden = seccion.dataset.vista !== nombre;
+    });
+    document.querySelectorAll('.itt-navbar-links a[data-vista]').forEach((enlace) => {
+      const activa = enlace.dataset.vista === nombre;
+      enlace.classList.toggle('activo', activa);
+      if (activa) enlace.setAttribute('aria-current', 'page');
+      else enlace.removeAttribute('aria-current');
+    });
   },
 
   async cargar() {
@@ -683,29 +715,56 @@ const PanelSolicitante = {
   renderPerfil(perfil, solicitudes) {
     const esEstudiante = perfil.tipo === 'ESTUDIANTE';
     this.setTexto('nombre-usuario-nav', perfil.nombre || perfil.identificador);
-    this.setTexto('info-nombre', perfil.nombreCompleto || perfil.identificador);
+    this.setTexto('perfil-nombre', perfil.nombreCompleto || perfil.identificador);
+    this.setTexto('perfil-tipo', esEstudiante ? 'Estudiante de reinscripción' : 'Aspirante de nuevo ingreso');
 
-    const meta = [
-      `<span><i class="fa fa-id-card"></i> ${esEstudiante ? 'No. de control' : 'Ficha'}: ${Html.escapar(perfil.identificador)}</span>`,
-    ];
-    if (esEstudiante && perfil.carrera) {
-      meta.push(`<span><i class="fa fa-university"></i> ${Html.escapar(perfil.carrera)}</span>`);
+    const valor = (v) => (v === null || v === undefined || v === '') ? '—' : Html.escapar(v);
+    const datos = [this.dato(esEstudiante ? 'No. de control' : 'Ficha', valor(perfil.identificador))];
+    if (esEstudiante) datos.push(this.dato('Carrera', valor(perfil.carrera)));
+    datos.push(this.dato('Semestre', perfil.semestre ? `${Html.escapar(perfil.semestre)}°` : '—'));
+    if (!esEstudiante) {
+      datos.push(this.dato('Periodo de ingreso', perfil.anio
+        ? `${Html.escapar(perfil.periodoDescripcion)} ${Html.escapar(perfil.anio)}` : '—'));
     }
-    if (perfil.semestre) {
-      meta.push(`<span><i class="fa fa-graduation-cap"></i> ${Html.escapar(perfil.semestre)}° semestre</span>`);
-    }
-    if (!esEstudiante && perfil.anio) {
-      meta.push(`<span><i class="fa fa-calendar"></i> ${Html.escapar(perfil.periodoDescripcion)} ${Html.escapar(perfil.anio)}</span>`);
-    }
-    const metaEl = document.getElementById('info-meta');
-    if (metaEl) metaEl.innerHTML = meta.join('');
+    datos.push(this.dato('Solicitudes registradas', String(solicitudes.length)));
+    datos.push(this.dato('Estatus de la última solicitud', solicitudes.length
+      ? EstatusSolicitud.badge(solicitudes[0].estatus)
+      : '<span class="badge-estatus badge-revision"><i class="fa fa-info-circle"></i> Sin solicitudes</span>'));
 
-    const badge = document.getElementById('badge-estatus-actual');
-    if (badge) {
-      badge.outerHTML = solicitudes.length
-        ? EstatusSolicitud.badge(solicitudes[0].estatus).replace('<span ', '<span id="badge-estatus-actual" ')
-        : '<span id="badge-estatus-actual" class="badge-estatus badge-revision"><i class="fa fa-info-circle"></i> Sin solicitudes</span>';
-    }
+    const contenedor = document.getElementById('perfil-datos');
+    if (contenedor) contenedor.innerHTML = datos.join('');
+  },
+
+  bindMenuUsuario() {
+    const boton = document.getElementById('btn-menu-usuario');
+    const lista = document.getElementById('menu-usuario-lista');
+    if (!boton || !lista) return;
+
+    const abrir = (abierto) => {
+      lista.hidden = !abierto;
+      boton.setAttribute('aria-expanded', String(abierto));
+      boton.classList.toggle('abierto', abierto);
+    };
+    boton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      abrir(lista.hidden);
+      if (!lista.hidden) lista.querySelector('[role="menuitem"]').focus();
+    });
+    document.addEventListener('click', (e) => {
+      if (!lista.hidden && !lista.contains(e.target)) abrir(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !lista.hidden) {
+        abrir(false);
+        boton.focus();
+      }
+    });
+    lista.querySelectorAll('[data-abrir-perfil]').forEach((opcion) => {
+      opcion.addEventListener('click', () => {
+        abrir(false);
+        Modal.abrir('modal-perfil');
+      });
+    });
   },
 
   renderConvocatorias(convocatorias) {
@@ -833,8 +892,8 @@ const PanelSolicitante = {
         : '';
       return `
         <div class="estatus-item ${clase}">
-          <div class="estatus-item-fecha">${Formato.fechaHora(m.fecha)} · ${Html.escapar(origen)}</div>
           <div class="estatus-item-titulo">${Html.escapar(EstatusSolicitud.etiqueta(m.estatus))}</div>
+          <div class="estatus-item-fecha">${Formato.fechaHora(m.fecha)} · ${Html.escapar(origen)}</div>
           ${comentario}
         </div>`;
     }).join('');

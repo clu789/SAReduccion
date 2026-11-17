@@ -8,10 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
-  <link rel="stylesheet" href="css/itt-base.css" />
-  <link rel="stylesheet" href="css/solicitante.css" />
+  <link rel="stylesheet" href="css/itt-base.css?v=20261111h" />
+  <link rel="stylesheet" href="css/solicitante.css?v=20261111h" />
 </head>
-<body id="pagina-panel-estatus">
+<body id="pagina-panel-estatus" class="panel-solicitante">
 
   <!-- ═══ SPINNER ═══ -->
   <div id="spinner-overlay" class="spinner-overlay">
@@ -21,55 +21,39 @@
   <!-- ═══ HEADER ═══ -->
   <header class="itt-header">
     <div class="itt-header-top">
-      <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" style="max-height:54px;" />
+      <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" />
     </div>
     <nav class="itt-navbar" aria-label="Navegación principal">
       <ul class="itt-navbar-links">
-        <li><a href="panel-estatus.html" class="activo"><i class="fa fa-tachometer"></i> Mi Panel</a></li>
-        <li><a href="#seccion-convocatorias"><i class="fa fa-bullhorn"></i> Convocatorias</a></li>
-        <li><a href="#seccion-solicitudes"><i class="fa fa-list-alt"></i> Mis Solicitudes</a></li>
+        <li><a href="#solicitudes" data-vista="solicitudes" class="activo" aria-current="page"><i class="fa fa-list-alt"></i> Mis Solicitudes</a></li>
+        <li><a href="#convocatorias" data-vista="convocatorias"><i class="fa fa-bullhorn"></i> Convocatorias</a></li>
       </ul>
-      <div class="itt-navbar-user">
-        <i class="fa fa-user-circle"></i>
-        <span id="nombre-usuario-nav">Usuario</span>
-        <button class="btn-cerrar-sesion" data-auth-logout type="button">
-          <i class="fa fa-sign-out"></i> Salir
+      <div class="itt-navbar-user menu-usuario">
+        <button type="button" class="menu-usuario-boton" id="btn-menu-usuario"
+                aria-haspopup="true" aria-expanded="false" aria-controls="menu-usuario-lista">
+          <i class="fa fa-user-circle"></i>
+          <span id="nombre-usuario-nav">Usuario</span>
+          <i class="fa fa-caret-down menu-usuario-flecha"></i>
         </button>
+        <ul class="menu-usuario-lista" id="menu-usuario-lista" role="menu" hidden>
+          <li role="none">
+            <button type="button" role="menuitem" data-abrir-perfil><i class="fa fa-id-card"></i> Mi perfil</button>
+          </li>
+          <li role="none">
+            <button type="button" role="menuitem" data-auth-logout><i class="fa fa-sign-out"></i> Salir</button>
+          </li>
+        </ul>
       </div>
     </nav>
   </header>
 
   <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
   <main class="itt-main">
-    <h2><i class="fa fa-user" style="color:var(--itt-azul-claro);"></i> Mi Panel de Estudiante</h2>
-
     <!-- Alertas -->
     <div id="alerta-panel" aria-live="polite"></div>
 
-    <!-- Perfil -->
-    <div class="info-alumno-card">
-      <div class="info-avatar"><i class="fa fa-user"></i></div>
-      <div class="info-datos">
-        <div class="info-nombre" id="info-nombre">Cargando...</div>
-        <div class="info-meta" id="info-meta"></div>
-      </div>
-      <div class="info-estatus">
-        <span id="badge-estatus-actual" class="badge-estatus badge-revision">Cargando...</span>
-      </div>
-    </div>
-
-    <!-- Convocatorias disponibles -->
-    <section class="card-itt" id="seccion-convocatorias">
-      <div class="card-itt-header">
-        <i class="fa fa-bullhorn"></i> Convocatorias Disponibles
-      </div>
-      <div class="card-itt-body" id="lista-convocatorias">
-        <div class="alerta alerta-info mb-0"><i class="fa fa-spinner fa-spin"></i><span>Cargando convocatorias...</span></div>
-      </div>
-    </section>
-
-    <!-- Solicitudes y seguimiento -->
-    <section id="seccion-solicitudes">
+    <!-- Vista: solicitudes y seguimiento (predeterminada) -->
+    <section class="vista" id="seccion-solicitudes" data-vista="solicitudes">
       <h2 class="titulo-seccion"><i class="fa fa-list-alt" style="color:var(--itt-azul-claro);"></i> Mis Solicitudes</h2>
       <div id="lista-solicitudes">
         <div class="card-itt"><div class="card-itt-body">
@@ -77,7 +61,43 @@
         </div></div>
       </div>
     </section>
+
+    <!-- Vista: convocatorias disponibles -->
+    <section class="vista" id="seccion-convocatorias" data-vista="convocatorias" hidden>
+      <h2 class="titulo-seccion"><i class="fa fa-bullhorn" style="color:var(--itt-azul-claro);"></i> Convocatorias</h2>
+      <div class="card-itt">
+        <div class="card-itt-header">
+          <i class="fa fa-bullhorn"></i> Convocatorias Disponibles
+        </div>
+        <div class="card-itt-body" id="lista-convocatorias">
+          <div class="alerta alerta-info mb-0"><i class="fa fa-spinner fa-spin"></i><span>Cargando convocatorias...</span></div>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <!-- ═══ MODAL: MI PERFIL ═══ -->
+  <div id="modal-perfil" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="titulo-perfil">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="titulo-perfil"><i class="fa fa-id-card"></i> Mi perfil</h3>
+        <button type="button" class="modal-cerrar" data-modal-cerrar="modal-perfil" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="perfil-encabezado">
+          <div class="info-avatar"><i class="fa fa-user"></i></div>
+          <div>
+            <div class="info-nombre" id="perfil-nombre">Cargando...</div>
+            <div class="texto-claro" id="perfil-tipo">Estudiante</div>
+          </div>
+        </div>
+        <div class="grid-datos" id="perfil-datos"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-itt btn-secundario" data-modal-cerrar="modal-perfil">Cerrar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══ MODAL: CONFIRMAR RETIRO ═══ -->
   <div id="modal-retirar" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="titulo-retirar">
@@ -105,6 +125,6 @@
   </footer>
 
   <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20261111h"></script>
 </body>
 </html>

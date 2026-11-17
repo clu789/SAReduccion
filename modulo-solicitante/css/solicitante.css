@@ -93,28 +93,37 @@
 
 /* ── Panel de Estatus ── */
 .estatus-timeline {
+  --tl-separacion: 24px;
+  --tl-centro: 8.5px; /* altura del centro del renglón del estatus */
   position: relative;
   padding-left: 30px;
 }
 
-.estatus-timeline::before {
+.estatus-item {
+  position: relative;
+  margin-bottom: var(--tl-separacion);
+}
+
+.estatus-item:last-child { margin-bottom: 0; }
+
+/* Cada movimiento une el centro de su círculo con el del siguiente; el último no dibuja línea. */
+.estatus-item::after {
   content: '';
   position: absolute;
-  left: 11px; top: 0; bottom: 0;
+  left: -18px;
+  top: var(--tl-centro);
+  bottom: calc(-1 * var(--tl-separacion) - var(--tl-centro));
   width: 2px;
   background: var(--itt-gris-borde);
 }
 
-.estatus-item {
-  position: relative;
-  margin-bottom: 24px;
-}
+.estatus-item:last-child::after { display: none; }
 
 .estatus-item::before {
   content: '';
   position: absolute;
   left: -24px;
-  top: 4px;
+  top: calc(var(--tl-centro) - 7px);
   width: 14px; height: 14px;
   border-radius: 50%;
   border: 2px solid var(--itt-gris-borde);
@@ -138,17 +147,16 @@
   border-color: var(--itt-rojo);
 }
 
-.estatus-item-fecha {
-  font-size: .75rem;
-  color: var(--itt-texto-claro);
-  margin-bottom: 2px;
-}
-
 .estatus-item-titulo {
   font-weight: 700;
   font-size: .9rem;
   color: var(--itt-texto);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+.estatus-item-fecha {
+  font-size: .75rem;
+  color: var(--itt-texto-claro);
 }
 
 .estatus-item-comentario {
@@ -195,7 +203,8 @@
   flex-wrap: wrap;
 }
 
-.info-alumno-card .info-avatar {
+.info-alumno-card .info-avatar,
+.perfil-encabezado .info-avatar {
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--itt-azul-medio);
@@ -208,7 +217,8 @@
 }
 
 .info-alumno-card .info-datos { flex: 1; }
-.info-alumno-card .info-nombre {
+.info-alumno-card .info-nombre,
+.perfil-encabezado .info-nombre {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--itt-azul);
@@ -230,6 +240,83 @@
 .info-alumno-card .info-estatus {
   margin-left: auto;
   align-self: center;
+}
+
+/* ── Menú del usuario en la barra de navegación ── */
+.menu-usuario { position: relative; }
+
+.menu-usuario-boton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.35);
+  color: var(--itt-blanco);
+  padding: 5px 12px;
+  border-radius: var(--radio-btn);
+  font: inherit;
+  font-size: .875rem;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.menu-usuario-boton:hover,
+.menu-usuario-boton.abierto { background: rgba(255,255,255,.28); }
+.menu-usuario-boton:focus-visible { outline: 2px solid var(--itt-azul-claro); outline-offset: 2px; }
+
+.menu-usuario-flecha { font-size: .8rem !important; transition: transform var(--transition); }
+.menu-usuario-boton.abierto .menu-usuario-flecha { transform: rotate(180deg); }
+
+.menu-usuario-lista {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: var(--itt-blanco);
+  border: 1px solid var(--itt-gris-borde);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  z-index: 1000;
+}
+
+.menu-usuario-lista[hidden] { display: none; }
+
+.menu-usuario-lista button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 16px;
+  background: none;
+  border: none;
+  color: var(--itt-texto);
+  font: inherit;
+  font-size: .875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-usuario-lista button i { width: 16px; color: var(--itt-azul-medio); font-size: 1rem; }
+.menu-usuario-lista button:hover,
+.menu-usuario-lista button:focus-visible { background: #eef3fb; color: var(--itt-azul); outline: none; }
+.menu-usuario-lista li + li { border-top: 1px solid var(--itt-gris-borde); }
+.menu-usuario-lista [data-auth-logout] i { color: var(--itt-rojo); }
+
+/* ── Vistas del panel (Mis Solicitudes / Convocatorias) ── */
+.vista[hidden] { display: none !important; }
+.vista > .titulo-seccion:first-child { margin-top: 0; }
+
+/* ── Ventana «Mi perfil» ── */
+.perfil-encabezado {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--itt-gris-borde);
 }
 
 /* ── Panel del solicitante (Equipo 3) ── */
@@ -362,30 +449,97 @@
 
 .btn-itt[disabled] { opacity: .6; cursor: not-allowed; transform: none; }
 
+/* La imagen institucional se ajusta al ancho disponible en lugar de recortarse. */
+.itt-header-top img.logo-header { max-width: 100%; height: auto; }
+
+/* Encabezado centrado, como en el módulo administrativo. */
+.panel-solicitante .itt-header-top { justify-content: center; padding: 10px 24px; }
+.panel-solicitante .itt-header-top img.logo-header { max-height: 64px; }
+
+.modal-box { max-height: calc(100vh - 32px); overflow-y: auto; }
+
+/* ── Tabletas (panel del solicitante) ── */
+@media (max-width: 768px) {
+  .panel-solicitante .itt-header-top { padding: 8px 12px; }
+
+  /* La barra se mantiene en un renglón: pestañas a la izquierda, usuario a la derecha. */
+  .panel-solicitante .itt-navbar {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 6px 12px;
+  }
+  .panel-solicitante .itt-navbar-links { flex-wrap: nowrap; min-width: 0; }
+  .panel-solicitante .itt-navbar-user { width: auto; flex-shrink: 0; }
+
+  .panel-solicitante .titulo-seccion { font-size: 1.1rem; }
+  .card-itt-header { padding: 12px 16px; }
+}
+
 /* ── Teléfonos ── */
 @media (max-width: 600px) {
-  .itt-navbar-links { width: 100%; }
-  .itt-navbar-links li { flex: 1 1 auto; }
-  .itt-navbar-links li a { text-align: center; padding: 8px 10px; }
-  .itt-navbar-user { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  .panel-solicitante .itt-header-top img.logo-header { max-height: 40px; }
 
+  /* Pestañas de igual ancho que ocupan el espacio libre de la barra. */
+  .panel-solicitante .itt-navbar-links { flex: 1; gap: 4px; }
+  .panel-solicitante .itt-navbar-links li { flex: 1 1 0; min-width: 0; }
+  .panel-solicitante .itt-navbar-links li a {
+    text-align: center;
+    padding: 8px 4px;
+    font-size: .8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .menu-usuario-boton { padding: 6px 10px; }
+  #nombre-usuario-nav {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .panel-solicitante .itt-main { padding: 16px 12px; }
   .itt-main h2 { font-size: 1.2rem; }
-  .card-itt-body { padding: 16px; }
+  .card-itt-body { padding: 14px; }
 
   .info-alumno-card { flex-direction: column; align-items: center; text-align: center; }
   .info-alumno-card .info-meta { justify-content: center; }
   .info-alumno-card .info-estatus { margin-left: 0; }
 
-  .grid-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  /* Datos como lista: etiqueta a la izquierda y valor a la derecha, un dato por renglón. */
+  .grid-datos { grid-template-columns: 1fr; gap: 0; }
+  .grid-datos > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--itt-gris-borde);
+  }
+  .grid-datos > div:last-child { border-bottom: none; padding-bottom: 0; }
+  .grid-datos > div:first-child { padding-top: 0; }
+  .grid-datos .dato-etiqueta { margin-bottom: 0; flex-shrink: 0; max-width: 48%; }
+  .grid-datos .dato-valor { text-align: right; }
+  .deduccion-resumen .grid-datos > div { border-bottom-color: #cfe9d8; }
 
-  .convocatoria-tipo { flex-direction: column; align-items: stretch; }
+  .solicitud-card-header { gap: 8px; }
+  .estatus-timeline { --tl-separacion: 16px; padding-left: 26px; }
+  .estatus-item::before { left: -21px; }
+  .estatus-item::after { left: -15px; }
+
+  .convocatoria-tipo { flex-direction: column; align-items: stretch; padding: 12px; }
   .convocatoria-tipo .btn-itt,
   .acciones-solicitud .btn-itt { width: 100%; justify-content: center; }
 
+  .perfil-encabezado { flex-direction: column; text-align: center; }
+  .modal-body { padding: 16px; }
   .modal-footer { flex-direction: column-reverse; }
   .modal-footer .btn-itt { width: 100%; justify-content: center; }
 }
 
-@media (max-width: 380px) {
-  .grid-datos { grid-template-columns: 1fr; }
+@media (max-width: 360px) {
+  #nombre-usuario-nav { display: none; }
+  .panel-solicitante .itt-navbar-links li a i { display: none; }
 }
