@@ -11,4 +11,8 @@ public class SolicitudNoEncontradaException extends RuntimeException {
     public SolicitudNoEncontradaException() {
         super("Solicitud no encontrada");
     }
+
+    public SolicitudNoEncontradaException(String message) {
+        super(message);
+    }
 }
