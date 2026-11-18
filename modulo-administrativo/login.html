@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
   <link rel="stylesheet" href="css/itt-base.css" />
   <link rel="stylesheet" href="css/administrativo.css" />
+  <!-- Componentes comunes de seguridad (Equipo 1) -->
+  <link rel="stylesheet" href="/compartido/css/itt-security.css" />
 </head>
 <body id="pagina-login-admin">
 
@@ -81,6 +83,9 @@
           <span class="mensaje-error" id="password-admin-error"></span>
         </div>
 
+        <!-- Captcha con alternativa accesible (Equipo 1) -->
+        <div id="captcha-login-admin" data-itt-captcha></div>
+
         <button type="submit" id="btn-login-admin" class="btn-itt btn-primario w-100" style="margin-top:12px;justify-content:center;">
           <i class="fa fa-sign-in"></i> Acceder al Panel
         </button>
@@ -92,6 +97,7 @@
     </div>
   </div>
 
+  <script src="/compartido/js/itt-security.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

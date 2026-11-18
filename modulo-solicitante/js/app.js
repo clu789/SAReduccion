@@ -28,6 +28,11 @@ const Http = {
    * @returns {Promise<any>}   - JSON parseado
    */
   async get(endpoint) {
+    if (window.ITTSecurity) {
+      const data = await window.ITTSecurity.json(Config.apiBase + endpoint, { method: 'GET' });
+      if (data?.csrfToken) this.csrfToken = data.csrfToken;
+      return data;
+    }
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
@@ -50,12 +55,19 @@ const Http = {
    * @param {object} body
    */
   async post(endpoint, body) {
-    const headers = { 'Content-Type': 'application/json' };
-    const csrfEndpoints = ['/auth/login', '/auth/login/aspirante', '/auth/logout'];
-    if (csrfEndpoints.includes(endpoint)) {
-      if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
-      headers['X-CSRF-TOKEN'] = this.csrfToken;
+    if (window.ITTSecurity) {
+      const data = await window.ITTSecurity.json(Config.apiBase + endpoint, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      if (data?.csrfToken) this.csrfToken = data.csrfToken;
+      return data;
     }
+    const headers = { 'Content-Type': 'application/json' };
+    // Equipo 1: toda operación que modifica datos lleva el token CSRF.
+    if (!this.csrfToken) await this.authSession();
+    if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
+    headers['X-CSRF-TOKEN'] = this.csrfToken;
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'POST',
       headers,
@@ -74,6 +86,13 @@ const Http = {
   },
 
   async authSession() {
+    // Equipo 1: con el cliente común cargado se comparte una sola consulta de
+    // sesión, para que el token CSRF y el captcha pertenezcan a la misma sesión.
+    if (window.ITTSecurity) {
+      const session = await window.ITTSecurity.sesion();
+      if (session.csrfToken) this.csrfToken = session.csrfToken;
+      return session;
+    }
     try {
       return await this.get('/auth/me');
     } catch (error) {
@@ -86,9 +105,20 @@ const Http = {
    * Realiza una petición PUT con body JSON.
    */
   async put(endpoint, body) {
+    if (window.ITTSecurity) {
+      const data = await window.ITTSecurity.json(Config.apiBase + endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      });
+      if (data?.csrfToken) this.csrfToken = data.csrfToken;
+      return data;
+    }
+    // Equipo 1: toda operación que modifica datos lleva el token CSRF.
+    if (!this.csrfToken) await this.authSession();
+    if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrfToken || '' },
       credentials: 'same-origin',
       body: JSON.stringify(body),
     });
@@ -109,6 +139,10 @@ const AuthSession = {
   },
 
   async requireRole(expectedRole, loginPath) {
+    if (window.ITTSecurity) {
+      const session = await window.ITTSecurity.protegerPagina(expectedRole, { login: loginPath });
+      return Boolean(session);
+    }
     try {
       const session = await Http.authSession();
       if (!session.authenticated) {
@@ -156,6 +190,8 @@ const AuthSession = {
 };
 
 function mensajeLogin(error) {
+  if (error.payload?.error === 'CAPTCHA_INVALID') return 'La verificación de seguridad no es correcta. Intente de nuevo.';
+  if (error.payload?.error === 'OTP_INVALID') return error.payload.message;
   if (error.status === 429) return 'Demasiados intentos. Espere unos minutos e intente de nuevo.';
   if (error.status === 503) return 'El servicio de autenticación no está disponible. Intente más tarde.';
   if (error.status === 403) return 'La sesión de seguridad expiró. Recargue la página e intente de nuevo.';
@@ -334,23 +370,30 @@ const LoginEstudiante = {
     TabsTipoUsuario.init();
     // Si ya existe una sesión activa, dirigir a la interfaz de su rol.
     AuthSession.redirectByRole('alerta-login');
+    document.getElementById('btn-otp-reenviar')?.addEventListener('click', () => this.reenviarCodigo());
+    document.getElementById('btn-otp-cancelar')?.addEventListener('click', () => this.mostrarPasoCodigo(false));
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const tipoActivo = document.querySelector('.tab-tipo.activo')?.dataset.tipo || 'alumno';
-      if (!this.validar(tipoActivo)) return;
+      if (!this.otpPendiente && !this.validar(tipoActivo)) return;
 
       Spinner.show();
       try {
         // Garantiza un token CSRF vigente para el POST.
         await Http.authSession();
-        if (tipoActivo === 'aspirante') {
+        if (this.otpPendiente) {
+          await this.confirmarCodigo();
+        } else if (tipoActivo === 'aspirante') {
           await this.ingresarAspirante();
         } else {
           await this.ingresarAlumno();
         }
       } catch (err) {
         Alerta.mostrar('alerta-login', 'error', mensajeLogin(err));
+        if (err.payload?.restart) this.mostrarPasoCodigo(false);
+        // El captcha es de un solo uso: cada intento necesita un desafío nuevo.
+        if (!this.otpPendiente) this.captcha()?.recargar();
       } finally {
         this.limpiarSensibles();
         Spinner.hide();
@@ -365,6 +408,8 @@ const LoginEstudiante = {
     const session = await Http.post('/auth/login', {
       username: `ALU_${numeroControl}`,
       password,
+      perfil: 'ESTUDIANTE',
+      captcha: this.captcha()?.valor() || '',
     });
     if (session.role !== 'STUDENT' || session.identity !== numeroControl) {
       await Http.post('/auth/logout', {});
@@ -381,12 +426,67 @@ const LoginEstudiante = {
   async ingresarAspirante() {
     const ficha = document.getElementById('folio-aspirante').value.trim().toUpperCase();
     const curp = document.getElementById('curp-aspirante').value.trim().toUpperCase();
-    const session = await Http.post('/auth/login/aspirante', { ficha, curp });
+    const session = await Http.post('/auth/login/aspirante', {
+      ficha,
+      curp,
+      captcha: this.captcha()?.valor() || '',
+    });
+    // Verificación por correo activa: falta confirmar el código temporal.
+    if (session.otpRequired) {
+      this.fichaPendiente = ficha;
+      this.mostrarPasoCodigo(true, session.destino);
+      return;
+    }
+    await this.entrarComoAspirante(session, ficha);
+  },
+
+  async entrarComoAspirante(session, ficha) {
     if (session.role !== 'APPLICANT' || session.identity !== ficha) {
       await Http.post('/auth/logout', {});
       throw new Error('Perfil no autorizado');
     }
     window.location.href = 'panel-aspirante.html';
+  },
+
+  /** Captcha común del Equipo 1 (itt-security.js); null si no está cargado. */
+  captcha() {
+    return window.ITTSecurity ? window.ITTSecurity.captchaDe('#captcha-login') : null;
+  },
+
+  /** Segundo paso del aspirante: código temporal enviado a su correo. */
+  async confirmarCodigo() {
+    const codigo = document.getElementById('codigo-otp').value.trim();
+    const session = await Http.post('/auth/login/aspirante/otp', { codigo });
+    await this.entrarComoAspirante(session, this.fichaPendiente);
+  },
+
+  async reenviarCodigo() {
+    try {
+      await Http.authSession();
+      await Http.post('/auth/login/aspirante/otp/reenviar', {});
+      Alerta.mostrar('alerta-login', 'exito', 'Se envió un código nuevo a su correo.');
+    } catch (err) {
+      Alerta.mostrar('alerta-login', 'error', err.status === 429
+        ? 'Espere un minuto antes de solicitar otro código.'
+        : 'No se pudo reenviar el código. Inicie sesión de nuevo.');
+    }
+  },
+
+  mostrarPasoCodigo(visible, destino) {
+    this.otpPendiente = visible;
+    const paso = document.getElementById('paso-otp');
+    const credenciales = document.getElementById('paso-credenciales');
+    if (!paso || !credenciales) return;
+    paso.hidden = !visible;
+    credenciales.hidden = visible;
+    const campo = document.getElementById('codigo-otp');
+    campo.value = '';
+    if (visible) {
+      document.getElementById('otp-destino').textContent = destino || 'su correo registrado';
+      campo.focus();
+    } else {
+      this.captcha()?.recargar();
+    }
   },
 
   /** Limpia campos sensibles tras cualquier intento. */
@@ -678,8 +778,6 @@ const PanelAspirante = {
 
     try {
       const session = await Http.authSession();
-      const nav = document.getElementById('nombre-usuario-nav');
-      if (nav) nav.textContent = session.identity || 'Aspirante';
       this.setTexto('aspirante-ficha', session.identity);
       this.setTexto('aspirante-periodo', session.periodo);
       this.setTexto('aspirante-anio', session.anio);

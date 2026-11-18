@@ -33,7 +33,8 @@ import org.springframework.test.web.servlet.MvcResult;
  * {@code database/tests/07-probar-aspirantes.sql}: aspirante de anio anterior
  * y coincidencia ambigua entre periodos.
  */
-@SpringBootTest
+// El captcha tiene sus propias pruebas (SecurityFlowTest); aqui se desactiva.
+@SpringBootTest(properties = "sar.security.captcha.enabled=false")
 @AutoConfigureMockMvc
 class ApplicantAuthenticationIntegrationTest {
 

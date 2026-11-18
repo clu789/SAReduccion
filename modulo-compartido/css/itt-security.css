@@ -1,0 +1,110 @@
+/* itt-security.css — Estilos de los componentes comunes de seguridad (Equipo 1).
+   Usa las variables institucionales de itt-base.css cuando existen. */
+
+/* Aviso de sesión expirada / acceso denegado */
+.itt-sec-aviso {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  max-width: min(92vw, 560px);
+  padding: 12px 18px;
+  border-radius: 6px;
+  border-left: 5px solid var(--itt-azul, #1b396a);
+  background: #ffffff;
+  color: #1f2933;
+  font-size: .9rem;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .22);
+}
+.itt-sec-aviso--alerta { border-left-color: #b45309; background: #fff8eb; }
+.itt-sec-aviso[hidden] { display: none; }
+
+/* Captcha */
+.itt-captcha { margin: 12px 0 4px; }
+.itt-captcha[hidden] { display: none; }
+.itt-captcha__etiqueta { display: block; font-weight: 600; margin-bottom: 6px; }
+.itt-captcha__desafio { min-height: 84px; display: flex; align-items: center; }
+.itt-captcha__imagen {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #cbd2d9;
+  border-radius: 4px;
+  image-rendering: pixelated;
+}
+.itt-captcha__pregunta { margin: 0; font-size: 1rem; font-weight: 600; color: #1f2933; }
+.itt-captcha__acciones { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 8px; }
+.itt-captcha__boton {
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  color: var(--itt-azul, #1b396a);
+  font-size: .8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.itt-captcha__campo { letter-spacing: .12em; text-transform: uppercase; }
+
+/* Paso de código temporal (aspirantes) */
+.itt-otp__ayuda { font-size: .85rem; margin: 0 0 10px; }
+.itt-otp__campo { letter-spacing: .3em; font-size: 1.15rem; text-align: center; }
+
+/* Barra de navegación compartida */
+.itt-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px;
+  background: var(--itt-azul, #1b396a);
+  color: #ffffff;
+  font-size: .88rem;
+}
+.itt-nav[hidden] { display: none; }
+.itt-nav__grupo { position: relative; }
+.itt-nav__boton,
+.itt-nav__salir {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, .65);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.itt-nav__boton:hover,
+.itt-nav__salir:hover { background: rgba(255, 255, 255, .16); }
+.itt-nav__usuario { margin-left: auto; }
+.itt-nav__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+  min-width: 220px;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid #cbd2d9;
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+}
+.itt-nav__menu[hidden] { display: none; }
+.itt-nav__menu a { display: block; padding: 9px 16px; color: #1f2933; text-decoration: none; }
+.itt-nav__menu a:hover,
+.itt-nav__menu a:focus { background: #eef2f7; }
+.itt-nav__menu a[aria-current="page"] { font-weight: 700; border-left: 3px solid var(--itt-azul, #1b396a); }
+
+/* Foco visible en todos los controles propios */
+.itt-captcha__boton:focus-visible,
+.itt-nav__boton:focus-visible,
+.itt-nav__salir:focus-visible,
+.itt-nav__menu a:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .itt-nav { flex-wrap: wrap; }
+  .itt-nav__usuario { margin-left: 0; flex-basis: 100%; order: 3; }
+}

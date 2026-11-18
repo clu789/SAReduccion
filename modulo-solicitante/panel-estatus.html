@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
   <link rel="stylesheet" href="css/itt-base.css" />
   <link rel="stylesheet" href="css/solicitante.css" />
+  <link rel="stylesheet" href="/compartido/css/itt-security.css" />
 </head>
 <body id="pagina-panel-estatus">
 
@@ -23,19 +24,7 @@
     <div class="itt-header-top">
       <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" style="max-height:54px;" />
     </div>
-    <nav class="itt-navbar" aria-label="Navegación principal">
-      <ul class="itt-navbar-links">
-        <li><a href="panel-estatus.html" class="activo"><i class="fa fa-tachometer"></i> Mi Solicitud</a></li>
-        <li><a href="formulario.html"><i class="fa fa-file-text"></i> Nueva Solicitud</a></li>
-      </ul>
-      <div class="itt-navbar-user">
-        <i class="fa fa-user-circle"></i>
-        <span id="nombre-usuario-nav">Usuario</span>
-        <button class="btn-cerrar-sesion" data-auth-logout type="button">
-          <i class="fa fa-sign-out"></i> Salir
-        </button>
-      </div>
-    </nav>
+    <nav class="itt-navbar" data-itt-nav aria-label="Navegación principal"></nav>
   </header>
 
   <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
@@ -125,6 +114,7 @@
   </footer>
 
   <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="/compartido/js/itt-security.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

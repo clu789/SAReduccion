@@ -23,6 +23,9 @@ const Http = {
   csrfToken: null,
 
   async get(endpoint) {
+    if (window.ITTSecurity) {
+      return window.ITTSecurity.json(Config.apiBase + endpoint, { method: 'GET' });
+    }
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
@@ -40,11 +43,16 @@ const Http = {
   },
 
   async post(endpoint, body) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (endpoint === '/auth/login' || endpoint === '/auth/logout') {
-      if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
-      headers['X-CSRF-TOKEN'] = this.csrfToken;
+    if (window.ITTSecurity) {
+      return window.ITTSecurity.json(Config.apiBase + endpoint, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
     }
+    const headers = { 'Content-Type': 'application/json' };
+    if (!this.csrfToken) await this.authSession();
+    if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
+    headers['X-CSRF-TOKEN'] = this.csrfToken;
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'POST',
       headers,
@@ -63,6 +71,13 @@ const Http = {
   },
 
   async authSession() {
+    // Equipo 1: con el cliente común cargado se comparte una sola consulta de
+    // sesión, para que el token CSRF y el captcha pertenezcan a la misma sesión.
+    if (window.ITTSecurity) {
+      const session = await window.ITTSecurity.sesion();
+      if (session.csrfToken) this.csrfToken = session.csrfToken;
+      return session;
+    }
     try {
       return await this.get('/auth/me');
     } catch (error) {
@@ -72,6 +87,12 @@ const Http = {
   },
 
   async put(endpoint, body) {
+    if (window.ITTSecurity) {
+      return window.ITTSecurity.json(Config.apiBase + endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      });
+    }
     const headers = { 'Content-Type': 'application/json' };
     if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
     headers['X-CSRF-TOKEN'] = this.csrfToken;
@@ -84,7 +105,7 @@ const Http = {
     const data = resp.status === 204 ? null : await resp.json().catch(() => ({}));
     if (data?.csrfToken) this.csrfToken = data.csrfToken;
     if (!resp.ok) {
-      const error = new Error(data?.error || 'No se pudo completar la solicitud.');
+      const error = new Error(data?.message || data?.error || 'No se pudo completar la solicitud.');
       error.status = resp.status;
       error.payload = data;
       throw error;
@@ -95,6 +116,10 @@ const Http = {
 
 const AuthSession = {
   async requireRole(expectedRole, loginPath, otherProfileLoginPath) {
+    if (window.ITTSecurity) {
+      const session = await window.ITTSecurity.protegerPagina(expectedRole, { login: loginPath });
+      return Boolean(session);
+    }
     try {
       const session = await Http.authSession();
       if (!session.authenticated) {
@@ -145,6 +170,8 @@ const AuthSession = {
 };
 
 function mensajeLogin(error) {
+  if (error.payload?.error === 'CAPTCHA_INVALID') return 'La verificación de seguridad no es correcta. Intente de nuevo.';
+  if (error.status === 429) return 'Demasiados intentos. Espere unos minutos e intente de nuevo.';
   if (error.status === 503) return 'El servicio de autenticación no está disponible. Intente más tarde.';
   if (error.status === 403) return 'La sesión de seguridad expiró. Recargue la página e intente de nuevo.';
   return 'Credenciales o perfil no válidos.';
@@ -278,9 +305,12 @@ const LoginAdmin = {
       try {
         await Http.authSession();
         const username = usuario.value.trim().toUpperCase();
+        const captcha = window.ITTSecurity ? window.ITTSecurity.captchaDe('#captcha-login-admin') : null;
         const session = await Http.post('/auth/login', {
           username,
           password: password.value,
+          perfil: 'ADMINISTRADOR',
+          captcha: captcha?.valor() || '',
         });
         if (session.role !== 'ADMIN' || session.identity !== username) {
           await Http.post('/auth/logout', {});
@@ -290,6 +320,8 @@ const LoginAdmin = {
         window.location.href = 'panel-admin.html';
       } catch (err) {
         Alerta.mostrar('alerta-login-admin', 'error', mensajeLogin(err));
+        // El captcha es de un solo uso: cada intento necesita un desafío nuevo.
+        window.ITTSecurity?.captchaDe('#captcha-login-admin')?.recargar();
       } finally {
         password.value = '';
         Spinner.hide();

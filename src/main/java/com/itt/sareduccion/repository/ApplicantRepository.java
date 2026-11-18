@@ -23,6 +23,8 @@ public class ApplicantRepository {
 
     private static final String VALIDAR_ASPIRANTE_CALL =
             "{call SA_REDUCCION.PKG_ASPIRANTE.validar_aspirante(?, ?, ?, ?, ?)}";
+    private static final String CORREO_ASPIRANTE_CALL =
+            "{? = call SA_REDUCCION.PKG_SEGURIDAD.correo_aspirante(?, ?, ?)}";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -36,6 +38,23 @@ public class ApplicantRepository {
         }
         return jdbcTemplate.execute((ConnectionCallback<Optional<ApplicantIdentity>>) connection ->
                 validar(connection, ficha.trim(), curp.trim()));
+    }
+
+    /**
+     * Correo registrado del aspirante ya validado; se usa solo para enviar el
+     * codigo temporal de acceso. Devuelve {@code null} si no tiene correo.
+     */
+    public String correoRegistrado(String ficha, int periodo, int anio) {
+        return jdbcTemplate.execute((ConnectionCallback<String>) connection -> {
+            try (CallableStatement statement = connection.prepareCall(CORREO_ASPIRANTE_CALL)) {
+                statement.registerOutParameter(1, Types.VARCHAR);
+                statement.setString(2, ficha);
+                statement.setInt(3, periodo);
+                statement.setInt(4, anio);
+                statement.execute();
+                return statement.getString(1);
+            }
+        });
     }
 
     private Optional<ApplicantIdentity> validar(Connection connection, String ficha, String curp)

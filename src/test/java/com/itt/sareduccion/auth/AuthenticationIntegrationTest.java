@@ -24,7 +24,8 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+// El captcha tiene sus propias pruebas (SecurityFlowTest); aqui se desactiva.
+@SpringBootTest(properties = "sar.security.captcha.enabled=false")
 @AutoConfigureMockMvc
 class AuthenticationIntegrationTest {
 

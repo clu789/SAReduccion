@@ -148,4 +148,5 @@ Para consultar información más detallada del proyecto:
 - [Docker](Docker.md): servicios, volúmenes, inicialización de Oracle y problemas frecuentes.
 - [Guía del proyecto](GUIA_PROYECTO.md): estructura de carpetas, tecnologías y comandos.
 - [Asignación de equipos](asignacion_Modulos.md): responsabilidades por módulo y reglas funcionales acordadas.
+- [Guía de integración de seguridad](GUIA_INTEGRACION_SEGURIDAD.md): autorización por rol, CSRF, auditoría de accesos y estándar de logs para todos los equipos.
 - [Base de datos](BaseDeDatos.md): modelo de datos, tablas, relaciones y configuración de Oracle.
