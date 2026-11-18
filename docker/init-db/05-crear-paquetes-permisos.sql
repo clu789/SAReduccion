@@ -434,8 +434,34 @@ CREATE OR REPLACE PACKAGE PKG_ADMINISTRADOR AUTHID DEFINER AS
  PROCEDURE actualizar_fechas_convocatoria(p_id_administrador VARCHAR2,p_convocatoria NUMBER,
    p_inicio DATE,p_fin DATE,p_limite_autorizacion DATE,p_limite_aplicacion DATE);
  PROCEDURE actualizar_monto_oficial(p_id_administrador VARCHAR2,p_convocatoria NUMBER,p_tipo NUMBER,p_monto NUMBER);
+  -- Equipo 4: gestion de convocatorias
+  PROCEDURE crear_convocatoria(
+    p_id_administrador VARCHAR2,
+    p_periodo NUMBER,
+    p_anio NUMBER,
+    p_inicio DATE,
+    p_fin DATE,
+    p_limite_autorizacion DATE,
+    p_limite_aplicacion DATE,
+    p_monto_trabajador NUMBER,
+    p_monto_homologado NUMBER,
+    p_id OUT NUMBER
+  );
+
+  PROCEDURE consultar_montos_convocatoria(
+    p_id_administrador VARCHAR2,
+    p_convocatoria NUMBER,
+    p_resultado OUT SYS_REFCURSOR
+  );
+
+  PROCEDURE listar_historial_convocatoria(
+    p_id_administrador VARCHAR2,
+    p_convocatoria NUMBER,
+    p_resultado OUT SYS_REFCURSOR
+  );
 END PKG_ADMINISTRADOR;
 /
+
 CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
  PROCEDURE comprobar_plazo(p_conv NUMBER,p_tipo VARCHAR2) IS
   c Convocatorias%ROWTYPE;v_lim DATE;
@@ -686,11 +712,103 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
   PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
   comprobar_plazo(p_convocatoria,'AUTORIZAR');
   IF p_monto IS NULL OR p_monto<0 THEN RAISE_APPLICATION_ERROR(-20886,'Monto invalido'); END IF;
-  UPDATE Convocatorias_TipoSolicitudes SET monto_deduccion=p_monto
-   WHERE id_convocatoria=p_convocatoria AND id_tipo_solicitud=p_tipo;
+  UPDATE Convocatorias_TipoSolicitudes
+     SET monto_deduccion = p_monto,
+         fecha_asignacion_montos = SYSDATE
+   WHERE id_convocatoria = p_convocatoria
+     AND id_tipo_solicitud = p_tipo;
   IF SQL%ROWCOUNT<>1 THEN RAISE_APPLICATION_ERROR(-20887,'Tipo no configurado en convocatoria'); END IF;
  EXCEPTION WHEN OTHERS THEN ROLLBACK TO sp_monto; RAISE;
  END;
+
+ PROCEDURE crear_convocatoria(p_id_administrador VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
+    p_inicio DATE,p_fin DATE,p_limite_autorizacion DATE,p_limite_aplicacion DATE,
+    p_monto_trabajador NUMBER,p_monto_homologado NUMBER,p_id OUT NUMBER) IS
+    v_n NUMBER;
+  BEGIN
+    SAVEPOINT sp_crear_conv_e4;
+    PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+    IF p_periodo IS NULL OR p_anio IS NULL OR p_anio<>TRUNC(p_anio)
+       OR p_anio NOT BETWEEN 2000 AND 2200 THEN
+      RAISE_APPLICATION_ERROR(-20910,'Periodo o anio invalido');
+    END IF;
+    SELECT COUNT(*) INTO v_n FROM Periodos WHERE id_periodo=p_periodo;
+    IF v_n<>1 THEN RAISE_APPLICATION_ERROR(-20910,'Periodo no registrado'); END IF;
+    IF p_inicio IS NULL OR p_fin IS NULL OR p_limite_autorizacion IS NULL
+       OR p_limite_aplicacion IS NULL OR
+       TRUNC(p_inicio)>TRUNC(p_fin) OR
+       TRUNC(p_fin)>TRUNC(p_limite_autorizacion) OR
+       TRUNC(p_limite_autorizacion)>TRUNC(p_limite_aplicacion) THEN
+      RAISE_APPLICATION_ERROR(-20911,'Fechas de convocatoria invalidas');
+    END IF;
+    -- No crear convocatorias cuya configuracion de montos ya este cerrada.
+    IF TRUNC(p_limite_autorizacion)<TRUNC(SYSDATE) THEN
+      RAISE_APPLICATION_ERROR(-20912,'Plazo de autorizacion ya vencido');
+    END IF;
+    IF p_monto_trabajador IS NULL OR p_monto_homologado IS NULL
+       OR p_monto_trabajador<0 OR p_monto_homologado<0
+       OR p_monto_trabajador<>ROUND(p_monto_trabajador,2)
+       OR p_monto_homologado<>ROUND(p_monto_homologado,2)
+       OR p_monto_trabajador>=100000000 OR p_monto_homologado>=100000000 THEN
+      RAISE_APPLICATION_ERROR(-20913,'Montos de deduccion invalidos');
+    END IF;
+    SELECT COUNT(*) INTO v_n FROM Tipo_Solicitudes WHERE id_tipo_solicitud IN (1,2);
+    IF v_n<>2 THEN RAISE_APPLICATION_ERROR(-20914,'Catalogo de tipos incompleto'); END IF;
+    -- Validaciones preventivas; restricciones y trigger siguen protegiendo
+    -- frente a operaciones concurrentes.
+    SELECT COUNT(*) INTO v_n FROM Convocatorias
+     WHERE id_periodo=p_periodo AND anio=p_anio;
+    IF v_n>0 THEN RAISE_APPLICATION_ERROR(-20916,'Ya existe convocatoria para ese periodo y anio'); END IF;
+    -- Regla de solapamiento inclusivo equivalente a trg_convocatorias_intervalo.
+    SELECT COUNT(*) INTO v_n FROM Convocatorias
+     WHERE TRUNC(p_inicio)<=TRUNC(fecha_limite_aplicacion)
+       AND TRUNC(p_limite_aplicacion)>=TRUNC(fecha_inicio_solicitudes);
+    IF v_n>0 THEN RAISE_APPLICATION_ERROR(-20917,'Se superpone con otra convocatoria'); END IF;
+    INSERT INTO Convocatorias(fecha_inicio_solicitudes,fecha_fin_solicitudes,
+      fecha_limite_autorizacion,fecha_limite_aplicacion,id_periodo,anio)
+    VALUES(p_inicio,p_fin,p_limite_autorizacion,p_limite_aplicacion,p_periodo,p_anio)
+    RETURNING id_convocatoria INTO p_id;
+    INSERT INTO Convocatorias_TipoSolicitudes(id_convocatoria,id_tipo_solicitud,monto_deduccion)
+      VALUES(p_id,1,p_monto_trabajador);
+    INSERT INTO Convocatorias_TipoSolicitudes(id_convocatoria,id_tipo_solicitud,monto_deduccion)
+      VALUES(p_id,2,p_monto_homologado);
+  EXCEPTION WHEN OTHERS THEN
+    ROLLBACK TO sp_crear_conv_e4;
+    RAISE;
+  END;
+
+  PROCEDURE consultar_montos_convocatoria(p_id_administrador VARCHAR2,p_convocatoria NUMBER,
+    p_resultado OUT SYS_REFCURSOR) IS
+    v_n NUMBER;
+  BEGIN
+    PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+    SELECT COUNT(*) INTO v_n FROM Convocatorias WHERE id_convocatoria=p_convocatoria;
+    IF v_n<>1 THEN RAISE_APPLICATION_ERROR(-20915,'Convocatoria no registrada'); END IF;
+    OPEN p_resultado FOR
+      SELECT ct.id_convocatoria,ct.id_tipo_solicitud,t.nombre,
+             ct.monto_deduccion,ct.fecha_asignacion_montos
+      FROM Convocatorias_TipoSolicitudes ct
+      JOIN Tipo_Solicitudes t ON t.id_tipo_solicitud=ct.id_tipo_solicitud
+      WHERE ct.id_convocatoria=p_convocatoria
+      ORDER BY ct.id_tipo_solicitud;
+  END;
+
+  PROCEDURE listar_historial_convocatoria(p_id_administrador VARCHAR2,p_convocatoria NUMBER,
+    p_resultado OUT SYS_REFCURSOR) IS
+    v_n NUMBER;
+  BEGIN
+    PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+    SELECT COUNT(*) INTO v_n FROM Convocatorias WHERE id_convocatoria=p_convocatoria;
+    IF v_n<>1 THEN RAISE_APPLICATION_ERROR(-20915,'Convocatoria no registrada'); END IF;
+    OPEN p_resultado FOR
+      SELECT h.id_historial_convocatoria,h.id_convocatoria,h.id_administrador,
+        h.fecha_registro,h.inicio_anterior,h.fin_anterior,
+        h.autorizacion_anterior,h.aplicacion_anterior,
+        h.inicio_nuevo,h.fin_nuevo,h.autorizacion_nueva,h.aplicacion_nueva
+      FROM Historial_Convocatorias h
+      WHERE h.id_convocatoria=p_convocatoria
+      ORDER BY h.fecha_registro DESC,h.id_historial_convocatoria DESC;
+  END;
 END PKG_ADMINISTRADOR;
 /
 
