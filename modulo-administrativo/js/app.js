@@ -39,28 +39,49 @@ const Http = {
     return data;
   },
 
-  async post(endpoint, body) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (endpoint === '/auth/login' || endpoint === '/auth/logout') {
-      if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
-      headers['X-CSRF-TOKEN'] = this.csrfToken;
-    }
-    const resp = await fetch(Config.apiBase + endpoint, {
-      method: 'POST',
-      headers,
-      credentials: 'same-origin',
-      body: JSON.stringify(body),
-    });
-    const data = resp.status === 204 ? null : await resp.json().catch(() => ({}));
-    if (data?.csrfToken) this.csrfToken = data.csrfToken;
-    if (!resp.ok) {
-      const error = new Error('No se pudo completar la solicitud.');
-      error.status = resp.status;
-      error.payload = data;
-      throw error;
-    }
-    return data;
+
+async post(endpoint, body) {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  if (!this.csrfToken) {
+    throw new Error(
+      'Recargue la página para renovar la sesión de seguridad.'
+    );
+  }
+
+  headers['X-CSRF-TOKEN'] = this.csrfToken;
+
+  const resp = await fetch(Config.apiBase + endpoint, {
+    method: 'POST',
+    headers,
+    credentials: 'same-origin',
+    body: JSON.stringify(body)
+  });
+
+  const data = resp.status === 204
+    ? null
+    : await resp.json().catch(() => ({}));
+
+  if (data?.csrfToken) {
+    this.csrfToken = data.csrfToken;
+  }
+
+  if (!resp.ok) {
+    const error = new Error(
+      data?.error || 'No se pudo completar la solicitud.'
+    );
+
+    error.status = resp.status;
+    error.payload = data;
+
+    throw error;
+  }
+
+  return data;
   },
+
 
   async authSession() {
     try {
@@ -940,5 +961,39 @@ document.addEventListener('DOMContentLoaded', () => {
   switch (pagina) {
     case 'pagina-login-admin':  LoginAdmin.init();  break;
     case 'pagina-panel-admin':  PanelAdmin.init();  break;
+    case 'pagina-convocatorias-admin':
+      (async () => {
+        const btnGuardar = document.getElementById(
+          'btnGuardarConvocatoria'
+        );
+
+        // Impedir el guardado mientras se verifica la sesión.
+        if (btnGuardar) {
+          btnGuardar.disabled = true;
+          btnGuardar.textContent = 'Verificando sesión...';
+        }
+
+        const autorizado = await AuthSession.requireRole(
+          'ADMIN',
+          'login.html',
+          '/solicitante/login.html'
+        );
+
+        if (!autorizado) return;
+
+        AuthSession.bindLogout(
+          'login.html',
+          'alertaValidacion'
+        );
+
+        // Habilitar el formulario únicamente para administradores.
+        if (btnGuardar) {
+          btnGuardar.disabled = false;
+          btnGuardar.innerHTML =
+            '<i class="fa-solid fa-floppy-disk"></i> Guardar convocatoria';
+        }
+      })();
+      break;
+
   }
 });
