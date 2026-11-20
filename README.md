@@ -149,3 +149,6 @@ Para consultar información más detallada del proyecto:
 - [Guía del proyecto](GUIA_PROYECTO.md): estructura de carpetas, tecnologías y comandos.
 - [Asignación de equipos](asignacion_Modulos.md): responsabilidades por módulo y reglas funcionales acordadas.
 - [Base de datos](BaseDeDatos.md): modelo de datos, tablas, relaciones y configuración de Oracle.
+## Notificaciones del equipo 6
+
+Consulta la [guía de notificaciones](NOTIFICACIONES.md) para configurar SMTP y Mailpit, integrar Oracle y probar las plantillas y comentarios.
