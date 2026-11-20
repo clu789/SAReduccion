@@ -238,6 +238,21 @@ public class ConvocatoriaGestionService {
         }
     }
 
+    public List<Map<String, Object>> listarHistorialConvocatoria(
+            String idAdministrador, Long idConvocatoria) {
+        if (idAdministrador == null || idAdministrador.trim().isEmpty()) {
+            throw new ReglaNegocioException("No se proporciono un administrador valido.");
+        }
+        if (idConvocatoria == null || idConvocatoria <= 0) {
+            throw new ReglaNegocioException("Debe seleccionar una convocatoria valida.");
+        }
+        try {
+            return repository.listarHistorialConvocatoria(idAdministrador, idConvocatoria);
+        } catch (DataAccessException exception) {
+            throw traducirErrorOracle(exception);
+        }
+    }
+
     private void validarMonto(BigDecimal monto, String tipo) {
         if (monto == null
                 || monto.signum() < 0

@@ -10,6 +10,56 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
   <link rel="stylesheet" href="css/itt-base.css" />
   <link rel="stylesheet" href="css/administrativo.css" />
+
+  <style>
+    #pagina-panel-admin .panel-nav-integrado {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      background: #fff;
+      border-bottom: 2px solid #337ab7;
+    }
+    #pagina-panel-admin .panel-nav-integrado .itt-navbar-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    #pagina-panel-admin .panel-nav-integrado .itt-navbar-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 11px 14px;
+      text-decoration: none;
+      border-radius: 4px 4px 0 0;
+      transition: background-color .15s ease;
+    }
+    #pagina-panel-admin .panel-nav-integrado .itt-navbar-links a:hover {
+      background: #eaf3fb;
+    }
+    #pagina-panel-admin .panel-nav-integrado .itt-navbar-links a.activo {
+      background: #eaf3fb;
+      color: #2876b6;
+      font-weight: 600;
+    }
+    #pagina-panel-admin .panel-nav-integrado .itt-navbar-user {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-left: auto;
+    }
+    @media (max-width: 700px) {
+      #pagina-panel-admin .panel-nav-integrado .itt-navbar-user {
+        margin-left: 0;
+      }
+    }
+  </style>
 </head>
 <body id="pagina-panel-admin">
 
@@ -23,15 +73,10 @@
     <div class="itt-header-top">
       <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" />
     </div>
-    <nav class="itt-navbar" aria-label="Navegación administrativa">
+    <nav class="itt-navbar panel-nav-integrado" aria-label="Navegación administrativa">
       <ul class="itt-navbar-links">
         <li><a href="panel-admin.html" class="activo"><i class="fa fa-tachometer"></i> Bandeja de Solicitudes</a></li>
-        <li>
-          <a href="#" class="nav-opcion-deshabilitada" aria-disabled="true" tabindex="-1"
-             title="Disponible próximamente" onclick="return false;">
-            <i class="fa fa-plus-circle"></i> Nueva Solicitud
-          </a>
-        </li>
+        <li><a href="convocatorias-crear-editar.html"><i class="fa fa-calendar"></i> Convocatorias</a></li>
       </ul>
       <div class="itt-navbar-user">
         <span class="badge-admin" style="font-size:.72rem;padding:4px 10px;">

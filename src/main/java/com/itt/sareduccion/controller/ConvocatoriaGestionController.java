@@ -206,6 +206,24 @@ public class ConvocatoriaGestionController {
         return ResponseEntity.ok(respuesta);
     }
 
+    @GetMapping("/{idConvocatoria}/historial")
+    public ResponseEntity<?> listarHistorialConvocatoria(
+            @PathVariable("idConvocatoria") Long idConvocatoria,
+            HttpServletRequest request) {
+
+        SessionPrincipal principal =
+                SessionAttributes.principal(request.getSession(false));
+        if (principal == null || principal.getRole() != AuthRole.ADMIN) {
+            return error(HttpStatus.UNAUTHORIZED, "Acceso no autorizado.");
+        }
+        if (idConvocatoria == null || idConvocatoria <= 0) {
+            return error(HttpStatus.BAD_REQUEST,
+                    "El identificador de la convocatoria no es valido.");
+        }
+        return ResponseEntity.ok(service.listarHistorialConvocatoria(
+                principal.getIdentity(), idConvocatoria));
+    }
+
     @ExceptionHandler(ReglaNegocioException.class)
     public ResponseEntity<?> manejarReglaNegocio(
             ReglaNegocioException exception) {

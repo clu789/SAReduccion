@@ -36,6 +36,9 @@ public class ConvocatoriaGestionRepository {
     private static final int TIPO_TRABAJADOR = 1;
     private static final int TIPO_HOMOLOGADO = 2;
 
+    private static final String LISTAR_HISTORIAL_CONVOCATORIA_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_historial_convocatoria(?, ?, ?)}";
+
     private final JdbcTemplate jdbcTemplate;
 
     public ConvocatoriaGestionRepository(JdbcTemplate jdbcTemplate) {
@@ -373,4 +376,50 @@ public class ConvocatoriaGestionRepository {
 
         return fecha != null ? fecha.toLocalDate() : null;
     }
+    /** Historial ordenado por el procedimiento Oracle (mas reciente primero). */
+    public List<Map<String, Object>> listarHistorialConvocatoria(
+            String idAdministrador, Long idConvocatoria) {
+        return jdbcTemplate.execute(
+                (ConnectionCallback<List<Map<String, Object>>>) connection -> {
+            List<Map<String, Object>> historial = new ArrayList<>();
+            try (CallableStatement statement =
+                    connection.prepareCall(LISTAR_HISTORIAL_CONVOCATORIA_CALL)) {
+                statement.setString(1, idAdministrador);
+                statement.setLong(2, idConvocatoria);
+                statement.registerOutParameter(3, Types.REF_CURSOR);
+                statement.execute();
+                Object cursor = statement.getObject(3);
+                if (!(cursor instanceof ResultSet)) {
+                    throw new SQLException("El procedimiento de historial no devolvio un cursor JDBC.");
+                }
+                try (ResultSet rs = (ResultSet) cursor) {
+                    while (rs.next()) {
+                        Map<String, Object> fila = new LinkedHashMap<>();
+                        fila.put("idHistorialConvocatoria", rs.getLong(1));
+                        fila.put("idConvocatoria", rs.getLong(2));
+                        fila.put("idAdministrador", rs.getString(3));
+                        java.sql.Timestamp registro = rs.getTimestamp(4);
+                        fila.put("fechaRegistro", registro == null ? null : registro.toLocalDateTime());
+                        fila.put("inicioAnterior", fechaHistorial(rs, 5));
+                        fila.put("finAnterior", fechaHistorial(rs, 6));
+                        fila.put("autorizacionAnterior", fechaHistorial(rs, 7));
+                        fila.put("aplicacionAnterior", fechaHistorial(rs, 8));
+                        fila.put("inicioNuevo", fechaHistorial(rs, 9));
+                        fila.put("finNuevo", fechaHistorial(rs, 10));
+                        fila.put("autorizacionNueva", fechaHistorial(rs, 11));
+                        fila.put("aplicacionNueva", fechaHistorial(rs, 12));
+                        historial.add(fila);
+                    }
+                }
+            }
+            return historial;
+        });
+    }
+
+    private static LocalDate fechaHistorial(ResultSet rs, int indice)
+            throws SQLException {
+        Date valor = rs.getDate(indice);
+        return valor == null ? null : valor.toLocalDate();
+    }
+
 }

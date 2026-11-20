@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Historial de convocatorias | SAReducción ITToluca</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/itt-base.css" />
+    <link rel="stylesheet" href="css/administrativo.css" />
+    <link rel="stylesheet" href="css/convocatorias.css" />
+    <link rel="stylesheet" href="css/historial-convocatorias.css" />
+  </head>
+  <body id="pagina-historial-convocatorias">
+    <div class="main-wrapper">
+      <div class="top-banner-box">
+        <img
+          src="img/header.png"
+          alt="Tecnológico Nacional de México - Instituto Tecnológico de Toluca"
+          class="img-fluid institutional-header-image"
+          onerror="this.style.display = 'none'"
+        />
+      </div>
+
+      <div class="nav-bar-white">
+        <div class="nav-tabs-custom">
+          <a href="panel-admin.html" class="nav-tab-link">
+            <i class="fa-solid fa-inbox"></i> Bandeja de Solicitudes
+          </a>
+          <a href="convocatorias-crear-editar.html" class="nav-tab-link">
+            <i class="fa-solid fa-calendar-days"></i> Convocatorias
+          </a>
+        </div>
+        <div class="user-info-bar">
+          <span
+            ><i class="fa-solid fa-shield-halved me-1"></i> Administrador</span
+          >
+          <span><i class="fa-solid fa-circle-user me-1"></i> Subdirector</span>
+          <button type="button" class="btn-salir-top" data-auth-logout>
+            <i class="fa-solid fa-right-from-bracket"></i> Salir
+          </button>
+        </div>
+      </div>
+      <div class="convocatorias-page-header">
+        <div class="convocatorias-page-heading">
+          <h2 class="page-title-itt">
+            <i class="fa-solid fa-list"></i> Historial de modificaciones
+          </h2>
+          <p class="page-subtitle-itt">
+            Consulta los cambios registrados en las fechas de las convocatorias.
+          </p>
+        </div>
+
+        <div
+          class="btn-group mode-switch-group"
+          role="group"
+          aria-label="Navegación de convocatorias"
+        >
+          <a
+            href="convocatorias-crear-editar.html"
+            class="btn btn-mode-inactive"
+          >
+            <i class="fa-solid fa-plus me-1"></i>
+            Crear convocatoria
+          </a>
+
+          <a href="convocatorias-admin.html" class="btn btn-mode-inactive">
+            <i class="fa-solid fa-list me-1"></i>
+            Historial de modificaciones
+          </a>
+
+          <a
+            href="historial-convocatorias.html"
+            class="btn btn-mode-active"
+            aria-current="page"
+          >
+            <i class="fa-solid fa-clock-rotate-left me-1"></i>
+            Historial
+          </a>
+        </div>
+      </div>
+      <div id="alerta-historial" role="alert" aria-live="polite"></div>
+      <section class="panel-itt-card mb-3" aria-label="Filtros del historial">
+        <div class="panel-itt-header">
+          <span><i class="fa-solid fa-filter me-2"></i>Filtros</span>
+        </div>
+        <div class="panel-itt-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label-itt" for="filtro-convocatoria"
+                >Convocatoria</label
+              ><select id="filtro-convocatoria" class="form-select" disabled>
+                <option>Cargando convocatorias...</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-itt" for="filtro-administrador"
+                >Administrador</label
+              ><select id="filtro-administrador" class="form-select">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-itt" for="filtro-campo"
+                >Fecha modificada</label
+              ><select id="filtro-campo" class="form-select">
+                <option value="">Cualquiera</option>
+                <option value="inicio">Inicio de solicitudes</option>
+                <option value="fin">Fin de solicitudes</option>
+                <option value="autorizacion">Límite de autorización</option>
+                <option value="aplicacion">Límite de aplicación</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-itt" for="filtro-desde"
+                >Registrado desde</label
+              ><input type="date" id="filtro-desde" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-itt" for="filtro-hasta"
+                >Registrado hasta</label
+              ><input type="date" id="filtro-hasta" class="form-control" />
+            </div>
+            <div class="col-md-4">
+              <button
+                type="button"
+                id="btn-limpiar-filtros"
+                class="btn-gray-itt"
+              >
+                <i class="fa-solid fa-eraser"></i> Limpiar filtros
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="panel-itt-card mb-3" aria-label="Resumen de convocatoria">
+        <div class="panel-itt-header">
+          <span
+            ><i class="fa-solid fa-calendar-check me-2"></i
+            ><span id="resumen-titulo">Convocatoria</span></span
+          ><span id="resumen-estado" class="hc-estado-conv"></span>
+        </div>
+        <div class="panel-itt-body">
+          <div id="resumen-fechas" class="hc-fechas-vigentes"></div>
+          <div class="hc-resumen-meta">
+            <span>Modificaciones: <strong id="resumen-total">—</strong></span
+            ><span
+              >Última modificación: <strong id="resumen-ultima">—</strong></span
+            >
+          </div>
+        </div>
+      </section>
+      <section class="panel-itt-card mb-4" aria-label="Registros históricos">
+        <div class="panel-itt-header">
+          <span
+            ><i class="fa-solid fa-clock-rotate-left me-2"></i>Registro de
+            cambios</span
+          ><span id="contador-registros"></span>
+        </div>
+        <div class="table-responsive">
+          <table
+            class="table table-hover align-middle mb-0"
+            id="tabla-historial"
+          >
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Fecha de registro</th>
+                <th>Administrador</th>
+                <th>Fechas modificadas</th>
+                <th>Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="5" class="text-center py-4">
+                  Cargando historial...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+    <div id="spinner-overlay" class="spinner-overlay">
+      <div class="spinner-ring"></div>
+    </div>
+    <div
+      id="modal-cambio"
+      class="hc-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-cambio-titulo"
+      tabindex="-1"
+    >
+      <div class="hc-modal-box">
+        <div class="hc-modal-header">
+          <h3 id="modal-cambio-titulo">
+            <i class="fa-solid fa-clock-rotate-left"></i> Detalle de
+            modificación
+          </h3>
+          <button
+            type="button"
+            class="hc-modal-close"
+            onclick="HistorialConvocatorias.cerrarDetalle()"
+            aria-label="Cerrar"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="hc-modal-body">
+          <div class="hc-detalle-grid">
+            <div>
+              <strong>Registro</strong>
+              <div id="cambio-id">—</div>
+            </div>
+            <div>
+              <strong>Convocatoria</strong>
+              <div id="cambio-convocatoria">—</div>
+            </div>
+            <div>
+              <strong>Administrador</strong>
+              <div id="cambio-admin">—</div>
+            </div>
+            <div>
+              <strong>Fecha de registro</strong>
+              <div id="cambio-fecha">—</div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table hc-tabla-comparativa">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Valor anterior</th>
+                  <th></th>
+                  <th>Valor nuevo</th>
+                </tr>
+              </thead>
+              <tbody id="cambio-comparativa"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="hc-modal-footer">
+          <button
+            type="button"
+            class="btn-gray-itt"
+            onclick="HistorialConvocatorias.cerrarDetalle()"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+    <script src="js/app.js"></script>
+    <script src="js/historial-convocatorias.js"></script>
+  </body>
+</html>
