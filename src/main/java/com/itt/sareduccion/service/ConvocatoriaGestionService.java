@@ -4,6 +4,9 @@ package com.itt.sareduccion.service;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,76 @@ public class ConvocatoriaGestionService {
     public ConvocatoriaGestionService(
             ConvocatoriaGestionRepository repository) {
         this.repository = repository;
+    }
+
+    public List<Map<String, Object>> listarConvocatorias(
+        String idAdministrador) {
+
+        if (idAdministrador == null
+                || idAdministrador.trim().isEmpty()) {
+            throw new ReglaNegocioException(
+                    "No se proporciono un administrador valido.");
+        }
+
+        try {
+            return repository.listarConvocatorias(idAdministrador);
+
+        } catch (DataAccessException exception) {
+            throw traducirErrorOracle(exception);
+        }
+    }
+
+    public Map<String, Object> consultarConvocatoria(
+        String idAdministrador,
+        Long idConvocatoria) {
+
+        if (idAdministrador == null
+                || idAdministrador.trim().isEmpty()) {
+            throw new ReglaNegocioException(
+                    "No se proporciono un administrador valido.");
+        }
+
+        if (idConvocatoria == null || idConvocatoria <= 0) {
+            throw new ReglaNegocioException(
+                    "El identificador de la convocatoria no es valido.");
+        }
+
+        List<Map<String, Object>> convocatorias =
+                listarConvocatorias(idAdministrador);
+
+        Map<String, Object> convocatoriaEncontrada = null;
+
+        for (Map<String, Object> convocatoria : convocatorias) {
+
+            Number id = (Number) convocatoria.get("idConvocatoria");
+
+            if (id != null
+                    && id.longValue() == idConvocatoria.longValue()) {
+
+                convocatoriaEncontrada =
+                        new LinkedHashMap<String, Object>(convocatoria);
+
+                break;
+            }
+        }
+
+        if (convocatoriaEncontrada == null) {
+            return null;
+        }
+
+        try {
+            List<Map<String, Object>> montos =
+                    repository.consultarMontosConvocatoria(
+                            idAdministrador,
+                            idConvocatoria);
+
+            convocatoriaEncontrada.put("montos", montos);
+
+            return convocatoriaEncontrada;
+
+        } catch (DataAccessException exception) {
+            throw traducirErrorOracle(exception);
+        }
     }
 
     public Long crearConvocatoria(

@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import com.itt.sareduccion.auth.AuthRole;
 import com.itt.sareduccion.auth.SessionAttributes;
@@ -33,6 +36,70 @@ public class ConvocatoriaGestionController {
     public ConvocatoriaGestionController(
             ConvocatoriaGestionService service) {
         this.service = service;
+    }
+
+    @GetMapping
+    public ResponseEntity<?> listarConvocatorias(
+            HttpServletRequest request) {
+
+        HttpSession session = request.getSession(false);
+
+        SessionPrincipal principal =
+                SessionAttributes.principal(session);
+
+        if (principal == null
+                || principal.getRole() != AuthRole.ADMIN) {
+            return error(
+                    HttpStatus.UNAUTHORIZED,
+                    "Acceso no autorizado.");
+        }
+
+        List<Map<String, Object>> convocatorias =
+                service.listarConvocatorias(principal.getIdentity());
+
+        Map<String, Object> respuesta =
+                new LinkedHashMap<String, Object>();
+
+        respuesta.put("convocatorias", convocatorias);
+
+        return ResponseEntity.ok(respuesta);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> consultarConvocatoria(
+            @PathVariable("id") Long idConvocatoria,
+            HttpServletRequest request) {
+
+        HttpSession session = request.getSession(false);
+
+        SessionPrincipal principal =
+                SessionAttributes.principal(session);
+
+        if (principal == null
+                || principal.getRole() != AuthRole.ADMIN) {
+            return error(
+                    HttpStatus.UNAUTHORIZED,
+                    "Acceso no autorizado.");
+        }
+
+        if (idConvocatoria == null || idConvocatoria <= 0) {
+            return error(
+                    HttpStatus.BAD_REQUEST,
+                    "El identificador de la convocatoria no es valido.");
+        }
+
+        Map<String, Object> convocatoria =
+                service.consultarConvocatoria(
+                        principal.getIdentity(),
+                        idConvocatoria);
+
+        if (convocatoria == null) {
+            return error(
+                    HttpStatus.NOT_FOUND,
+                    "No se encontro la convocatoria solicitada.");
+        }
+
+        return ResponseEntity.ok(convocatoria);
     }
 
     @PostMapping

@@ -273,7 +273,7 @@
             color: #212529;
         }
 
-        /* Botones conmutadores Crear / Editar */
+        /* Botones conmutadores Crear / Administrar */
         .mode-switch-group .btn {
             font-size: 0.88rem;
             font-weight: 600;
@@ -306,6 +306,32 @@
             margin: 2px 0;
             color: #ffffff !important;
         }
+
+        /* Navegación de convocatorias alineada a la derecha */
+        .mode-switch-group {
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        /* Evitar que el botón de historial pierda su estilo */
+        .mode-switch-group .btn:disabled {
+            opacity: 0.65;
+            background-color: #ffffff;
+            color: #337ab7;
+            border-color: #337ab7;
+            cursor: not-allowed;
+        }
+
+        /* Adaptación para pantallas pequeñas */
+        @media (max-width: 767px) {
+            .mode-switch-group {
+                margin-left: auto;
+                max-width: 100%;
+                flex-wrap: wrap;
+                white-space: normal;
+            }
+        }
+
     </style>
 </head>
 <body id="pagina-convocatorias-admin">
@@ -336,48 +362,64 @@
             </div>
         </div>
 
-        <!-- ENCABEZADO DE LA VISTA Y SELECTOR CREAR / EDITAR -->
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <!-- ENCABEZADO Y NAVEGACIÓN ENTRE PANTALLAS -->
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
             <div>
                 <h2 class="page-title-itt">
                     <i class="fa-regular fa-calendar-check"></i> Convocatorias
                 </h2>
                 <p class="page-subtitle-itt">
-                    Registra nuevas convocatorias o actualiza el periodo, año académico y las cuatro fechas de vigencia.
+                    Registra nuevas convocatorias definiendo el periodo académico,
+                    las fechas de vigencia y los montos iniciales de reducción.
                 </p>
             </div>
-            <div class="btn-group mode-switch-group" role="group">
-                <button type="button" class="btn btn-mode-active" id="btnModoCrear" onclick="cambiarModo('crear')">
-                    <i class="fa-solid fa-plus me-1"></i> Crear convocatoria
+
+            <div class="btn-group mode-switch-group ms-auto flex-shrink-0"
+                role="group"
+                aria-label="Navegación de convocatorias">
+
+                <a href="convocatorias-crear-editar.html"
+                class="btn btn-mode-active"
+                aria-current="page">
+                    <i class="fa-solid fa-plus me-1"></i>
+                    Crear convocatoria
+                </a>
+
+                <a href="convocatorias-admin.html"
+                class="btn btn-mode-inactive">
+                    <i class="fa-solid fa-list me-1"></i>
+                    Administrar convocatorias
+                </a>
+
+                <button type="button"
+                        class="btn btn-mode-inactive"
+                        disabled
+                        title="Historial pendiente de integración">
+                    <i class="fa-solid fa-clock-rotate-left me-1"></i>
+                    Historial
                 </button>
-                <button
-                    type="button"
-                    class="btn btn-mode-inactive"
-                    id="btnModoEditar"
-                    disabled
-                    title="La edición estará disponible al integrar la consulta de convocatorias">
-                    <i class="fa-solid fa-pen-to-square me-1"></i> Editar convocatoria
-                </button>
+
             </div>
+
         </div>
 
         <!-- TARJETA PRINCIPAL CON CABECERA AZUL #337ab7 -->
         <div class="panel-itt-card">
             <div class="panel-itt-header">
-                <span id="tituloHeaderCard">
-                    <i class="fa-solid fa-calendar-plus me-2"></i> Crear y editar convocatoria
+                <span>
+                    <i class="fa-solid fa-calendar-plus me-2"></i> Crear nueva convocatoria
                 </span>
-                <span class="badge bg-light text-dark fw-semibold" id="badgeModoActual" style="color: #286090 !important;">
+                <span class="badge bg-light text-dark fw-semibold" style="color: #286090 !important;">
                     Modo: Crear convocatoria
                 </span>
             </div>
 
             <div class="panel-itt-body">
                 <div class="inner-fieldset-box">
-                    <div class="inner-box-title" id="subtituloInterno">
+                    <div class="inner-box-title">
                         Configurar vigencia y ciclo académico de la convocatoria
                     </div>
-                    <div class="inner-box-subtitle" id="descripcionInterna">
+                    <div class="inner-box-subtitle">
                         Define el periodo, año académico, las cuatro fechas por día calendario y los montos iniciales de reducción.
                     </div>
 
@@ -390,32 +432,6 @@
                     </div>
 
                     <form id="formConvocatoria" novalidate>
-                        <!-- Selector de convocatoria (Solo se muestra en Modo Editar) -->
-                        <div class="row g-3 mb-3 d-none" id="filaSeleccionConvocatoria">
-                            <div class="col-md-8">
-                                <label for="idConvocatoria" class="form-label-itt">Convocatoria a editar</label>
-                                <select
-                                    class="form-select"
-                                    id="idConvocatoria"
-                                    name="p_convocatoria"
-                                    disabled>
-                                    <option value="">Seleccione una convocatoria</option>
-                                </select>
-                                <div class="help-caption-itt">Seleccione una convocatoria registrada para actualizar sus cuatro fechas de vigencia.</div>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label-itt">Estado actual</label>
-                                <input
-                                    type="text"
-                                    class="form-control bg-light fw-semibold"
-                                    id="estadoConvocatoriaTexto"
-                                    value=""
-                                    placeholder="Sin convocatoria seleccionada"
-                                    readonly>
-                                <div class="help-caption-itt">Modificable antes del límite de aplicación.</div>
-                            </div>
-                        </div>
-
                         <!-- FILA 1: PERIODO Y AÑO ACADÉMICO -->
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -519,62 +535,6 @@
 
     <script src="js/app.js"></script>
     <script>
-        let modoActual = 'crear';
-
-        function cambiarModo(modo) {
-            modoActual = modo;
-            ocultarAlerta();
-
-            const btnCrear = document.getElementById('btnModoCrear');
-            const btnEditar = document.getElementById('btnModoEditar');
-            const tituloHeader = document.getElementById('tituloHeaderCard');
-            const badgeModo = document.getElementById('badgeModoActual');
-            const subtituloInterno = document.getElementById('subtituloInterno');
-            const descripcionInterna = document.getElementById('descripcionInterna');
-            const filaSeleccion = document.getElementById('filaSeleccionConvocatoria');
-            const filaMontos = document.getElementById('filaMontosIniciales');
-            const periodo = document.getElementById('periodo');
-            const anio = document.getElementById('anio');
-            const btnGuardar = document.getElementById('btnGuardarConvocatoria');
-
-            if (modo === 'editar') {
-                btnCrear.className = 'btn btn-mode-inactive';
-                btnEditar.className = 'btn btn-mode-active';
-                tituloHeader.innerHTML = '<i class="fa-solid fa-pen-to-square me-2"></i> Editar fechas de convocatoria';
-                badgeModo.textContent = 'Modo: Editar convocatoria';
-                subtituloInterno.textContent = 'Modificar fechas de vigencia por convocatoria';
-                descripcionInterna.textContent = 'Actualiza las cuatro fechas de la convocatoria seleccionada. Los cambios anteriores y nuevos se registran en el historial.';
-
-                filaSeleccion.classList.remove('d-none');
-                filaMontos.classList.add('d-none');
-                document.getElementById('montoInterno').required = false;
-                document.getElementById('montoHomologado').required = false;
-
-                periodo.disabled = true;
-                anio.readOnly = true;
-                btnGuardar.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Actualizar fechas';
-            } else {
-                btnEditar.className = 'btn btn-mode-inactive';
-                btnCrear.className = 'btn btn-mode-active';
-                tituloHeader.innerHTML = '<i class="fa-solid fa-calendar-plus me-2"></i> Crear nueva convocatoria';
-                badgeModo.textContent = 'Modo: Crear convocatoria';
-                subtituloInterno.textContent = 'Configurar vigencia y ciclo académico de la convocatoria';
-                descripcionInterna.textContent = 'Define el periodo, año académico, las cuatro fechas por día calendario y los montos iniciales de reducción.';
-
-                filaSeleccion.classList.add('d-none');
-                filaMontos.classList.remove('d-none');
-                document.getElementById('montoInterno').required = true;
-                document.getElementById('montoHomologado').required = true;
-
-                periodo.disabled = false;
-                anio.readOnly = false;
-                btnGuardar.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar convocatoria';
-
-                document.getElementById('formConvocatoria').reset();
-            }
-        }
-
-
         function mostrarAlerta(mensaje, tipo = 'danger') {
             const alerta = document.getElementById('alertaValidacion');
 
@@ -601,17 +561,13 @@
             document.getElementById('alertaValidacion').classList.add('d-none');
         }
 
+        document.getElementById('formConvocatoria')
+            .addEventListener('submit', async function(e) {
+                e.preventDefault();
+                ocultarAlerta();
 
-        document.getElementById('formConvocatoria').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            ocultarAlerta();
+                const form = this;
 
-            if (modoActual !== 'crear') {
-                mostrarAlerta('La edición de convocatorias todavía no está disponible.');
-                return;
-            }
-
-            const form = this;
             const btnGuardar = document.getElementById('btnGuardarConvocatoria');
 
             if (btnGuardar.disabled) return;

@@ -952,6 +952,38 @@ const Notificaciones = {
 };
 
 /* ─────────────────────────────────────────
+   MÓDULO: GESTIÓN DE CONVOCATORIAS
+   Equipo 4
+───────────────────────────────────────── */
+const ConvocatoriasAdmin = {
+
+  async listar() {
+    const respuesta = await Http.get('/admin/convocatorias');
+
+    if (!Array.isArray(respuesta.convocatorias)) {
+      throw new Error(
+        'La respuesta del listado de convocatorias no es válida.'
+      );
+    }
+
+    return respuesta.convocatorias;
+  },
+
+  async consultar(idConvocatoria) {
+    const id = Number(idConvocatoria);
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new Error(
+        'Seleccione un identificador de convocatoria válido.'
+      );
+    }
+
+    return await Http.get(`/admin/convocatorias/${id}`);
+  }
+
+};
+
+/* ─────────────────────────────────────────
    INICIALIZACIÓN AUTOMÁTICA
 ───────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
@@ -967,7 +999,6 @@ document.addEventListener('DOMContentLoaded', () => {
           'btnGuardarConvocatoria'
         );
 
-        // Impedir el guardado mientras se verifica la sesión.
         if (btnGuardar) {
           btnGuardar.disabled = true;
           btnGuardar.textContent = 'Verificando sesión...';
@@ -986,7 +1017,6 @@ document.addEventListener('DOMContentLoaded', () => {
           'alertaValidacion'
         );
 
-        // Habilitar el formulario únicamente para administradores.
         if (btnGuardar) {
           btnGuardar.disabled = false;
           btnGuardar.innerHTML =
@@ -994,6 +1024,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       })();
       break;
-
   }
 });
