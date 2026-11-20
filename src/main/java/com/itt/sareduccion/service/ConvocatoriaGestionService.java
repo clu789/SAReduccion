@@ -33,11 +33,34 @@ public class ConvocatoriaGestionService {
         }
 
         try {
-            return repository.listarConvocatorias(idAdministrador);
+            List<Map<String, Object>> convocatorias =
+                    repository.listarConvocatorias(idAdministrador);
+
+            LocalDate hoy = LocalDate.now();
+            for (Map<String, Object> convocatoria : convocatorias) {
+                LocalDate inicio = (LocalDate) convocatoria.get("fechaInicio");
+                LocalDate fin = (LocalDate) convocatoria.get("fechaFin");
+                convocatoria.put("estado", calcularEstado(inicio, fin, hoy));
+            }
+
+            return convocatorias;
 
         } catch (DataAccessException exception) {
             throw traducirErrorOracle(exception);
         }
+    }
+
+    private String calcularEstado(LocalDate inicio, LocalDate fin, LocalDate hoy) {
+        if (inicio == null || fin == null || inicio.isAfter(fin)) {
+            return "SIN_DEFINIR";
+        }
+        if (hoy.isBefore(inicio)) {
+            return "PROXIMA";
+        }
+        if (hoy.isAfter(fin)) {
+            return "CERRADA";
+        }
+        return "ACTIVA";
     }
 
     public Map<String, Object> consultarConvocatoria(
@@ -85,6 +108,16 @@ public class ConvocatoriaGestionService {
                             idConvocatoria);
 
             convocatoriaEncontrada.put("montos", montos);
+
+            LocalDate hoy = LocalDate.now();
+            LocalDate limiteAplicacion = (LocalDate)
+                    convocatoriaEncontrada.get("fechaLimiteAplicacion");
+            LocalDate limiteAutorizacion = (LocalDate)
+                    convocatoriaEncontrada.get("fechaLimiteAutorizacion");
+            convocatoriaEncontrada.put("puedeEditarFechas",
+                    limiteAplicacion != null && !hoy.isAfter(limiteAplicacion));
+            convocatoriaEncontrada.put("puedeEditarMontos",
+                    limiteAutorizacion != null && !hoy.isAfter(limiteAutorizacion));
 
             return convocatoriaEncontrada;
 
@@ -155,6 +188,56 @@ public class ConvocatoriaGestionService {
         }
     }
 
+    public Map<String, Object> actualizarConvocatoria(
+            String idAdministrador,
+            Long idConvocatoria,
+            LocalDate fechaInicio,
+            LocalDate fechaFin,
+            LocalDate fechaLimiteAutorizacion,
+            LocalDate fechaLimiteAplicacion,
+            BigDecimal montoTrabajador,
+            BigDecimal montoHomologado) {
+
+        if (idAdministrador == null || idAdministrador.trim().isEmpty()) {
+            throw new ReglaNegocioException(
+                    "No se proporciono un administrador valido.");
+        }
+        if (idConvocatoria == null || idConvocatoria <= 0) {
+            throw new ReglaNegocioException(
+                    "El identificador de la convocatoria no es valido.");
+        }
+        if (fechaInicio == null || fechaFin == null
+                || fechaLimiteAutorizacion == null
+                || fechaLimiteAplicacion == null) {
+            throw new ReglaNegocioException(
+                    "Debe completar todas las fechas.");
+        }
+        if (fechaInicio.isAfter(fechaFin)
+                || fechaFin.isAfter(fechaLimiteAutorizacion)
+                || fechaLimiteAutorizacion.isAfter(fechaLimiteAplicacion)) {
+            throw new ReglaNegocioException(
+                    "Las fechas deben mantener el orden: "
+                    + "inicio, fin, autorizacion y aplicacion.");
+        }
+
+        validarMonto(montoTrabajador, "trabajadores");
+        validarMonto(montoHomologado, "homologados");
+
+        try {
+            return repository.actualizarConvocatoria(
+                    idAdministrador,
+                    idConvocatoria,
+                    fechaInicio,
+                    fechaFin,
+                    fechaLimiteAutorizacion,
+                    fechaLimiteAplicacion,
+                    montoTrabajador,
+                    montoHomologado);
+        } catch (DataAccessException exception) {
+            throw traducirErrorOracle(exception);
+        }
+    }
+
     private void validarMonto(BigDecimal monto, String tipo) {
         if (monto == null
                 || monto.signum() < 0
@@ -178,7 +261,6 @@ public class ConvocatoriaGestionService {
             return exception;
         }
 
-        // JDBC puede devolver el codigo Oracle sin signo.
         int error = Math.abs(codigo);
 
         switch (error) {
@@ -210,6 +292,32 @@ public class ConvocatoriaGestionService {
                 return new ReglaNegocioException(
                         "Las fechas se superponen con otra convocatoria.");
 
+            case 20870:
+            case 20073:
+                return new ReglaNegocioException(
+                        "El plazo de autorizacion para modificar montos ya vencio.");
+            case 20882:
+            case 20074:
+                return new ReglaNegocioException(
+                        "La convocatoria supero su fecha limite de aplicacion.");
+            case 20883:
+                return new ReglaNegocioException(
+                        "El orden de las fechas no es valido.");
+            case 20884:
+                return new ReglaNegocioException(
+                        "Las nuevas fechas excluirian solicitudes ya registradas.");
+            case 20885:
+                return new ReglaNegocioException(
+                        "Las nuevas fechas excluirian movimientos historicos.");
+            case 20886:
+                return new ReglaNegocioException(
+                        "El monto proporcionado no es valido.");
+            case 20887:
+                return new ReglaNegocioException(
+                        "El tipo de solicitud no esta configurado en la convocatoria.");
+            case 20075:
+                return new ReglaNegocioException(
+                        "Las fechas se superponen con otra convocatoria.");
             default:
                 return exception;
         }

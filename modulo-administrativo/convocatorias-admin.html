@@ -1,417 +1,295 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Administrar convocatorias | SAReduccion - ITToluca</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="css/itt-base.css"><link rel="stylesheet" href="css/administrativo.css">
-<style>
-        :root {
-            --itt-blue-primary: #337ab7;
-            --itt-blue-dark: #286090;
-            --itt-blue-light: #eaf4fc;
-            --itt-bg-gray: #efefef;
-            --itt-border-gray: #dcdcdc;
-            --itt-text-muted: #6c757d;
-        }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Administrar convocatorias | SAReduccion - ITToluca</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/itt-base.css" />
+    <link rel="stylesheet" href="css/administrativo.css" />
+    <link rel="stylesheet" href="css/convocatorias.css" />
+  </head>
+  <body id="pagina-listado-convocatorias">
+    <div class="main-wrapper">
+      <div class="top-banner-box">
+        <img
+          src="img/header.png"
+          alt="Tecnológico Nacional de México - Instituto Tecnológico de Toluca"
+          class="img-fluid institutional-header-image"
+          onerror="this.style.display = 'none'"
+        />
+      </div>
 
-        body {
-            background-color: var(--itt-bg-gray);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333333;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Contenedor principal centrado estilo compañeros */
-        .main-wrapper {
-            max-width: 1140px;
-            margin: 0 auto;
-            width: 100%;
-            flex: 1;
-            padding: 0 15px;
-        }
-
-        /* Banner superior institucional */
-        .top-banner-box {
-            background-color: #ffffff;
-            border-radius: 0 0 4px 4px;
-            padding: 12px 20px;
-            margin-bottom: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            text-align: center;
-        }
-
-        /* Barra blanca de navegación por pestañas */
-        .nav-bar-white {
-            background-color: #ffffff;
-            border: 1px solid var(--itt-border-gray);
-            border-bottom: 2px solid var(--itt-blue-primary);
-            border-radius: 4px;
-            padding: 0 16px;
-            margin-bottom: 22px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            min-height: 48px;
-        }
-
-        .nav-tabs-custom {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-bottom: -2px;
-        }
-
-        .nav-tab-link {
-            padding: 12px 18px;
-            text-decoration: none;
-            color: #555555;
-            font-size: 0.92rem;
-            font-weight: 500;
-            border-bottom: 3px solid transparent;
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            transition: all 0.15s ease;
-        }
-
-        .nav-tab-link:hover {
-            color: var(--itt-blue-primary);
-            background-color: #f8fbff;
-        }
-
-        .nav-tab-link.active {
-            background-color: var(--itt-blue-light);
-            color: var(--itt-blue-primary);
-            font-weight: 600;
-            border-bottom: 3px solid var(--itt-blue-primary);
-        }
-
-        .user-info-bar {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            font-size: 0.88rem;
-            color: #666666;
-            padding: 6px 0;
-        }
-
-        .btn-salir-top {
-            background-color: #f8f9fa;
-            border: 1px solid #ced4da;
-            color: #495057;
-            font-size: 0.85rem;
-            padding: 4px 12px;
-            border-radius: 4px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-salir-top:hover {
-            background-color: #e9ecef;
-            color: #212529;
-        }
-
-        /* Título de página estilo compañeros */
-        .page-title-itt {
-            color: var(--itt-blue-primary);
-            font-weight: 700;
-            font-size: 1.55rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 4px;
-        }
-
-        .page-subtitle-itt {
-            color: #666666;
-            font-size: 0.92rem;
-            margin-bottom: 20px;
-        }
-
-        /* Paneles con cabecera azul #337ab7 */
-        .panel-itt-card {
-            background-color: #ffffff;
-            border: 1px solid #cfd8e3;
-            border-radius: 6px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-            margin-bottom: 24px;
-            overflow: hidden;
-        }
-
-        .panel-itt-header {
-            background-color: var(--itt-blue-primary);
-            color: #ffffff !important;
-            padding: 11px 18px;
-            font-weight: 700;
-            font-size: 0.98rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .panel-itt-header span,
-        .panel-itt-header i {
-            color: #ffffff !important;
-        }
-
-        .panel-itt-body {
-            padding: 20px;
-        }
-
-        /* Caja interna con borde suave (como "Configurar por convocatoria") */
-        .inner-fieldset-box {
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 18px;
-            background-color: #ffffff;
-        }
-
-        .inner-box-title {
-            color: var(--itt-blue-primary);
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 3px;
-        }
-
-        .inner-box-subtitle {
-            color: #777777;
-            font-size: 0.85rem;
-            margin-bottom: 14px;
-        }
-
-        /* Alerta azul claro con borde izquierdo azul */
-        .info-callout-itt {
-            background-color: #edf6fd;
-            border-left: 4px solid var(--itt-blue-primary);
-            color: #2b547e;
-            padding: 10px 14px;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.87rem;
-            margin-bottom: 18px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Etiquetas de formulario en azul */
-        .form-label-itt {
-            color: var(--itt-blue-primary);
-            font-weight: 600;
-            font-size: 0.88rem;
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        .form-control,
-        .form-select {
-            border-color: #ced4da;
-            font-size: 0.9rem;
-            padding: 8px 12px;
-            border-radius: 4px;
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            border-color: var(--itt-blue-primary);
-            box-shadow: 0 0 0 0.2rem rgba(51, 122, 183, 0.18);
-        }
-
-        .help-caption-itt {
-            color: #666666;
-            font-size: 0.8rem;
-            margin-top: 5px;
-        }
-
-        /* Botones con el mismo estilo de "Filtrar" y "Limpiar" */
-        .btn-blue-itt {
-            background-color: var(--itt-blue-primary);
-            border: 1px solid var(--itt-blue-dark);
-            color: #ffffff;
-            font-weight: 600;
-            font-size: 0.9rem;
-            padding: 7px 16px;
-            border-radius: 4px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-blue-itt:hover {
-            background-color: var(--itt-blue-dark);
-            color: #ffffff;
-        }
-
-        .btn-gray-itt {
-            background-color: #f1f3f5;
-            border: 1px solid #ced4da;
-            color: #333333;
-            font-weight: 600;
-            font-size: 0.9rem;
-            padding: 7px 16px;
-            border-radius: 4px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-gray-itt:hover {
-            background-color: #e2e6ea;
-            color: #212529;
-        }
-
-        /* Botones conmutadores Crear / Editar */
-        .mode-switch-group .btn {
-            font-size: 0.88rem;
-            font-weight: 600;
-            padding: 6px 14px;
-        }
-
-        .btn-mode-active {
-            background-color: var(--itt-blue-primary);
-            color: #ffffff;
-            border: 1px solid var(--itt-blue-dark);
-        }
-
-        .btn-mode-inactive {
-            background-color: #ffffff;
-            color: var(--itt-blue-primary);
-            border: 1px solid var(--itt-blue-primary);
-        }
-
-        /* Pie de página azul institucional */
-        .footer-blue-itt {
-            background-color: var(--itt-blue-primary);
-            color: #ffffff;
-            text-align: center;
-            padding: 20px 15px;
-            margin-top: 30px;
-            font-size: 0.85rem;
-        }
-
-        .footer-blue-itt p {
-            margin: 2px 0;
-            color: #ffffff !important;
-        }
-
-        .mode-switch-group {
-            margin-left: auto;
-            white-space: nowrap;
-        }
-
-        .mode-switch-group .btn:disabled {
-            opacity: 0.65;
-            background-color: #ffffff;
-            color: #337ab7;
-            border-color: #337ab7;
-            cursor: not-allowed;
-        }
-
-        @media (max-width: 767px) {
-            .mode-switch-group {
-                margin-left: auto;
-                max-width: 100%;
-                flex-wrap: wrap;
-                white-space: normal;
-            }
-        }
-
-    </style>
-<style>
-.tabla-convocatorias th{white-space:nowrap;background:#f1f6fa;color:#286090}
-.tabla-convocatorias td{vertical-align:middle}
-.admin-dialog{width:min(760px,calc(100% - 24px));max-width:760px;border:0;border-radius:8px;padding:0;box-shadow:0 14px 48px #0003}
-.admin-dialog::backdrop{background:rgba(0,0,0,.45)}
-.admin-dialog .dialog-content{padding:20px}
-.dato-consulta{background:#f8fafc;border:1px solid #dce3ea;border-radius:4px;padding:10px;min-height:42px;overflow-wrap:anywhere}
-</style>
-</head>
-<body id="pagina-listado-convocatorias">
-<div class="main-wrapper">
-<!-- BANNER SUPERIOR INSTITUCIONAL -->
-        <div class="top-banner-box">
-            <img src="img/header.png" alt="Tecnológico Nacional de México - Instituto Tecnológico de Toluca" class="img-fluid" style="max-height: 75px;" onerror="this.style.display='none'">
+      <div class="nav-bar-white">
+        <div class="nav-tabs-custom">
+          <a href="panel-admin.html" class="nav-tab-link">
+            <i class="fa-solid fa-inbox"></i> Bandeja de Solicitudes
+          </a>
+          <a href="convocatorias-crear-editar.html" class="nav-tab-link">
+            <i class="fa-solid fa-calendar-days"></i> Convocatorias
+          </a>
+        </div>
+        <div class="user-info-bar">
+          <span
+            ><i class="fa-solid fa-shield-halved me-1"></i> Administrador</span
+          >
+          <span><i class="fa-solid fa-circle-user me-1"></i> Subdirector</span>
+          <button type="button" class="btn-salir-top" data-auth-logout>
+            <i class="fa-solid fa-right-from-bracket"></i> Salir
+          </button>
+        </div>
+      </div>
+      <div class="convocatorias-page-header">
+        <div class="convocatorias-page-heading">
+          <h2 class="page-title-itt">
+            <i class="fa-solid fa-list"></i> Administrar convocatorias
+          </h2>
+          <p class="page-subtitle-itt">
+            Consulta las convocatorias registradas y sus fechas y montos de
+            reducción.
+          </p>
         </div>
 
-        <!-- BARRA DE PESTAÑAS Y USUARIO (Idéntica a la captura de tus compañeros) -->
-        <div class="nav-bar-white">
-            <div class="nav-tabs-custom">
-                <a href="panel-admin.html" class="nav-tab-link">
-                    <i class="fa-solid fa-inbox"></i> Bandeja de Solicitudes
-                </a>
-                <a href="convocatorias-crear-editar.html" class="nav-tab-link">
-                    <i class="fa-solid fa-calendar-days"></i> Convocatorias
-                </a>
-            </div>
-            <div class="user-info-bar">
-                <span><i class="fa-solid fa-shield-halved me-1"></i> Administrador</span>
-                <span><i class="fa-solid fa-circle-user me-1"></i> Subdirector</span>
-                <button type="button"
-                        class="btn-salir-top"
-                        data-auth-logout>
-                    <i class="fa-solid fa-right-from-bracket"></i> Salir
-                </button>
-            </div>
-        </div>
+        <div
+          class="btn-group mode-switch-group"
+          role="group"
+          aria-label="Navegación de convocatorias"
+        >
+          <a
+            href="convocatorias-crear-editar.html"
+            class="btn btn-mode-inactive"
+          >
+            <i class="fa-solid fa-plus me-1"></i>
+            Crear convocatoria
+          </a>
 
+          <a
+            href="convocatorias-admin.html"
+            class="btn btn-mode-active"
+            aria-current="page"
+          >
+            <i class="fa-solid fa-list me-1"></i>
+            Administrar convocatorias
+          </a>
 
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-<div><h2 class="page-title-itt"><i class="fa-solid fa-list"></i> Administrar convocatorias</h2>
-<p class="page-subtitle-itt">Consulta las convocatorias registradas y sus fechas y montos de reducción.</p></div>
-
-<div class="btn-group mode-switch-group ms-auto flex-shrink-0"
-     role="group"
-     aria-label="Navegación de convocatorias">
-
-    <a href="convocatorias-crear-editar.html"
-       class="btn btn-mode-inactive">
-        <i class="fa-solid fa-plus me-1"></i>
-        Crear convocatoria
-    </a>
-
-    <a href="convocatorias-admin.html"
-       class="btn btn-mode-active"
-       aria-current="page">
-        <i class="fa-solid fa-list me-1"></i>
-        Administrar convocatorias
-    </a>
-
-    <button type="button"
+          <button
+            type="button"
             class="btn btn-mode-inactive"
             disabled
-            title="Historial pendiente de integración">
-        <i class="fa-solid fa-clock-rotate-left me-1"></i>
-        Historial
-    </button>
+            title="Historial pendiente de integración"
+          >
+            <i class="fa-solid fa-clock-rotate-left me-1"></i>
+            Historial
+          </button>
+        </div>
+      </div>
+      <section class="panel-itt-card" aria-labelledby="titulo-tabla">
+        <div class="panel-itt-header">
+          <span id="titulo-tabla"
+            ><i class="fa-solid fa-table-list me-2"></i> Convocatorias
+            registradas</span
+          ><span id="contadorConvocatorias">—</span>
+        </div>
+        <div class="panel-itt-body">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label-itt" for="buscarConvocatoria"
+                >Buscar por ID, periodo o año</label
+              ><input
+                class="form-control"
+                id="buscarConvocatoria"
+                type="search"
+                placeholder="Ej. 2027 o 41"
+              />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label-itt" for="filtroAnio"
+                >Año académico</label
+              ><select id="filtroAnio" class="form-select">
+                <option value="">Todos los años</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label-itt" for="filtroEstado">Estado</label>
+              <select id="filtroEstado" class="form-select">
+                <option value="">Todos los estados</option>
+                <option value="ACTIVA">Activa</option>
+                <option value="PROXIMA">Próxima</option>
+                <option value="CERRADA">Cerrada</option>
+                <option value="SIN_DEFINIR">Sin definir</option>
+              </select>
+            </div>
+          </div>
+          <div id="exitoListado" class="alert alert-success d-none" role="status"></div>
+          <div
+            id="alertaListado"
+            class="alert alert-danger d-none"
+            role="alert"
+          ></div>
+          <div class="table-responsive">
+            <table
+              class="table table-hover table-bordered tabla-convocatorias"
+              aria-label="Listado de convocatorias"
+            >
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Periodo</th>
+                  <th>Año</th>
+                  <th>Inicio solicitudes</th>
+                  <th>Fin solicitudes</th>
+                  <th>Límite autorización</th>
+                  <th>Límite aplicación</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="cuerpoConvocatorias">
+                <tr>
+                  <td colspan="9" class="text-center py-4">
+                    Cargando convocatorias...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="d-flex justify-content-end">
+            <button
+              id="recargarConvocatorias"
+              type="button"
+              class="btn-gray-itt"
+            >
+              <i class="fa-solid fa-rotate"></i> Actualizar listado
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <footer class="footer-blue-itt">
+      <p class="fw-semibold">
+        &copy; 2026 Instituto Tecnológico de Toluca &middot; Tecnológico
+        Nacional de México
+      </p>
+      <p class="small opacity-75">
+        Subdirección Académica &middot; Sistema de Reducción de Monto de
+        Inscripción
+      </p>
+    </footer>
+    <dialog
+      id="modalConvocatoria"
+      class="admin-dialog"
+      aria-labelledby="tituloModalConvocatoria"
+    >
+      <div class="panel-itt-header">
+        <span id="tituloModalConvocatoria">Detalle de convocatoria</span
+        ><button
+          type="button"
+          id="cerrarModalSuperior"
+          class="btn btn-sm btn-light"
+          aria-label="Cerrar"
+        >
+          &times;
+        </button>
+      </div>
+      <div class="dialog-content">
+        <p class="text-muted small">Información registrada (solo lectura).</p>
+        <div
+          id="alertaDetalle"
+          class="alert alert-danger d-none"
+          role="alert"
+        ></div>
+        <div class="row g-3" id="detalleConvocatoria">
+          <div class="col-md-6">
+            <label class="form-label-itt">Periodo</label>
+            <div class="dato-consulta" id="detPeriodo">—</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label-itt">Año académico</label>
+            <div class="dato-consulta" id="detAnio">—</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label-itt">Estado de solicitudes</label>
+            <div class="dato-consulta" id="detEstado">—</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label-itt">Inicio de solicitudes</label>
+            <div class="dato-consulta" id="detInicio">—</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label-itt">Fin de solicitudes</label>
+            <div class="dato-consulta" id="detFin">—</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label-itt">Límite de autorización</label>
+            <div class="dato-consulta" id="detAutorizacion">—</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label-itt">Límite de aplicación</label>
+            <div class="dato-consulta" id="detAplicacion">—</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label-itt">Monto personal interno</label>
+            <div class="dato-consulta" id="detTrabajador">—</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label-itt">Monto personal homologado</label>
+            <div class="dato-consulta" id="detHomologado">—</div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-end mt-4">
+          <button id="cerrarModalInferior" type="button" class="btn-gray-itt">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </dialog>
 
-</div>
-</div>
-<section class="panel-itt-card" aria-labelledby="titulo-tabla"><div class="panel-itt-header"><span id="titulo-tabla"><i class="fa-solid fa-table-list me-2"></i> Convocatorias registradas</span><span id="contadorConvocatorias">—</span></div>
-<div class="panel-itt-body">
-<div class="row g-3 mb-3"><div class="col-md-8"><label class="form-label-itt" for="buscarConvocatoria">Buscar por ID, periodo o año</label><input class="form-control" id="buscarConvocatoria" type="search" placeholder="Ej. 2027 o 41"></div>
-<div class="col-md-4"><label class="form-label-itt" for="filtroAnio">Año académico</label><select id="filtroAnio" class="form-select"><option value="">Todos los años</option></select></div></div>
-<div id="alertaListado" class="alert alert-danger d-none" role="alert"></div>
-<div class="table-responsive"><table class="table table-hover table-bordered tabla-convocatorias" aria-label="Listado de convocatorias"><thead><tr><th>ID</th><th>Periodo</th><th>Año</th><th>Inicio solicitudes</th><th>Fin solicitudes</th><th>Límite autorización</th><th>Límite aplicación</th><th>Acciones</th></tr></thead><tbody id="cuerpoConvocatorias"><tr><td colspan="8" class="text-center py-4">Cargando convocatorias...</td></tr></tbody></table></div>
-<div class="d-flex justify-content-end"><button id="recargarConvocatorias" type="button" class="btn-gray-itt"><i class="fa-solid fa-rotate"></i> Actualizar listado</button></div>
-</div></section></div>
-<footer class="footer-blue-itt"><p class="fw-semibold">&copy; 2026 Instituto Tecnológico de Toluca &middot; Tecnológico Nacional de México</p><p class="small opacity-75">Subdirección Académica &middot; Sistema de Reducción de Monto de Inscripción</p></footer>
-<dialog id="modalConvocatoria" class="admin-dialog" aria-labelledby="tituloModalConvocatoria"><div class="panel-itt-header"><span id="tituloModalConvocatoria">Detalle de convocatoria</span><button type="button" id="cerrarModalSuperior" class="btn btn-sm btn-light" aria-label="Cerrar">&times;</button></div>
-<div class="dialog-content"><p class="text-muted small">Información registrada (solo lectura).</p><div id="alertaDetalle" class="alert alert-danger d-none" role="alert"></div>
-<div class="row g-3" id="detalleConvocatoria">
-<div class="col-md-6"><label class="form-label-itt">Periodo</label><div class="dato-consulta" id="detPeriodo">—</div></div>
-<div class="col-md-6"><label class="form-label-itt">Año académico</label><div class="dato-consulta" id="detAnio">—</div></div>
-<div class="col-md-6"><label class="form-label-itt">Inicio de solicitudes</label><div class="dato-consulta" id="detInicio">—</div></div>
-<div class="col-md-6"><label class="form-label-itt">Fin de solicitudes</label><div class="dato-consulta" id="detFin">—</div></div>
-<div class="col-md-6"><label class="form-label-itt">Límite de autorización</label><div class="dato-consulta" id="detAutorizacion">—</div></div>
-<div class="col-md-6"><label class="form-label-itt">Límite de aplicación</label><div class="dato-consulta" id="detAplicacion">—</div></div>
-<div class="col-md-6"><label class="form-label-itt">Monto personal interno</label><div class="dato-consulta" id="detTrabajador">—</div></div>
-<div class="col-md-6"><label class="form-label-itt">Monto personal homologado</label><div class="dato-consulta" id="detHomologado">—</div></div></div>
-<div class="d-flex justify-content-end mt-4"><button id="cerrarModalInferior" type="button" class="btn-gray-itt">Cerrar</button></div></div></dialog>
-<script src="js/app.js"></script><script src="js/convocatorias-admin.js"></script>
-</body></html>
+    <dialog id="modalEditarConvocatoria" class="admin-dialog admin-dialog--editar" aria-labelledby="tituloEditarConvocatoria">
+      <div class="panel-itt-header">
+        <span id="tituloEditarConvocatoria">Editar convocatoria</span>
+        <button type="button" id="cerrarEditarSuperior" class="btn btn-sm btn-light" aria-label="Cerrar">&times;</button>
+      </div>
+      <form id="formEditarConvocatoria" class="dialog-content" novalidate>
+        <div id="alertaEditar" class="alert alert-danger d-none" role="alert"></div>
+        <div id="exitoEditar" class="alert alert-success d-none" role="status"></div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4"><label class="form-label-itt">Periodo</label><div id="editarPeriodo" class="dato-consulta">—</div></div>
+          <div class="col-md-4"><label class="form-label-itt">Año académico</label><div id="editarAnio" class="dato-consulta">—</div></div>
+          <div class="col-md-4"><label class="form-label-itt">Estado</label><div id="editarEstado" class="dato-consulta">—</div></div>
+        </div>
+        <fieldset id="grupoEditarFechas" class="inner-fieldset-box mb-3">
+          <legend class="inner-box-title float-none w-auto px-1">Fechas de convocatoria</legend>
+          <p id="avisoEditarFechas" class="help-caption-itt mb-2"></p>
+          <div class="row g-3">
+            <div class="col-md-6"><label class="form-label-itt" for="editarInicio">Inicio de solicitudes</label><input class="form-control" type="date" id="editarInicio" required /></div>
+            <div class="col-md-6"><label class="form-label-itt" for="editarFin">Fin de solicitudes</label><input class="form-control" type="date" id="editarFin" required /></div>
+            <div class="col-md-6"><label class="form-label-itt" for="editarAutorizacion">Límite de autorización</label><input class="form-control" type="date" id="editarAutorizacion" required /></div>
+            <div class="col-md-6"><label class="form-label-itt" for="editarAplicacion">Límite de aplicación</label><input class="form-control" type="date" id="editarAplicacion" required /></div>
+          </div>
+        </fieldset>
+        <fieldset id="grupoEditarMontos" class="inner-fieldset-box mb-3">
+          <legend class="inner-box-title float-none w-auto px-1">Montos oficiales (MXN)</legend>
+          <p id="avisoEditarMontos" class="help-caption-itt mb-2"></p>
+          <div class="row g-3">
+            <div class="col-md-6"><label class="form-label-itt" for="editarTrabajador">Personal interno (trabajador)</label><input class="form-control" type="number" id="editarTrabajador" min="0" max="99999999.99" step="0.01" required /></div>
+            <div class="col-md-6"><label class="form-label-itt" for="editarHomologado">Personal homologado</label><input class="form-control" type="number" id="editarHomologado" min="0" max="99999999.99" step="0.01" required /></div>
+          </div>
+        </fieldset>
+        <p class="help-caption-itt">Los cambios se validarán nuevamente en el servidor antes de guardarse.</p>
+        <div class="d-flex justify-content-end gap-2 flex-wrap mt-3">
+          <button type="button" id="cancelarEditar" class="btn-gray-itt">Cancelar</button>
+          <button type="submit" id="guardarEditar" class="btn-blue-itt"><i class="fa-solid fa-floppy-disk"></i> Guardar cambios</button>
+        </div>
+      </form>
+    </dialog>
+    <script src="js/app.js"></script>
+    <script src="js/convocatorias-admin.js"></script>
+  </body>
+</html>

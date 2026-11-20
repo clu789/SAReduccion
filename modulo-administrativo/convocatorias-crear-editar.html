@@ -5,343 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Convocatorias | SAReduccion - ITToluca</title>
 
-    <!-- Bootstrap y FontAwesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
 
-    <!-- Hojas de estilo del módulo administrativo -->
     <link rel="stylesheet" href="css/itt-base.css">
     <link rel="stylesheet" href="css/administrativo.css">
-
-    <style>
-        :root {
-            --itt-blue-primary: #337ab7;
-            --itt-blue-dark: #286090;
-            --itt-blue-light: #eaf4fc;
-            --itt-bg-gray: #efefef;
-            --itt-border-gray: #dcdcdc;
-            --itt-text-muted: #6c757d;
-        }
-
-        body {
-            background-color: var(--itt-bg-gray);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #333333;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Contenedor principal centrado estilo compañeros */
-        .main-wrapper {
-            max-width: 1140px;
-            margin: 0 auto;
-            width: 100%;
-            flex: 1;
-            padding: 0 15px;
-        }
-
-        /* Banner superior institucional */
-        .top-banner-box {
-            background-color: #ffffff;
-            border-radius: 0 0 4px 4px;
-            padding: 12px 20px;
-            margin-bottom: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            text-align: center;
-        }
-
-        /* Barra blanca de navegación por pestañas */
-        .nav-bar-white {
-            background-color: #ffffff;
-            border: 1px solid var(--itt-border-gray);
-            border-bottom: 2px solid var(--itt-blue-primary);
-            border-radius: 4px;
-            padding: 0 16px;
-            margin-bottom: 22px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            min-height: 48px;
-        }
-
-        .nav-tabs-custom {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin-bottom: -2px;
-        }
-
-        .nav-tab-link {
-            padding: 12px 18px;
-            text-decoration: none;
-            color: #555555;
-            font-size: 0.92rem;
-            font-weight: 500;
-            border-bottom: 3px solid transparent;
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            transition: all 0.15s ease;
-        }
-
-        .nav-tab-link:hover {
-            color: var(--itt-blue-primary);
-            background-color: #f8fbff;
-        }
-
-        .nav-tab-link.active {
-            background-color: var(--itt-blue-light);
-            color: var(--itt-blue-primary);
-            font-weight: 600;
-            border-bottom: 3px solid var(--itt-blue-primary);
-        }
-
-        .user-info-bar {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            font-size: 0.88rem;
-            color: #666666;
-            padding: 6px 0;
-        }
-
-        .btn-salir-top {
-            background-color: #f8f9fa;
-            border: 1px solid #ced4da;
-            color: #495057;
-            font-size: 0.85rem;
-            padding: 4px 12px;
-            border-radius: 4px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-salir-top:hover {
-            background-color: #e9ecef;
-            color: #212529;
-        }
-
-        /* Título de página estilo compañeros */
-        .page-title-itt {
-            color: var(--itt-blue-primary);
-            font-weight: 700;
-            font-size: 1.55rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 4px;
-        }
-
-        .page-subtitle-itt {
-            color: #666666;
-            font-size: 0.92rem;
-            margin-bottom: 20px;
-        }
-
-        /* Paneles con cabecera azul #337ab7 */
-        .panel-itt-card {
-            background-color: #ffffff;
-            border: 1px solid #cfd8e3;
-            border-radius: 6px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-            margin-bottom: 24px;
-            overflow: hidden;
-        }
-
-        .panel-itt-header {
-            background-color: var(--itt-blue-primary);
-            color: #ffffff !important;
-            padding: 11px 18px;
-            font-weight: 700;
-            font-size: 0.98rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .panel-itt-header span,
-        .panel-itt-header i {
-            color: #ffffff !important;
-        }
-
-        .panel-itt-body {
-            padding: 20px;
-        }
-
-        /* Caja interna con borde suave (como "Configurar por convocatoria") */
-        .inner-fieldset-box {
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 18px;
-            background-color: #ffffff;
-        }
-
-        .inner-box-title {
-            color: var(--itt-blue-primary);
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 3px;
-        }
-
-        .inner-box-subtitle {
-            color: #777777;
-            font-size: 0.85rem;
-            margin-bottom: 14px;
-        }
-
-        /* Alerta azul claro con borde izquierdo azul */
-        .info-callout-itt {
-            background-color: #edf6fd;
-            border-left: 4px solid var(--itt-blue-primary);
-            color: #2b547e;
-            padding: 10px 14px;
-            border-radius: 0 4px 4px 0;
-            font-size: 0.87rem;
-            margin-bottom: 18px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Etiquetas de formulario en azul */
-        .form-label-itt {
-            color: var(--itt-blue-primary);
-            font-weight: 600;
-            font-size: 0.88rem;
-            margin-bottom: 6px;
-            display: block;
-        }
-
-        .form-control,
-        .form-select {
-            border-color: #ced4da;
-            font-size: 0.9rem;
-            padding: 8px 12px;
-            border-radius: 4px;
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            border-color: var(--itt-blue-primary);
-            box-shadow: 0 0 0 0.2rem rgba(51, 122, 183, 0.18);
-        }
-
-        .help-caption-itt {
-            color: #666666;
-            font-size: 0.8rem;
-            margin-top: 5px;
-        }
-
-        /* Botones con el mismo estilo de "Filtrar" y "Limpiar" */
-        .btn-blue-itt {
-            background-color: var(--itt-blue-primary);
-            border: 1px solid var(--itt-blue-dark);
-            color: #ffffff;
-            font-weight: 600;
-            font-size: 0.9rem;
-            padding: 7px 16px;
-            border-radius: 4px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-blue-itt:hover {
-            background-color: var(--itt-blue-dark);
-            color: #ffffff;
-        }
-
-        .btn-gray-itt {
-            background-color: #f1f3f5;
-            border: 1px solid #ced4da;
-            color: #333333;
-            font-weight: 600;
-            font-size: 0.9rem;
-            padding: 7px 16px;
-            border-radius: 4px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-gray-itt:hover {
-            background-color: #e2e6ea;
-            color: #212529;
-        }
-
-        /* Botones conmutadores Crear / Administrar */
-        .mode-switch-group .btn {
-            font-size: 0.88rem;
-            font-weight: 600;
-            padding: 6px 14px;
-        }
-
-        .btn-mode-active {
-            background-color: var(--itt-blue-primary);
-            color: #ffffff;
-            border: 1px solid var(--itt-blue-dark);
-        }
-
-        .btn-mode-inactive {
-            background-color: #ffffff;
-            color: var(--itt-blue-primary);
-            border: 1px solid var(--itt-blue-primary);
-        }
-
-        /* Pie de página azul institucional */
-        .footer-blue-itt {
-            background-color: var(--itt-blue-primary);
-            color: #ffffff;
-            text-align: center;
-            padding: 20px 15px;
-            margin-top: 30px;
-            font-size: 0.85rem;
-        }
-
-        .footer-blue-itt p {
-            margin: 2px 0;
-            color: #ffffff !important;
-        }
-
-        /* Navegación de convocatorias alineada a la derecha */
-        .mode-switch-group {
-            margin-left: auto;
-            white-space: nowrap;
-        }
-
-        /* Evitar que el botón de historial pierda su estilo */
-        .mode-switch-group .btn:disabled {
-            opacity: 0.65;
-            background-color: #ffffff;
-            color: #337ab7;
-            border-color: #337ab7;
-            cursor: not-allowed;
-        }
-
-        /* Adaptación para pantallas pequeñas */
-        @media (max-width: 767px) {
-            .mode-switch-group {
-                margin-left: auto;
-                max-width: 100%;
-                flex-wrap: wrap;
-                white-space: normal;
-            }
-        }
-
-    </style>
+    <link rel="stylesheet" href="css/convocatorias.css">
 </head>
 <body id="pagina-convocatorias-admin">
     <div class="main-wrapper">
-        <!-- BANNER SUPERIOR INSTITUCIONAL -->
         <div class="top-banner-box">
-            <img src="img/header.png" alt="Tecnológico Nacional de México - Instituto Tecnológico de Toluca" class="img-fluid" style="max-height: 75px;" onerror="this.style.display='none'">
+            <img src="img/header.png" alt="Tecnológico Nacional de México - Instituto Tecnológico de Toluca" class="img-fluid institutional-header-image" onerror="this.style.display='none'">
         </div>
 
-        <!-- BARRA DE PESTAÑAS Y USUARIO (Idéntica a la captura de tus compañeros) -->
         <div class="nav-bar-white">
             <div class="nav-tabs-custom">
                 <a href="panel-admin.html" class="nav-tab-link">
@@ -362,9 +38,8 @@
             </div>
         </div>
 
-        <!-- ENCABEZADO Y NAVEGACIÓN ENTRE PANTALLAS -->
-        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-            <div>
+        <div class="convocatorias-page-header">
+            <div class="convocatorias-page-heading">
                 <h2 class="page-title-itt">
                     <i class="fa-regular fa-calendar-check"></i> Convocatorias
                 </h2>
@@ -374,7 +49,7 @@
                 </p>
             </div>
 
-            <div class="btn-group mode-switch-group ms-auto flex-shrink-0"
+            <div class="btn-group mode-switch-group"
                 role="group"
                 aria-label="Navegación de convocatorias">
 
@@ -403,13 +78,12 @@
 
         </div>
 
-        <!-- TARJETA PRINCIPAL CON CABECERA AZUL #337ab7 -->
         <div class="panel-itt-card">
             <div class="panel-itt-header">
                 <span>
                     <i class="fa-solid fa-calendar-plus me-2"></i> Crear nueva convocatoria
                 </span>
-                <span class="badge bg-light text-dark fw-semibold" style="color: #286090 !important;">
+                <span class="badge bg-light text-dark fw-semibold badge-mode-itt">
                     Modo: Crear convocatoria
                 </span>
             </div>
@@ -423,7 +97,6 @@
                         Define el periodo, año académico, las cuatro fechas por día calendario y los montos iniciales de reducción.
                     </div>
 
-                    <!-- Aviso con barra izquierda azul (Idéntico a la captura) -->
                     <div class="info-callout-itt">
                         <i class="fa-solid fa-circle-info"></i>
                         <span>
@@ -432,7 +105,6 @@
                     </div>
 
                     <form id="formConvocatoria" novalidate>
-                        <!-- FILA 1: PERIODO Y AÑO ACADÉMICO -->
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
                                 <label for="periodo" class="form-label-itt">Periodo académico</label>
@@ -461,7 +133,6 @@
                             </div>
                         </div>
 
-                        <!-- FILA 2: LAS CUATRO FECHAS DE LA CONVOCATORIA -->
                         <div class="row g-3 mb-3">
                             <div class="col-md-6 col-lg-3">
                                 <label for="fechaInicio" class="form-label-itt">Inicio de solicitudes</label>
@@ -488,7 +159,6 @@
                             </div>
                         </div>
 
-                        <!-- FILA 3: MONTOS DE REDUCCIÓN (Mismo formato de la captura 1) -->
                         <div class="row g-3 mb-3" id="filaMontosIniciales">
                             <div class="col-md-6">
                                 <label for="montoInterno" class="form-label-itt">Personal interno</label>
@@ -509,10 +179,8 @@
                             </div>
                         </div>
 
-                        <!-- Contenedor de alertas de validación -->
                         <div id="alertaValidacion" class="alert d-none mt-3 mb-2" role="alert"></div>
 
-                        <!-- Botones inferiores estilo "Filtrar / Limpiar" -->
                         <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
                             <button type="reset" class="btn-gray-itt" onclick="ocultarAlerta()">
                                 <i class="fa-solid fa-eraser"></i> Limpiar
@@ -527,7 +195,6 @@
         </div>
     </div>
 
-    <!-- PIE DE PÁGINA AZUL INSTITUCIONAL (Idéntico a la captura 1) -->
     <footer class="footer-blue-itt">
         <p class="fw-semibold">&copy; 2026 Instituto Tecnológico de Toluca &middot; Tecnológico Nacional de México</p>
         <p class="small opacity-75">Subdirección Académica &middot; Sistema de Reducción de Monto de Inscripción</p>
@@ -572,7 +239,6 @@
 
             if (btnGuardar.disabled) return;
 
-            // Obtener valores del formulario.
             const periodoTexto = document.getElementById('periodo').value;
             const anioTexto = document.getElementById('anio').value.trim();
             const fechaInicio = document.getElementById('fechaInicio').value;
@@ -667,7 +333,7 @@
                 montoHomologado
             };
 
-            // 8. Enviar la solicitud real.
+            // 8. Enviar la solicitud.
             btnGuardar.disabled = true;
             btnGuardar.textContent = 'Guardando convocatoria...';
             let errorSesionInvalida = false;

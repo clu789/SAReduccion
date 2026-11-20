@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -157,6 +158,54 @@ public class ConvocatoriaGestionController {
                 .body(respuesta);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> actualizarConvocatoria(
+            @PathVariable("id") Long idConvocatoria,
+            @RequestBody(required = false) ActualizarConvocatoriaRequest body,
+            @RequestHeader(
+                    value = SessionAttributes.CSRF_HEADER,
+                    required = false) String csrfHeader,
+            HttpServletRequest request) {
+
+        HttpSession session = request.getSession(false);
+
+        if (!SessionAttributes.validCsrf(session, csrfHeader)) {
+            return error(HttpStatus.FORBIDDEN, "Token de seguridad invalido.");
+        }
+
+        SessionPrincipal principal = SessionAttributes.principal(session);
+        if (principal == null || principal.getRole() != AuthRole.ADMIN) {
+            return error(HttpStatus.UNAUTHORIZED, "Acceso no autorizado.");
+        }
+
+        if (idConvocatoria == null || idConvocatoria <= 0) {
+            return error(HttpStatus.BAD_REQUEST,
+                    "El identificador de la convocatoria no es valido.");
+        }
+        if (body == null) {
+            return error(HttpStatus.BAD_REQUEST,
+                    "Debe proporcionar los datos de la convocatoria.");
+        }
+
+        Map<String, Object> resultado = service.actualizarConvocatoria(
+                principal.getIdentity(),
+                idConvocatoria,
+                body.getFechaInicio(),
+                body.getFechaFin(),
+                body.getFechaLimiteAutorizacion(),
+                body.getFechaLimiteAplicacion(),
+                body.getMontoTrabajador(),
+                body.getMontoHomologado());
+
+        Map<String, Object> respuesta = new LinkedHashMap<String, Object>();
+        respuesta.put("mensaje", Boolean.TRUE.equals(resultado.get("huboCambios"))
+                ? "Convocatoria actualizada correctamente."
+                : "No se detectaron cambios en la convocatoria.");
+        respuesta.put("idConvocatoria", idConvocatoria);
+        respuesta.putAll(resultado);
+        return ResponseEntity.ok(respuesta);
+    }
+
     @ExceptionHandler(ReglaNegocioException.class)
     public ResponseEntity<?> manejarReglaNegocio(
             ReglaNegocioException exception) {
@@ -263,4 +312,27 @@ public class ConvocatoriaGestionController {
             this.montoHomologado = montoHomologado;
         }
     }
+
+    public static class ActualizarConvocatoriaRequest {
+        private LocalDate fechaInicio;
+        private LocalDate fechaFin;
+        private LocalDate fechaLimiteAutorizacion;
+        private LocalDate fechaLimiteAplicacion;
+        private BigDecimal montoTrabajador;
+        private BigDecimal montoHomologado;
+
+        public LocalDate getFechaInicio() { return fechaInicio; }
+        public void setFechaInicio(LocalDate value) { this.fechaInicio = value; }
+        public LocalDate getFechaFin() { return fechaFin; }
+        public void setFechaFin(LocalDate value) { this.fechaFin = value; }
+        public LocalDate getFechaLimiteAutorizacion() { return fechaLimiteAutorizacion; }
+        public void setFechaLimiteAutorizacion(LocalDate value) { this.fechaLimiteAutorizacion = value; }
+        public LocalDate getFechaLimiteAplicacion() { return fechaLimiteAplicacion; }
+        public void setFechaLimiteAplicacion(LocalDate value) { this.fechaLimiteAplicacion = value; }
+        public BigDecimal getMontoTrabajador() { return montoTrabajador; }
+        public void setMontoTrabajador(BigDecimal value) { this.montoTrabajador = value; }
+        public BigDecimal getMontoHomologado() { return montoHomologado; }
+        public void setMontoHomologado(BigDecimal value) { this.montoHomologado = value; }
+    }
+
 }
