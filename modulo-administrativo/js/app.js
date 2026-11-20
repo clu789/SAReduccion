@@ -655,6 +655,7 @@ const PanelAdmin = {
 
   renderDetalle(solicitud) {
     this._solicitudActual = solicitud;
+    document.getElementById('comentario-correccion').value = '';
     const aviso = document.getElementById('form-notificacion');
     aviso.reset();
     aviso.querySelector('[role="status"]').textContent = '';
@@ -746,6 +747,80 @@ const PanelAdmin = {
   },
 
   /* ── Muestra u oculta botones según el estatus de la solicitud ── */
+  aprobar() { this.prepararCorreo('Autorizado', 'ejecutarAprobacion'); },
+  reautorizar() { this.prepararCorreo('Autorizado', 'ejecutarReautorizacion'); },
+  solicitarCorreccion() { this.prepararCorreo('Rechazado', 'ejecutarRechazo'); },
+  cancelarDeduccion() { this.prepararCorreo('Cancelado', 'ejecutarCancelacion'); },
+  aplicarDeduccion() { this.prepararCorreo('Aplicado', 'ejecutarAplicacion'); },
+
+  prepararCorreo(estado, accion) {
+    if (!this._solicitudActual) return;
+    this._decisionCorreo = { estado, accion };
+    const obligatorio = estado === 'Rechazado';
+    const casilla = document.getElementById('agregar-comentario');
+    casilla.checked = obligatorio;
+    casilla.disabled = obligatorio;
+    document.getElementById('titulo-decision-correo').textContent =
+      estado === 'Aplicado' ? 'Aplicar deducción · cambio definitivo' : 'Confirmar ' + estado.toLowerCase();
+    document.getElementById('editor-decision-correo').hidden = false;
+    document.querySelector('.decision-acciones').hidden = true;
+    this.alternarComentario();
+    document.getElementById('editor-decision-correo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  alternarComentario() {
+    const mostrar = document.getElementById('agregar-comentario').checked;
+    const campo = document.getElementById('comentario-correccion');
+    document.getElementById('grupo-comentario').hidden = !mostrar;
+    document.getElementById('grupo-comentario').style.display = mostrar ? '' : 'none';
+    campo.required = this._decisionCorreo?.estado === 'Rechazado';
+    if (!mostrar) campo.value = '';
+    this.actualizarVistaCorreo();
+  },
+
+  cerrarEditorCorreo() {
+    this._decisionCorreo = null;
+    document.getElementById('editor-decision-correo').hidden = true;
+    document.querySelector('.decision-acciones').hidden = false;
+    document.getElementById('comentario-correccion').value = '';
+  },
+
+  async confirmarDecisionCorreo() {
+    const decision = this._decisionCorreo;
+    if (!decision) return;
+    const comentario = document.getElementById('comentario-correccion');
+    if (decision.estado === 'Rechazado' && !comentario.value.trim()) {
+      comentario.setCustomValidity('Indique el motivo del rechazo.');
+      comentario.reportValidity();
+      comentario.setCustomValidity('');
+      return;
+    }
+    const boton = document.getElementById('confirmar-decision-correo');
+    boton.disabled = true;
+    try {
+      await this[decision.accion]();
+    } finally {
+      boton.disabled = false;
+    }
+  },
+
+  actualizarVistaCorreo() {
+    const estado = this._decisionCorreo?.estado || 'Autorizado';
+    const textos = {
+      Autorizado: 'Tu solicitud fue aprobada.',
+      Rechazado: 'Tu solicitud fue rechazada.',
+      Aplicado: 'La deducción de tu solicitud fue aplicada.',
+      Cancelado: 'La deducción de tu solicitud fue cancelada.',
+    };
+    const comentario = document.getElementById('comentario-correccion').value.trim();
+    document.getElementById('correo-asunto').textContent =
+      'Solicitud ' + this._solicitudActual.idSolicitud;
+    document.getElementById('correo-estado').textContent = estado;
+    document.getElementById('correo-texto').textContent = textos[estado];
+    document.getElementById('correo-comentario').textContent = comentario;
+    document.getElementById('correo-comentario-bloque').hidden = !comentario;
+  },
+
   ajustarAcciones(solicitud) {
     const botones = {
       aprobar:     document.getElementById('btn-aprobar'),
@@ -758,6 +833,7 @@ const PanelAdmin = {
     const grupoMonto = document.getElementById('grupo-monto');
     const areaDecision = document.getElementById('area-decision');
 
+    this.cerrarEditorCorreo();
     const esPendiente  = solicitud.estatus === 'PENDIENTE';
     const esCancelado  = solicitud.estatus === 'CANCELADO';
     const esAutorizado = solicitud.estatus === 'AUTORIZADO' && solicitud.deduccion;
@@ -775,16 +851,16 @@ const PanelAdmin = {
     if (esPendiente) {
       if (botones.aprobar)  botones.aprobar.style.display = '';
       if (botones.rechazar) botones.rechazar.style.display = '';
-      if (grupoComentario)  grupoComentario.style.display = '';
+
     }
     if (esCancelado) {
       if (botones.reautorizar) botones.reautorizar.style.display = '';
-      if (grupoComentario)     grupoComentario.style.display = '';
+
     }
     if (esAutorizado) {
       if (botones.cancelar) botones.cancelar.style.display = '';
       if (botones.aplicar)  botones.aplicar.style.display = '';
-      if (grupoComentario)  grupoComentario.style.display = '';
+
     }
   },
 
@@ -803,14 +879,14 @@ const PanelAdmin = {
      Ambas pegan al mismo endpoint /aprobar: es la misma operación de BD
      (autorizar_deduccion), solo cambia el texto mostrado en el panel.
      El comentario es opcional para estas dos operaciones. ── */
-  async aprobar() {
+  async ejecutarAprobacion() {
     return this._autorizarComun(
       '¿Confirma la aprobación de esta solicitud? Se autorizará la deducción.',
       'Solicitud aprobada correctamente.'
     );
   },
 
-  async reautorizar() {
+  async ejecutarReautorizacion() {
     return this._autorizarComun(
       '¿Confirma reautorizar la deducción de esta solicitud cancelada?',
       'Deducción reautorizada correctamente.'
@@ -826,7 +902,7 @@ const PanelAdmin = {
     }
     // El comentario es opcional al aprobar o reautorizar; solo rechazar lo exige.
     const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
-    if (!await Modal.confirmar(mensajeConfirm)) return;
+
 
     const idActual = this._solicitudActual.idSolicitud;
     const esEstudiante = this._solicitudActual.tipoSolicitante === 'ESTUDIANTE';
@@ -850,7 +926,7 @@ const PanelAdmin = {
   },
 
   /* ── Decisión: Rechazar / solicitar corrección ── */
-  async solicitarCorreccion() {
+  async ejecutarRechazo() {
     if (!this._solicitudActual) return;
     const comentario = document.getElementById('comentario-correccion')?.value?.trim();
     if (!comentario) {
@@ -875,10 +951,10 @@ const PanelAdmin = {
 
   /* ── Decisión: Cancelar deducción de una solicitud AUTORIZADA ──
      El comentario es opcional; si se escribe, se guarda en el historial. ── */
-  async cancelarDeduccion() {
+  async ejecutarCancelacion() {
     if (!this._solicitudActual || !this._solicitudActual.deduccion) return;
     const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
-    if (!await Modal.confirmar('¿Confirma cancelar la deducción autorizada? La solicitud pasará a CANCELADO.')) return;
+
 
     const idDeduccion = this._solicitudActual.deduccion.idDeduccion;
     Spinner.show();
@@ -896,15 +972,17 @@ const PanelAdmin = {
   },
 
   /* ── Decisión: Aplicar una deducción autorizada (estado definitivo) ──
-     No exige comentario: aplicar_deduccion no lo recibe en la BD. ── */
-  async aplicarDeduccion() {
+     El comentario opcional se incluye en el aviso por correo. ── */
+  async ejecutarAplicacion() {
     if (!this._solicitudActual || !this._solicitudActual.deduccion) return;
-    if (!await Modal.confirmar('¿Confirma aplicar esta deducción? La solicitud pasará a APLICADO y no podrá modificarse.')) return;
+
 
     const idDeduccion = this._solicitudActual.deduccion.idDeduccion;
     Spinner.show();
     try {
-      await Http.put(`/deducciones/${idDeduccion}/aplicar`, {});
+      await Http.put(`/deducciones/${idDeduccion}/aplicar`, {
+        comentario: document.getElementById('comentario-correccion')?.value?.trim() || null,
+      });
       this.cerrarDetalle();
       Alerta.mostrar('alerta-bandeja', 'exito', 'Deducción aplicada correctamente.', 4000);
       await this.cargarSolicitudes();

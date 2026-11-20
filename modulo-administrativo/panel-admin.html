@@ -242,21 +242,6 @@
             </select>
           </div>
 
-          <!-- Comentario para corrección -->
-          <div class="form-group" id="grupo-comentario">
-            <label for="comentario-correccion">
-              Comentario para el solicitante
-              <span style="font-weight:400;color:var(--itt-texto-claro);">(opcional; obligatorio solo al rechazar)</span>
-            </label>
-            <textarea
-              id="comentario-correccion"
-              name="comentario_correccion"
-              class="form-control-itt"
-              rows="3"
-              placeholder="Indique al solicitante qué debe corregir o el motivo de la cancelación..."
-            ></textarea>
-          </div>
-
           <div class="decision-acciones">
             <button type="button" id="btn-aprobar" class="btn-aprobar" onclick="PanelAdmin.aprobar()">
               <i class="fa fa-check"></i> Aprobar Solicitud
@@ -275,6 +260,41 @@
             </button>
           </div>
         </div>
+          <section id="editor-decision-correo" hidden aria-label="Confirmar decisión y correo">
+            <h4 id="titulo-decision-correo"></h4>
+            <label><input type="checkbox" id="agregar-comentario" onchange="PanelAdmin.alternarComentario()"> Agregar comentario</label>
+          <div class="form-group" id="grupo-comentario" hidden>
+            <label for="comentario-correccion">
+              Comentario para el solicitante
+              <span style="font-weight:400;color:var(--itt-texto-claro);">(opcional; obligatorio solo al rechazar)</span>
+            </label>
+            <textarea
+              id="comentario-correccion"
+              name="comentario_correccion"
+              class="form-control-itt"
+              rows="3"
+              maxlength="2000"
+              oninput="PanelAdmin.actualizarVistaCorreo()"
+              placeholder="Escriba el comentario que recibirá el solicitante..."
+            ></textarea>
+          </div>
+
+          <div style="margin:12px 0">
+            <p>Vista previa del correo que recibirá el solicitante</p>
+            <article style="border:1px solid #dce5ed;border-radius:8px;overflow:hidden">
+              <header style="background:#193b65;color:white;padding:18px"><b>SAReducción</b><br>Instituto Tecnológico de Toluca</header>
+              <div style="padding:20px">
+                <p id="correo-asunto"></p><h3 id="correo-estado"></h3><p id="correo-texto"></p>
+                <section id="correo-comentario-bloque" style="background:#f2f6fa;padding:16px;border-left:4px solid #315e8c">
+                  <b>Comentario del administrador</b><p id="correo-comentario" style="white-space:pre-wrap"></p>
+                </section>
+                <p>Consulta el estado y los detalles en el portal de SAReduccion.</p>
+              </div>
+            </article>
+          </div>
+            <button type="button" class="btn-aprobar" id="confirmar-decision-correo" onclick="PanelAdmin.confirmarDecisionCorreo()">Confirmar y enviar</button>
+            <button type="button" class="btn-itt btn-secundario" onclick="PanelAdmin.cerrarEditorCorreo()">Volver</button>
+          </section>
         <form id="form-notificacion" onsubmit="Notificaciones.enviarManual(event)">
           <div class="form-grupo">
             <label for="mensaje-notificacion">Aviso por correo</label>

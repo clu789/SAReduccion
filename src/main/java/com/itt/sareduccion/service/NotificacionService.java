@@ -7,6 +7,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.web.util.HtmlUtils;
+import javax.mail.MessagingException;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.util.StreamUtils;
+import java.nio.charset.StandardCharsets;
+import java.io.IOException;
+import java.io.InputStream;
+import javax.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -21,18 +30,25 @@ public class NotificacionService {
     private final AdministradorRepository administradorRepository;
     private final ObjectProvider<JavaMailSender> mailSender;
     private final String remitente;
+    private final String plantilla;
 
     public NotificacionService(AdministradorRepository administradorRepository, ObjectProvider<JavaMailSender> mailSender,
             @Value("${SAR_MAIL_FROM:}") String remitente) {
         this.administradorRepository = administradorRepository;
         this.mailSender = mailSender;
         this.remitente = remitente;
+        try (InputStream archivo = new ClassPathResource("mail/aviso-tramite.html").getInputStream()) {
+            this.plantilla = StreamUtils.copyToString(archivo, StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            throw new IllegalStateException("No se pudo cargar la plantilla de notificaciones", ex);
+        }
     }
 
     public enum Evento {
         APROBACION("Tu solicitud fue aprobada."),
         RECHAZO("Tu solicitud fue rechazada."),
-        CANCELACION("La deducción de tu solicitud fue cancelada.");
+        CANCELACION("La deducción de tu solicitud fue cancelada."),
+        APLICACION("La deducción de tu solicitud fue aplicada.");
 
         private final String texto;
 
@@ -43,6 +59,10 @@ public class NotificacionService {
 
     /** El repositorio ya confirmó el cambio de estado antes de enviar el aviso. */
     public void avisarCambio(String idAdministrador, long idSolicitud, Evento evento) {
+        avisarCambio(idAdministrador, idSolicitud, evento, null);
+    }
+
+    public void avisarCambio(String idAdministrador, long idSolicitud, Evento evento, String comentario) {
         String destinatario;
         try {
             destinatario = administradorRepository.consultarCorreoSolicitud(idAdministrador, idSolicitud);
@@ -54,8 +74,50 @@ public class NotificacionService {
             LOG.info("Aviso {} omitido para solicitud {} sin correo", evento, idSolicitud);
             return;
         }
-        enviar(idSolicitud, destinatario, evento.texto
-                + "\n\nConsulta el estado y los detalles en el portal de SAReduccion.");
+        enviarPlantilla(idSolicitud, destinatario, evento, comentario);
+    }
+
+    public boolean enviarPlantilla(long idSolicitud, String destinatario, Evento evento, String comentario) {
+        JavaMailSender sender = mailSender.getIfAvailable();
+        if (sender == null || !StringUtils.hasText(remitente)) {
+            LOG.warn("Correo sin configurar para solicitud {}", idSolicitud);
+            return false;
+        }
+        String estado;
+        switch (evento) {
+            case APROBACION: estado = "Autorizado"; break;
+            case RECHAZO: estado = "Rechazado"; break;
+            case APLICACION: estado = "Aplicado"; break;
+            default: estado = "Cancelado";
+        }
+        String observacion = StringUtils.hasText(comentario) ? comentario.trim() : "";
+        String texto = evento.texto + (observacion.isEmpty() ? "" : "\n\nComentario del administrador\n" + observacion)
+                + "\n\nConsulta el estado y los detalles en el portal de SAReduccion.";
+        String color = evento == Evento.RECHAZO ? "#a32f35" : "#17665e";
+        String bloqueComentario = observacion.isEmpty() ? "" :
+                "<div style='padding:18px;background:#f2f6fa;border-left:4px solid #315e8c'>"
+                + "<b>Comentario del administrador</b><p style='line-height:1.6'>"
+                + HtmlUtils.htmlEscape(observacion).replace("\r\n", "\n").replace("\n", "<br>")
+                + "</p></div>";
+        String html = plantilla.replace("{{solicitud}}", Long.toString(idSolicitud))
+                .replace("{{estado}}", estado)
+                .replace("{{color}}", color)
+                .replace("{{mensaje}}", HtmlUtils.htmlEscape(evento.texto))
+                .replace("{{comentario}}", bloqueComentario);
+        try {
+            MimeMessage correo = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(correo, true, "UTF-8");
+            helper.setFrom(remitente);
+            helper.setTo(destinatario);
+            helper.setSubject("SAReducción | " + estado + " | Solicitud " + idSolicitud);
+            helper.setText(texto, html);
+            sender.send(correo);
+            LOG.info("Aviso {} aceptado por SMTP para solicitud {}", estado, idSolicitud);
+            return true;
+        } catch (MessagingException | MailException ex) {
+            LOG.warn("Falló el aviso para solicitud {} ({})", idSolicitud, ex.getClass().getSimpleName());
+            return false;
+        }
     }
 
     public boolean enviar(long idSolicitud, String destinatario, String mensaje) {

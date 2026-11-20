@@ -260,6 +260,7 @@ public class SolicitudAdminController {
 
     @PutMapping("/deducciones/{id}/aplicar")
     public ResponseEntity<?> aplicarDeduccion(@PathVariable("id") long id,
+            @RequestBody(required = false) ComentarioRequest body,
             @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletRequest request) {
         HttpSession session = request.getSession(false);
@@ -270,7 +271,7 @@ public class SolicitudAdminController {
         if (principal == null) {
             return noAutorizado();
         }
-        solicitudAdminService.aplicarDeduccion(principal.getIdentity(), id);
+        solicitudAdminService.aplicarDeduccion(principal.getIdentity(), id, body == null ? null : body.getComentario());
         return ResponseEntity.ok(mensaje("Deduccion aplicada correctamente."));
     }
 

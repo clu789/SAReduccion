@@ -221,7 +221,7 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aprobar la solicitud");
         }
-        notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.APROBACION);
+        notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.APROBACION, motivo);
     }
 
     public void rechazar(String idAdministrador, long idSolicitud, String comentario) {
@@ -233,7 +233,7 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo rechazar la solicitud");
         }
-        notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.RECHAZO);
+        notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.RECHAZO, comentario);
     }
 
     /**
@@ -261,11 +261,15 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo cancelar la deduccion");
         }
-        notificacionService.avisarCambio(idAdministrador, deduccion.getIdSolicitud(), NotificacionService.Evento.CANCELACION);
+        notificacionService.avisarCambio(idAdministrador, deduccion.getIdSolicitud(), NotificacionService.Evento.CANCELACION, motivo);
     }
 
     /** Aplica una deduccion autorizada: estado definitivo e inmutable. */
     public void aplicarDeduccion(String idAdministrador, long idDeduccion) {
+        aplicarDeduccion(idAdministrador, idDeduccion, null);
+    }
+
+    public void aplicarDeduccion(String idAdministrador, long idDeduccion, String comentario) {
         DeduccionAdmin deduccion = null;
         for (DeduccionAdmin candidata : administradorRepository.listarDeducciones(idAdministrador)) {
             if (candidata.getIdDeduccion() != null && candidata.getIdDeduccion().longValue() == idDeduccion) {
@@ -285,6 +289,8 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aplicar la deduccion");
         }
+        notificacionService.avisarCambio(idAdministrador, deduccion.getIdSolicitud(),
+                NotificacionService.Evento.APLICACION, comentario);
     }
 
     public List<DeduccionAdmin> listarDeducciones(String idAdministrador, Integer estatus) {

@@ -101,3 +101,32 @@ document.addEventListener('DOMContentLoaded', () => {
 - El detalle devuelve `historial` vacío: falta el procedimiento de consulta en la base de datos.
 
 El backend también envía avisos automáticos al aprobar (incluida la reautorización), rechazar o cancelar una deducción. El cambio de estado se confirma en Oracle antes de consultar el destinatario y enviar el correo. Las incidencias de correo se registran sin revertir la decisión administrativa.
+
+## Decisiones y plantillas de correo del equipo 6
+
+Al elegir Aprobar, Reautorizar, Rechazar, Cancelar o Aplicar, el panel prepara
+automáticamente la plantilla correspondiente. Antes de registrar la decisión,
+muestra la vista previa y el botón Confirmar y enviar. Agregar comentario
+permite incluir una observación opcional en el mismo correo. Para rechazar,
+el comentario es obligatorio. Volver permite elegir otra acción.
+
+La plantilla editable está en
+src/main/resources/mail/aviso-tramite.html. El servicio sustituye el estado,
+el número de solicitud, el mensaje del evento y el comentario. Los comentarios
+se escapan como HTML. Cada mensaje también contiene una alternativa de texto
+simple. Al omitir el comentario, su bloque desaparece del correo.
+
+Los avisos de Autorizado, Rechazado, Aplicado y Cancelado se disparan después
+de confirmar la operación en Oracle. El correo de Aplicado admite comentario
+mediante el cuerpo opcional de PUT /api/deducciones/{id}/aplicar. Este comentario
+se envía por correo, pero el procedimiento actual de aplicación no lo almacena
+en el historial de Oracle. Los otros comentarios mantienen el guardado previo.
+
+La vista previa no envía correo ni registra la decisión. Confirmar y enviar
+ejecuta la acción. El envío SMTP conserva su comportamiento de tolerancia a
+fallos: el cambio de estado permanece guardado si falla el aviso automático.
+El mensaje de éxito confirma la decisión administrativa. La recepción del aviso
+se comprueba en Mailpit o en los registros SMTP.
+
+Para validar las plantillas y el endpoint manual:
+mvn -Dtest=NotificacionServiceTest,NotificacionControllerTest test
