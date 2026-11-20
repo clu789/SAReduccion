@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
 | `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud; exige comentario |
 | `PUT`  | `/api/solicitudes/{id}/correccion` | Devolver a corrección; hoy comparte la transición del rechazo |
 | `PUT`  | `/api/deducciones/{id}/cancelar` | Cancelar una deducción autorizada; el comentario es opcional |
-| `POST` | `/api/notificaciones` | Envío manual de notificación (**aún no implementado**, equipo 6) |
+| `POST` | `/api/notificaciones` | Envío manual de un aviso al aspirante |
 
 ---
 
@@ -92,7 +92,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
 - El **modal de detalle** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
 - Las estadísticas se cargan automáticamente en `PanelAdmin.cargarEstadisticas()`.
-- El **Equipo 6** (notificaciones) debe implementar el servicio y el endpoint `/api/notificaciones`; el frontend solo provee `Notificaciones.enviarManual()` para casos especiales.
+- El detalle de la solicitud incluye un formulario de aviso por correo. Requiere una sesión de administrador y el token CSRF. La API recibe `idSolicitud` y `mensaje` y devuelve `204` cuando SMTP acepta el aviso.
+- Para probarlo, configura `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` y `SAR_MAIL_FROM` en el `.env` local. Si el servidor de prueba lo requiere, agrega `SMTP_AUTH=true`, `SMTP_STARTTLS_ENABLE=true`, `SPRING_MAIL_USERNAME` y `SPRING_MAIL_PASSWORD`. Usa un servidor SMTP que capture mensajes y una solicitud ficticia de aspirante.
+- Si la base ya fue inicializada, actualiza el paquete `PKG_ADMINISTRADOR` con el script `docker/init-db/05-crear-paquetes-permisos.sql` siguiendo el proceso de integración de Oracle. Docker solo ejecuta los scripts de inicialización sobre una base nueva.
+- La consulta usa el correo de `Aspirantes`. Una solicitud sin correo disponible devuelve `422`. Una falla de SMTP devuelve `503`.
 - Los filtros por chip llaman a `PanelAdmin.cargarSolicitudes(estatus)` con el estatus seleccionado.
 - El comentario es **obligatorio solo al rechazar**; es **opcional** al aprobar, reautorizar y cancelar la deducción. El monto base siempre es obligatorio en aprobar y reautorizar.
 - El detalle devuelve `historial` vacío: falta el procedimiento de consulta en la base de datos.
+
+El backend también envía avisos automáticos al aprobar (incluida la reautorización), rechazar o cancelar una deducción. El cambio de estado se confirma en Oracle antes de consultar el destinatario y enviar el correo. Las incidencias de correo se registran sin revertir la decisión administrativa.
+
+## Decisiones y plantillas de correo del equipo 6
+
+Al elegir Aprobar, Reautorizar, Rechazar, Cancelar o Aplicar, el panel prepara
+automáticamente la plantilla correspondiente. Antes de registrar la decisión,
+muestra la vista previa y el botón Confirmar y enviar. Agregar comentario
+permite incluir una observación opcional en el mismo correo. Para rechazar,
+el comentario es obligatorio. Volver permite elegir otra acción.
+
+La plantilla editable está en
+src/main/resources/mail/aviso-tramite.html. El servicio sustituye el estado,
+el número de solicitud, el mensaje del evento y el comentario. Los comentarios
+se escapan como HTML. Cada mensaje también contiene una alternativa de texto
+simple. Al omitir el comentario, su bloque desaparece del correo.
+
+Los avisos de Autorizado, Rechazado, Aplicado y Cancelado se disparan después
+de confirmar la operación en Oracle. El correo de Aplicado admite comentario
+mediante el cuerpo opcional de PUT /api/deducciones/{id}/aplicar. Este comentario
+se envía por correo, pero el procedimiento actual de aplicación no lo almacena
+en el historial de Oracle. Los otros comentarios mantienen el guardado previo.
+
+La vista previa no envía correo ni registra la decisión. Confirmar y enviar
+ejecuta la acción. El envío SMTP conserva su comportamiento de tolerancia a
+fallos: el cambio de estado permanece guardado si falla el aviso automático.
+El mensaje de éxito confirma la decisión administrativa. La recepción del aviso
+se comprueba en Mailpit o en los registros SMTP.
+
+Para validar las plantillas y el endpoint manual:
+mvn -Dtest=NotificacionServiceTest,NotificacionControllerTest test

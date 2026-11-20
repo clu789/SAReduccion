@@ -53,8 +53,12 @@ public class SolicitudAdminService {
 
     private final AdministradorRepository administradorRepository;
 
-    public SolicitudAdminService(AdministradorRepository administradorRepository) {
+    private final NotificacionService notificacionService;
+
+    public SolicitudAdminService(AdministradorRepository administradorRepository,
+            NotificacionService notificacionService) {
         this.administradorRepository = administradorRepository;
+        this.notificacionService = notificacionService;
     }
 
     public List<SolicitudAdmin> listar(String idAdministrador, Integer estatus, Long convocatoria,
@@ -217,6 +221,7 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aprobar la solicitud");
         }
+        notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.APROBACION, motivo);
     }
 
     public void rechazar(String idAdministrador, long idSolicitud, String comentario) {
@@ -228,6 +233,7 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo rechazar la solicitud");
         }
+        notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.RECHAZO, comentario);
     }
 
     /**
@@ -255,10 +261,15 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo cancelar la deduccion");
         }
+        notificacionService.avisarCambio(idAdministrador, deduccion.getIdSolicitud(), NotificacionService.Evento.CANCELACION, motivo);
     }
 
     /** Aplica una deduccion autorizada: estado definitivo e inmutable. */
     public void aplicarDeduccion(String idAdministrador, long idDeduccion) {
+        aplicarDeduccion(idAdministrador, idDeduccion, null);
+    }
+
+    public void aplicarDeduccion(String idAdministrador, long idDeduccion, String comentario) {
         DeduccionAdmin deduccion = null;
         for (DeduccionAdmin candidata : administradorRepository.listarDeducciones(idAdministrador)) {
             if (candidata.getIdDeduccion() != null && candidata.getIdDeduccion().longValue() == idDeduccion) {
@@ -278,6 +289,8 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aplicar la deduccion");
         }
+        notificacionService.avisarCambio(idAdministrador, deduccion.getIdSolicitud(),
+                NotificacionService.Evento.APLICACION, comentario);
     }
 
     public List<DeduccionAdmin> listarDeducciones(String idAdministrador, Integer estatus) {

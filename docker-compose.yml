@@ -75,6 +75,13 @@ services:
     restart: unless-stopped
 
     environment:
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-25}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SMTP_AUTH:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SMTP_STARTTLS_ENABLE:-false}
+      SAR_MAIL_FROM: ${SAR_MAIL_FROM:-}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       # El nombre oracle-db se resuelve dentro de la red de Compose.
       DB_URL: jdbc:oracle:thin:@//oracle-db:1521/${ORACLE_DATABASE:-XEPDB1}

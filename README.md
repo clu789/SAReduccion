@@ -150,3 +150,7 @@ Para consultar información más detallada del proyecto:
 - [Asignación de equipos](asignacion_Modulos.md): responsabilidades por módulo y reglas funcionales acordadas.
 - [Guía de integración de seguridad](GUIA_INTEGRACION_SEGURIDAD.md): autorización por rol, CSRF, auditoría de accesos y estándar de logs para todos los equipos.
 - [Base de datos](BaseDeDatos.md): modelo de datos, tablas, relaciones y configuración de Oracle.
+
+## Notificaciones del equipo 6
+
+Consulta la [guía de notificaciones](NOTIFICACIONES.md) para configurar SMTP y Mailpit, integrar Oracle y probar las plantillas y comentarios.
