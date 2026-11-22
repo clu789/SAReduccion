@@ -225,21 +225,6 @@ public class SolicitudAdminController {
         return resolverRechazo(id, body, csrfHeader, request);
     }
 
-    // TODO(#8 - decidir con el equipo de BD): /correccion es un alias literal de
-    // /rechazar (resolverRechazo); la BD solo tiene una transicion a RECHAZADO(3),
-    // no existe un estatus de "correccion" distinto. El frontend actual solo
-    // invoca /rechazar, nunca /correccion. Opciones:
-    //   a) Mantenerlo como alias documentado (sin cambios de comportamiento).
-    //   b) Retirar el endpoint ya que nadie lo usa hoy.
-    // Pendiente de acuerdo con el equipo de BD/producto; no se decide aqui.
-    @PutMapping("/solicitudes/{id}/correccion")
-    public ResponseEntity<?> correccion(@PathVariable("id") long id,
-            @RequestBody(required = false) ComentarioRequest body,
-            @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
-            HttpServletRequest request) {
-        return resolverRechazo(id, body, csrfHeader, request);
-    }
-
     @PutMapping("/deducciones/{id}/cancelar")
     public ResponseEntity<?> cancelarDeduccion(@PathVariable("id") long id,
             @RequestBody(required = false) ComentarioRequest body,

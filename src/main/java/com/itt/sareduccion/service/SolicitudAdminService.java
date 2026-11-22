@@ -136,44 +136,21 @@ public class SolicitudAdminService {
     }
 
     public DetalleSolicitud detalle(String idAdministrador, long idSolicitud) {
-        SolicitudAdmin solicitud = buscar(idAdministrador, idSolicitud);
-        if (solicitud == null) {
+        AdministradorRepository.DetalleSolicitudData datos;
+        try {
+            datos = administradorRepository.consultarDetalle(idAdministrador, idSolicitud);
+        } catch (DataAccessException exception) {
+            throw traducirError(exception, "No se pudo consultar el detalle de la solicitud");
+        }
+        if (datos == null) {
             throw new ReglaNegocioException("Solicitud no encontrada");
         }
-
-        List<RespuestaSolicitud> respuestas = new ArrayList<RespuestaSolicitud>();
-        for (RespuestaSolicitud respuesta : administradorRepository.listarRespuestas(idAdministrador)) {
-            if (respuesta.getIdSolicitud() != null && respuesta.getIdSolicitud().longValue() == idSolicitud) {
-                respuestas.add(respuesta);
-            }
-        }
-
-        DeduccionAdmin deduccion = null;
-        for (DeduccionAdmin candidata : administradorRepository.listarDeducciones(idAdministrador)) {
-            if (candidata.getIdSolicitud() != null && candidata.getIdSolicitud().longValue() == idSolicitud) {
-                deduccion = candidata;
-                break;
-            }
-        }
-
-        List<HistorialSolicitudAdmin> historial = new ArrayList<HistorialSolicitudAdmin>();
-        for (HistorialSolicitudAdmin item : administradorRepository.listarHistorialSolicitud(idAdministrador)) {
-            if (item.getIdSolicitud() != null && item.getIdSolicitud().longValue() == idSolicitud) {
-                historial.add(item);
-            }
-        }
-
-        List<HistorialDeduccionAdmin> historialDeduccion = new ArrayList<HistorialDeduccionAdmin>();
-        if (deduccion != null && deduccion.getIdDeduccion() != null) {
-            long idDeduccion = deduccion.getIdDeduccion().longValue();
-            for (HistorialDeduccionAdmin item : administradorRepository.listarHistorialDeduccion(idAdministrador)) {
-                if (item.getIdDeduccion() != null && item.getIdDeduccion().longValue() == idDeduccion) {
-                    historialDeduccion.add(item);
-                }
-            }
-        }
-
-        return new DetalleSolicitud(solicitud, respuestas, deduccion, historial, historialDeduccion);
+        return new DetalleSolicitud(
+                datos.getSolicitud(),
+                datos.getRespuestas(),
+                datos.getDeduccion(),
+                datos.getHistorialSolicitud(),
+                datos.getHistorialDeduccion());
     }
 
     /**
@@ -187,7 +164,12 @@ public class SolicitudAdminService {
     public void aprobar(String idAdministrador, long idSolicitud, Long idMontoInscripcion,
             Long idMontoReinscripcion, String comentario) {
         String motivo = comentario == null || comentario.trim().isEmpty() ? null : comentario.trim();
-        SolicitudAdmin solicitud = buscar(idAdministrador, idSolicitud);
+        SolicitudAdmin solicitud;
+        try {
+            solicitud = administradorRepository.buscarSolicitud(idAdministrador, idSolicitud);
+        } catch (DataAccessException exception) {
+            throw traducirError(exception, "No se pudo consultar la solicitud");
+        }
         if (solicitud == null) {
             throw new ReglaNegocioException("Solicitud no encontrada");
         }
@@ -242,12 +224,11 @@ public class SolicitudAdminService {
      */
     public void cancelarDeduccion(String idAdministrador, long idDeduccion, String comentario) {
         String motivo = comentario == null || comentario.trim().isEmpty() ? null : comentario.trim();
-        DeduccionAdmin deduccion = null;
-        for (DeduccionAdmin candidata : administradorRepository.listarDeducciones(idAdministrador)) {
-            if (candidata.getIdDeduccion() != null && candidata.getIdDeduccion().longValue() == idDeduccion) {
-                deduccion = candidata;
-                break;
-            }
+        DeduccionAdmin deduccion;
+        try {
+            deduccion = administradorRepository.buscarDeduccion(idAdministrador, idDeduccion);
+        } catch (DataAccessException exception) {
+            throw traducirError(exception, "No se pudo consultar la deduccion");
         }
         if (deduccion == null) {
             throw new ReglaNegocioException("Deduccion no encontrada");
@@ -270,12 +251,11 @@ public class SolicitudAdminService {
     }
 
     public void aplicarDeduccion(String idAdministrador, long idDeduccion, String comentario) {
-        DeduccionAdmin deduccion = null;
-        for (DeduccionAdmin candidata : administradorRepository.listarDeducciones(idAdministrador)) {
-            if (candidata.getIdDeduccion() != null && candidata.getIdDeduccion().longValue() == idDeduccion) {
-                deduccion = candidata;
-                break;
-            }
+        DeduccionAdmin deduccion;
+        try {
+            deduccion = administradorRepository.buscarDeduccion(idAdministrador, idDeduccion);
+        } catch (DataAccessException exception) {
+            throw traducirError(exception, "No se pudo consultar la deduccion");
         }
         if (deduccion == null) {
             throw new ReglaNegocioException("Deduccion no encontrada");
@@ -334,7 +314,7 @@ public class SolicitudAdminService {
     /** ORA-01403 (NO_DATA_FOUND), estandar de Oracle. */
     private static final int ORACLE_NO_DATA_FOUND = 1403;
     /** PKG_ADMINISTRADOR.comprobar_plazo: "Plazo administrativo cerrado". */
-    private static final int ORACLE_PLAZO_CERRADO = -20870;
+    private static final int ORACLE_PLAZO_CERRADO = 20870;
 
     /**
      * Traduce errores de negocio lanzados por los paquetes/triggers de Oracle
@@ -348,22 +328,23 @@ public class SolicitudAdminService {
         if (codigo == null) {
             throw exception;
         }
-        if (codigo == ORACLE_PLAZO_CERRADO) {
+        int ora = Math.abs(codigo.intValue());
+        if (ora == ORACLE_PLAZO_CERRADO) {
             return new ReglaNegocioException(
                     mensajeGenerico + ": se vencio el plazo de la convocatoria para esta operacion.");
         }
-        if (esErrorDePaquete(codigo) || esErrorDeTrigger(codigo) || codigo == ORACLE_NO_DATA_FOUND) {
+        if (esErrorDePaquete(ora) || esErrorDeTrigger(ora) || ora == ORACLE_NO_DATA_FOUND) {
             return new ReglaNegocioException(mensajeGenerico);
         }
         throw exception;
     }
 
-    private boolean esErrorDePaquete(int codigo) {
-        return codigo >= -20887 && codigo <= -20801;
+    private boolean esErrorDePaquete(int ora) {
+        return ora >= 20801 && ora <= 20887;
     }
 
-    private boolean esErrorDeTrigger(int codigo) {
-        return codigo >= -20075 && codigo <= -20001;
+    private boolean esErrorDeTrigger(int ora) {
+        return ora >= 20001 && ora <= 20075;
     }
 
     /** Primer codigo de error de Oracle presente en la cadena de causas, o null si no hay ninguno. */

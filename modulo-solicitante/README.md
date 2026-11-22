@@ -86,11 +86,13 @@ document.addEventListener('DOMContentLoaded', () => {
 | `GET`  | `/api/solicitante/solicitudes` | Solicitudes propias con historial y deducción (Equipo 3) |
 | `GET`  | `/api/solicitante/solicitudes/{id}` | Detalle de una solicitud propia (Equipo 3) |
 | `PUT`  | `/api/solicitante/solicitudes/{id}/retirar` | Retira una solicitud `PENDIENTE` (Equipo 3) |
-| `PUT`  | `/api/solicitante/solicitudes/{id}/reenviar` | Reenvía una solicitud `RECHAZADO`, `RETIRADO` o `CANCELADO` (Equipo 3, lo invoca el formulario del Equipo 5) |
-| `GET`  | `/api/formularios/activo` | Preguntas del formulario vigente (Equipo 5) |
-| `POST` | `/api/solicitudes` | Crear nueva solicitud con sus respuestas (Equipo 5) |
+| `GET`  | `/api/solicitante/formulario` | Preguntas y opciones del formulario para `convocatoria` y `tipo` (Equipo 5) |
+| `POST` | `/api/solicitante/solicitudes` | Crear nueva solicitud con sus respuestas (Equipo 5) |
+| `GET`  | `/api/solicitante/solicitudes/{id}/respuestas` | Consulta las respuestas de una solicitud propia (Equipo 5) |
+| `GET`  | `/api/solicitante/solicitudes/{id}/reenvio` | Carga solicitud, respuestas previas, convocatoria y formulario para reenvío (Equipo 5) |
+| `PUT`  | `/api/solicitante/solicitudes/{id}/reenvio` | Reenvía una solicitud `RECHAZADO`, `RETIRADO` o `CANCELADO` (Equipo 5) |
 
-Los endpoints de autenticación y los de `/api/solicitante` están implementados. La creación de la solicitud y la consulta del formulario corresponden al Equipo 5.
+Todos los endpoints del panel y del formulario operan integrados bajo `/api/solicitante`.
 
 ---
 
@@ -152,11 +154,12 @@ Convocatorias cuyo periodo de recepción incluye hoy. Para aspirantes solo las d
   "idFormulario": 1, "formulario": "Formulario general",
   "montoDeduccion": 1500.00,
   "idSolicitudExistente": null,
+  "idEstatusSolicitud": null,
   "puedeIniciar": true
 }]
 ```
 
-`puedeIniciar` es `false` si ya existe una solicitud para esa convocatoria (`idSolicitudExistente`). El botón «Iniciar solicitud» abre `formulario.html?convocatoria=…&tipo=…&formulario=…`.
+`puedeIniciar` es `false` si ya existe una solicitud para esa convocatoria (`idSolicitudExistente` con su `idEstatusSolicitud`). El botón «Iniciar solicitud» abre `formulario.html?convocatoria=…&tipo=…&formulario=…`.
 
 ### `GET /api/solicitante/solicitudes` y `GET /api/solicitante/solicitudes/{id}`
 
@@ -191,22 +194,21 @@ La lista devuelve un arreglo de estos objetos. `deduccion` es `null` si no exist
 
 Sin cuerpo. Responde `200` con `{ "mensaje": "Solicitud retirada correctamente." }`; el panel recarga la lista. La base de datos vuelve a validar estatus y periodo (`ORA-20859`, `ORA-20860`).
 
-### `PUT /api/solicitante/solicitudes/{id}/reenviar`
+### `PUT /api/solicitante/solicitudes/{id}/reenvio`
 
 ```json
 {
   "idTipoSolicitud": 1,
-  "idFormulario": 1,
   "respuestas": [
-    { "idPregunta": 3, "idOpcion": 7, "textoRespuesta": null },
-    { "idPregunta": 4, "idOpcion": null, "textoRespuesta": "Texto libre" }
+    { "idPregunta": 3, "idOpcion": 7, "texto": null },
+    { "idPregunta": 4, "idOpcion": null, "texto": "Texto libre" }
   ]
 }
 ```
 
-El tipo y formulario deben pertenecer a la convocatoria de la solicitud. Las respuestas sin texto ni opción (preguntas opcionales sin contestar) se omiten; Oracle valida que estén todas las obligatorias. Las respuestas reemplazan a las anteriores y la solicitud vuelve a `PENDIENTE`. Responde `200` con `{ "mensaje": "Solicitud reenviada correctamente." }`.
+El tipo debe pertenecer a la convocatoria de la solicitud. Las respuestas sin texto ni opción (preguntas opcionales sin contestar) se omiten; las obligatorias se validan tanto en backend como en Oracle. Las respuestas reemplazan a las anteriores y la solicitud vuelve a `PENDIENTE`. Responde `200` con `{ "idSolicitud": 10, "estatus": "PENDIENTE" }`.
 
-**Coordinación con Equipo 5:** el panel enlaza a `formulario.html?reenviar={id}&convocatoria=…&tipo=…&formulario=…`. Cuando el formulario reciba `reenviar`, debe enviar a este endpoint (con `Http.put`, que ya agrega el token CSRF) en lugar de `POST /api/solicitudes`.
+El panel enlaza a `formulario.html?modo=reenvio&solicitud={id}&convocatoria=…&tipo=…&formulario=…` (con soporte en `formulario.js` para `POST` en altas y `PUT` en reenvíos, incluyendo `X-CSRF-TOKEN`).
 
 ### Procedimientos PL/SQL utilizados
 

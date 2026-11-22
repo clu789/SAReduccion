@@ -135,6 +135,7 @@ run_as_sys 03-crear-identidades-roles.sql
 run_as_sys 04-crear-cuenta-tecnica.sql
 run_as_app 05-crear-paquetes-permisos.sql
 run_as_app 07-auditoria-seguridad.sql
+run_as_app 07-paquete-formulario.sql
 
 if [[ "$sar_seed_activo" == true ]]; then
   printf 'Cargando datos de desarrollo (SAR_LOAD_DEV_SEED activo).\n'
@@ -178,10 +179,10 @@ BEGIN
 
   SELECT COUNT(*) INTO n FROM DBA_OBJECTS
    WHERE OWNER = '${ORACLE_APP_USER}'
-     AND OBJECT_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD')
+     AND OBJECT_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD', 'PKG_FORMULARIO')
      AND OBJECT_TYPE IN ('PACKAGE', 'PACKAGE BODY')
      AND STATUS = 'VALID';
-  assert_count(n, 8, 'paquetes validos');
+  assert_count(n, 10, 'paquetes validos');
 
   SELECT COUNT(*) INTO n FROM DBA_USERS
     WHERE USERNAME IN ('${ORACLE_ALUMNO_USER}', '${ORACLE_ADMIN_USER}', '${ORACLE_BACKEND_USER}');
@@ -205,21 +206,21 @@ BEGIN
 
   SELECT COUNT(*) INTO n FROM DBA_TAB_PRIVS
    WHERE GRANTEE = '${ORACLE_BACKEND_USER}' AND OWNER = '${ORACLE_APP_USER}'
-     AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD')
+     AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD', 'PKG_FORMULARIO')
      AND PRIVILEGE = 'EXECUTE';
-  assert_count(n, 4, 'EXECUTE solo sobre los paquetes autorizados');
+  assert_count(n, 5, 'EXECUTE solo sobre los paquetes autorizados');
 
   SELECT COUNT(*) INTO n FROM DBA_TAB_PRIVS
    WHERE GRANTEE = '${ORACLE_BACKEND_USER}'
      AND NOT (OWNER = '${ORACLE_APP_USER}'
-              AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD')
+              AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD', 'PKG_FORMULARIO')
               AND PRIVILEGE = 'EXECUTE');
   assert_count(n, 0, 'sin grants de objetos adicionales para la cuenta tecnica');
 
   SELECT COUNT(*) INTO n FROM DBA_TAB_PRIVS
    WHERE GRANTEE IN ('ROL_SAR_ESTUDIANTE_SIM', 'ROL_SAR_ADMIN_SIM')
      AND OWNER = '${ORACLE_APP_USER}'
-     AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD')
+     AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD', 'PKG_FORMULARIO')
      AND PRIVILEGE = 'EXECUTE';
   assert_count(n, 0, 'sin EXECUTE de paquetes para usuarios individuales');
 

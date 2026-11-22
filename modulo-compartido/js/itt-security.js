@@ -303,9 +303,13 @@
       ],
       APPLICANT: [
         { titulo: 'Panel de aspirante', href: '/solicitante/panel-aspirante.html' },
+        { titulo: 'Nueva solicitud', href: '/solicitante/formulario.html' },
       ],
       ADMIN: [
         { titulo: 'Panel administrativo', href: '/administrativo/panel-admin.html' },
+        { titulo: 'Convocatorias', href: '/administrativo/convocatorias-admin.html' },
+        { titulo: 'Nueva o editar convocatoria', href: '/administrativo/convocatorias-crear-editar.html' },
+        { titulo: 'Historial de convocatorias', href: '/administrativo/historial-convocatorias.html' },
       ],
     },
     etiquetas: { STUDENT: 'Estudiante', APPLICANT: 'Aspirante', ADMIN: 'Administrador' },

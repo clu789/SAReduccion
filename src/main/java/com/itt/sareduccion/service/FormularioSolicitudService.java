@@ -2,23 +2,18 @@ package com.itt.sareduccion.service;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
-import com.itt.sareduccion.auth.AuthRole;
 import com.itt.sareduccion.auth.SessionPrincipal;
 import com.itt.sareduccion.model.ConvocatoriaFormulario;
 import com.itt.sareduccion.model.EnvioSolicitudRequest;
-import com.itt.sareduccion.model.EstudianteDatos;
 import com.itt.sareduccion.model.FormularioDetalle;
-import com.itt.sareduccion.model.PerfilFormulario;
 import com.itt.sareduccion.model.ReenvioPreparado;
 import com.itt.sareduccion.model.SolicitudConRespuestas;
-import com.itt.sareduccion.repository.EstudianteRepository;
 import com.itt.sareduccion.repository.FormularioSolicitudRepository;
 
 /**
@@ -38,40 +33,9 @@ public class FormularioSolicitudService {
     static final int ESTATUS_RETIRADO = 6;
 
     private final FormularioSolicitudRepository repository;
-    private final EstudianteRepository estudianteRepository;
 
-    public FormularioSolicitudService(FormularioSolicitudRepository repository,
-            EstudianteRepository estudianteRepository) {
+    public FormularioSolicitudService(FormularioSolicitudRepository repository) {
         this.repository = repository;
-        this.estudianteRepository = estudianteRepository;
-    }
-
-    /** Datos para la tarjeta del solicitante; el estudiante se consulta con su numero de control de sesion. */
-    public PerfilFormulario perfil(SessionPrincipal principal) {
-        if (principal.getRole() == AuthRole.APPLICANT) {
-            return new PerfilFormulario("ASPIRANTE", principal.getIdentity(), null, null, null,
-                    principal.getPeriodo(), principal.getAnio());
-        }
-        try {
-            Optional<EstudianteDatos> datos = estudianteRepository.misDatos(principal.getIdentity());
-            if (!datos.isPresent()) {
-                throw new AccesoDenegadoException("Acceso no permitido");
-            }
-            EstudianteDatos d = datos.get();
-            StringBuilder nombre = new StringBuilder();
-            for (String parte : new String[] {d.getNombre(), d.getPrimerApellido(), d.getSegundoApellido()}) {
-                if (parte != null && !parte.trim().isEmpty()) {
-                    if (nombre.length() > 0) {
-                        nombre.append(' ');
-                    }
-                    nombre.append(parte.trim());
-                }
-            }
-            return new PerfilFormulario("ESTUDIANTE", d.getNumeroControl(), nombre.toString(), d.getCarrera(),
-                    d.getSemestre(), null, null);
-        } catch (DataAccessException exception) {
-            throw traducir(exception);
-        }
     }
 
     public List<ConvocatoriaFormulario> convocatoriasAbiertas(SessionPrincipal principal) {

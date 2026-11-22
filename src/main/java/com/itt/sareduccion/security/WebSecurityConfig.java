@@ -49,6 +49,7 @@ public class WebSecurityConfig implements WebMvcConfigurer {
                 .require("/api/convocatorias/**", AuthRole.ADMIN)
                 .require("/api/montos/**", AuthRole.ADMIN)
                 .require("/api/deducciones/**", AuthRole.ADMIN)
+                .require("/api/notificaciones/**", AuthRole.ADMIN)
                 .prepend(extraRules);
     }
 

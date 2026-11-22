@@ -38,6 +38,9 @@ docker-compose.override.yml
 Thumbs.db
 Desktop.ini
 
+# ── Node ────────────────────────────────────────────────────
+node_modules/
+
 # ── Logs ────────────────────────────────────────────────────
 *.log
 logs/

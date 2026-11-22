@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const RAIZ = path.resolve(__dirname, '..') + path.sep;  // carpeta modulo-solicitante
+const COMPARTIDO = path.resolve(RAIZ, '..', 'modulo-compartido') + path.sep;
 
 const f = (id, tipo, texto, oblig, ops) => ({ idPregunta: id, texto, obligatoria: oblig, tipo, orden: id, opciones: ops || [] });
 const FORM1 = { idFormulario: 1, nombre: 'Hijos de trabajadores', descripcion: 'd', instrucciones: 'Responda todas las preguntas.\nRequisitos:', idTipoSolicitud: 1, preguntas: [
@@ -20,6 +21,18 @@ const FORM1 = { idFormulario: 1, nombre: 'Hijos de trabajadores', descripcion: '
 const FORM2 = { idFormulario: 2, nombre: 'Hijos de homologados', descripcion: 'd', instrucciones: 'Instrucciones 2', idTipoSolicitud: 2, preguntas: [
   f(5, 'ABIERTA', 'Clave homologado', true),
   f(8, 'OPCION_UNICA', 'Cuenta con comprobante', true, [{ idOpcion: 10, texto: 'Si', orden: 1, requiereEspecificacion: false }, { idOpcion: 11, texto: 'No', orden: 2, requiereEspecificacion: false }])] };
+const CONV_FILAS = (extra) => [
+  Object.assign({
+    idConvocatoria: 900002, periodo: 2, periodoDescripcion: 'Enero-Junio', anio: 2026,
+    fechaInicio: '2026-11-04', fechaFin: '2026-11-25', idTipoSolicitud: 1,
+    tipoSolicitud: 'Hijo de trabajador', idFormulario: 1, idSolicitudExistente: null, idEstatusSolicitud: null, puedeIniciar: true,
+  }, extra || {}),
+  Object.assign({
+    idConvocatoria: 900002, periodo: 2, periodoDescripcion: 'Enero-Junio', anio: 2026,
+    fechaInicio: '2026-11-04', fechaFin: '2026-11-25', idTipoSolicitud: 2,
+    tipoSolicitud: 'Hijo de homologado', idFormulario: 2, idSolicitudExistente: null, idEstatusSolicitud: null, puedeIniciar: true,
+  }, extra || {}),
+];
 const CONV = (extra) => Object.assign({ idConvocatoria: 900002, idPeriodo: 2, anio: 2026, fechaInicio: '2026-11-04', fechaFin: '2026-11-25', idSolicitud: null, idEstatusSolicitud: null,
   tipos: [{ idTipoSolicitud: 1, nombre: 'Hijo de trabajador', idFormulario: 1 }, { idTipoSolicitud: 2, nombre: 'Hijo de homologado', idFormulario: 2 }] }, extra || {});
 
@@ -30,14 +43,15 @@ async function crear(op) {
   const reqs = [];
   const sesion = op.sesion || { authenticated: true, role: 'STUDENT', identity: '21281181', csrfToken: 'tok-123' };
   let html = fs.readFileSync(path.join(RAIZ, 'formulario.html'), 'utf8')
-    .replace(/<link[^>]+(googleapis|cdnjs)[^>]*>/g, '')
+    .replace(/<link[^>]+(googleapis|cdnjs|itt-security\.css)[^>]*>/g, '')
+    .replace(/src="\/compartido\/([^"]+)"/g, (m, r) => 'src="' + pathToFileURL(COMPARTIDO + r.split('/').join(path.sep)).href + '"')
     .replace(/src="js\/(app|formulario)\.js"/g, (m, n) => 'src="' + pathToFileURL(RAIZ + 'js' + path.sep + n + '.js').href + '"');
   const servidor = (metodo, url, headers, cuerpo) => {
     reqs.push({ metodo, url, headers, cuerpo });
     if (op.servidor) { const r = op.servidor(metodo, url, headers, cuerpo); if (r) return r; }
     if (url === '/api/auth/me') return sesion.authenticated ? { status: 200, body: sesion } : { status: 401, body: Object.assign({}, sesion) };
-    if (url === '/api/solicitante/formulario/perfil') return { status: 200, body: op.perfil || { rol: 'ESTUDIANTE', identidad: '21281181', nombre: 'Sofia Lopez Garcia', carrera: 'Sistemas', semestre: 5 } };
-    if (url === '/api/solicitante/convocatorias-abiertas') return { status: 200, body: op.convocatorias || [CONV()] };
+    if (url === '/api/solicitante/perfil') return { status: 200, body: op.perfil || { tipo: 'ESTUDIANTE', identificador: '21281181', nombreCompleto: 'Sofia Lopez Garcia', carrera: 'Sistemas', semestre: 5 } };
+    if (url === '/api/solicitante/convocatorias') return { status: 200, body: op.convocatorias || CONV_FILAS() };
     let m = url.match(/^\/api\/solicitante\/formulario\?convocatoria=(\d+)&tipo=(\d+)$/);
     if (m) return { status: 200, body: m[2] === '1' ? FORM1 : FORM2 };
     if (metodo === 'POST' && url === '/api/solicitante/solicitudes') return headers['X-CSRF-TOKEN'] === 'tok-123' ? { status: 201, body: { idSolicitud: 42, estatus: 'PENDIENTE' } } : { status: 403, body: { error: 'Solicitud no válida', errores: [] } };
@@ -50,8 +64,23 @@ async function crear(op) {
   const dom = new JSDOM(html, { url: 'http://localhost/formulario.html' + (op.query || ''), runScripts: 'dangerously', resources: 'usable', pretendToBeVisual: true, virtualConsole: consola,
     beforeParse(w) {
       w.confirm = () => (op.confirmar === undefined ? true : op.confirmar);
-      w.fetch = async (url, o) => { o = o || {}; const cuerpo = o.body ? JSON.parse(o.body) : null; const r = servidor((o.method || 'GET'), url, o.headers || {}, cuerpo);
-        return { ok: r.status >= 200 && r.status < 300, status: r.status, statusText: '', json: async () => r.body }; };
+      w.fetch = async (url, o) => {
+        o = o || {};
+        const cuerpo = o.body ? JSON.parse(o.body) : null;
+        const headers = {};
+        if (o.headers && typeof o.headers.forEach === 'function') {
+          o.headers.forEach((v, k) => {
+            headers[k] = v;
+            if (k.toLowerCase() === 'x-csrf-token') headers['X-CSRF-TOKEN'] = v;
+          });
+        } else {
+          Object.assign(headers, o.headers || {});
+        }
+        const r = servidor((o.method || 'GET'), url, headers, cuerpo);
+        const resp = { ok: r.status >= 200 && r.status < 300, status: r.status, statusText: '', json: async () => r.body };
+        resp.clone = () => resp;
+        return resp;
+      };
     } });
   const doc = dom.window.document;
   await espera(() => dom.window.document.readyState === 'complete');
@@ -159,15 +188,18 @@ const visible = (n) => n && !n.classList.contains('hidden');
   ok(!txt(doc.getElementById('alerta-formulario')).includes('ORA-'), '500: mensaje generico, sin detalles internos');
 
   console.log('\n[4] Solicitud existente y sin convocatoria');
-  t = await crear({ convocatorias: [CONV({ idSolicitud: 7, idEstatusSolicitud: 1 })] }); ({ doc } = t);
+  t = await crear({ convocatorias: CONV_FILAS({ idSolicitudExistente: 7, idEstatusSolicitud: 1 }) }); ({ doc } = t);
   await espera(() => txt(doc.getElementById('alerta-formulario')).includes('folio 7'));
   ok(!visible(doc.getElementById('form-solicitud')) && txt(doc.getElementById('alerta-formulario')).includes('PENDIENTE'), 'PENDIENTE: no muestra formulario');
-  t = await crear({ convocatorias: [CONV({ idSolicitud: 7, idEstatusSolicitud: 3 })] }); ({ doc } = t);
+  t = await crear({ convocatorias: CONV_FILAS({ idSolicitudExistente: 7, idEstatusSolicitud: 3 }) }); ({ doc } = t);
   await espera(() => txt(doc.getElementById('alerta-formulario')).includes('folio 7'));
   ok(Array.from(doc.querySelectorAll('#alerta-formulario a')).some((a) => a.getAttribute('href') === 'formulario.html?modo=reenvio&solicitud=7'), 'RECHAZADO: ofrece reenviar');
   t = await crear({ convocatorias: [] }); ({ doc } = t);
   await espera(() => txt(doc.getElementById('alerta-formulario')).includes('No hay una convocatoria'));
   ok(!visible(doc.getElementById('form-solicitud')), 'sin convocatoria abierta: sin formulario');
+  t = await crear({ query: '?convocatoria=900002&tipo=2' }); ({ doc } = t);
+  await espera(() => doc.querySelectorAll('.pregunta').length === 2);
+  ok(doc.getElementById('tipo-2').checked && doc.getElementById('p5') !== null, 'query params ?convocatoria=&tipo= preseleccionan el formulario');
 
   console.log('\n[5] Reenvio');
   const prep = { solicitud: { idSolicitud: 42, idConvocatoria: 900002, idTipoSolicitud: 1, idFormulario: 1, idEstatusSolicitud: 3, fechaSolicitud: '2026-11-15T05:33:29', fechaActualizacion: null, ultimoComentario: 'Falta la clave correcta',
@@ -206,7 +238,7 @@ const visible = (n) => n && !n.classList.contains('hidden');
   ok(!reqs.some((r) => r.url.includes('reenvio')), 'id de solicitud no numerico: se ignora el modo reenvio');
 
   console.log('\n[6] Aspirante, seguridad y roles');
-  t = await crear({ sesion: { authenticated: true, role: 'APPLICANT', identity: 'F2026T001', periodo: 2, anio: 2026, csrfToken: 'tok-123' }, perfil: { rol: 'ASPIRANTE', identidad: 'F2026T001', nombre: null, periodo: 2, anio: 2026 } }); ({ doc } = t);
+  t = await crear({ sesion: { authenticated: true, role: 'APPLICANT', identity: 'F2026T001', periodo: 2, anio: 2026, csrfToken: 'tok-123' }, perfil: { tipo: 'ASPIRANTE', identificador: 'F2026T001', nombreCompleto: null, periodo: 2, anio: 2026 } }); ({ doc } = t);
   await espera(() => txt(doc.getElementById('info-extra')) === 'Periodo 2 / 2026');
   ok(txt(doc.getElementById('info-nombre')) === 'Aspirante de nuevo ingreso' && txt(doc.getElementById('info-control')) === 'Ficha F2026T001', 'tarjeta de aspirante');
   ok(doc.getElementById('nav-panel').getAttribute('href') === 'panel-aspirante.html', 'enlace al panel del aspirante');
@@ -231,7 +263,7 @@ const visible = (n) => n && !n.classList.contains('hidden');
   t = await crear({ sesion: { authenticated: true, role: 'ADMIN', identity: 'SA01', csrfToken: 'x' } });
   await new Promise((r) => setTimeout(r, 150));
   ok(!t.reqs.some((r) => r.url.includes('/api/solicitante/')) && t.errores.some((e) => /navigation|Not implemented/i.test(e)), 'ADMIN: no usa la API y se redirige a su panel');
-  t = await crear({ servidor: (m, u) => (u.includes('/convocatorias-abiertas') ? { status: 0 } : null) });
+  t = await crear({ servidor: (m, u) => (u.includes('/convocatorias') ? { status: 0 } : null) });
   console.log('\n==== ' + (total - fallos) + ' de ' + total + ' verificaciones correctas ====');
   process.exit(fallos ? 1 : 0);
 })().catch((e) => { console.error('ERROR DE LA PRUEBA:', e); process.exit(2); });

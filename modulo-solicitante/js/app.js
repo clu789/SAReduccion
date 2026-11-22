@@ -271,7 +271,13 @@ const Alerta = {
 
     const div = document.createElement('div');
     div.className = `alerta alerta-${tipo}`;
-    div.innerHTML = `<i class="fa ${icono}"></i><span>${mensaje}</span>`;
+    const iconEl = document.createElement('i');
+    iconEl.className = `fa ${icono}`;
+    iconEl.setAttribute('aria-hidden', 'true');
+    const spanEl = document.createElement('span');
+    spanEl.textContent = mensaje == null ? '' : String(mensaje);
+    div.appendChild(iconEl);
+    div.appendChild(spanEl);
 
     contenedor.innerHTML = '';
     contenedor.appendChild(div);
@@ -1016,7 +1022,7 @@ const PanelSolicitante = {
         CANCELADO: 'La deducción de su solicitud fue cancelada. Puede corregir la información y reenviarla.',
         RETIRADO:  'Retiró esta solicitud. Puede reenviarla con o sin cambios.',
       }[s.estatus];
-      const url = `formulario.html?reenviar=${encodeURIComponent(s.idSolicitud)}`
+      const url = `formulario.html?modo=reenvio&solicitud=${encodeURIComponent(s.idSolicitud)}`
         + `&convocatoria=${encodeURIComponent(s.idConvocatoria)}`
         + `&tipo=${encodeURIComponent(s.idTipoSolicitud)}&formulario=${encodeURIComponent(s.idFormulario)}`;
       return `
@@ -1066,12 +1072,12 @@ const PanelSolicitante = {
       await Http.put(`/solicitante/solicitudes/${encodeURIComponent(this.idRetiro)}/retirar`, {});
       Modal.cerrar('modal-retirar');
       Alerta.mostrar('alerta-panel', 'exito',
-        `La solicitud con folio ${Html.escapar(this.idRetiro)} fue retirada. Puede reenviarla mientras siga abierto el periodo de recepción.`);
+        `La solicitud con folio ${this.idRetiro} fue retirada. Puede reenviarla mientras siga abierto el periodo de recepción.`);
       this.idRetiro = null;
       await this.cargar();
     } catch (err) {
       if (err.status !== 401) {
-        Alerta.mostrar('alerta-retiro', 'error', Html.escapar(mensajeOperacion(err, 'No se pudo retirar la solicitud. Intente más tarde.')));
+        Alerta.mostrar('alerta-retiro', 'error', mensajeOperacion(err, 'No se pudo retirar la solicitud. Intente más tarde.'));
       }
     } finally {
       confirmar.disabled = false;
@@ -1082,167 +1088,6 @@ const PanelSolicitante = {
   setTexto(id, valor) {
     const el = document.getElementById(id);
     if (el) el.textContent = (valor === null || valor === undefined || valor === '') ? '—' : String(valor);
-  },
-};
-
-/* ─────────────────────────────────────────
-   MÓDULO: FORMULARIO DE SOLICITUD
-   Equipo 5
-───────────────────────────────────────── */
-const FormularioSolicitud = {
-  pasoActual: 1,
-  totalPasos: 3,
-
-  async init() {
-    const form = document.getElementById('form-solicitud');
-    if (!form) return;
-    if (!await AuthSession.requireRole(['STUDENT', 'APPLICANT'], 'login.html')) return;
-    AuthSession.bindLogout('login.html', 'alerta-formulario');
-
-    await this.cargarFormulario();
-    this.iniciarNavegacion();
-    Modal.iniciarCierre();
-  },
-
-  /** Carga las preguntas dinámicas desde la API */
-  async cargarFormulario() {
-    Spinner.show();
-    try {
-      // const formulario = await Http.get('/formularios/activo');
-      const formulario = {
-        preguntas: [
-          { idPregunta: 1, tipo: 'TEXT', pregunta: 'Nombre completo del trabajador del TecNM' },
-          { idPregunta: 2, tipo: 'TEXT', pregunta: 'Clave del trabajador' },
-          { idPregunta: 3, tipo: 'SELECT', pregunta: 'Parentesco con el trabajador', opciones: ['Hijo(a)', 'Cónyuge'] },
-          { idPregunta: 4, tipo: 'SELECT', pregunta: 'Tipo de solicitud', opciones: ['Inscripción', 'Reinscripción'] },
-          { idPregunta: 5, tipo: 'NUMBER', pregunta: 'Semestre a inscribir' }
-        ]
-      };
-      this.renderPreguntas(formulario.preguntas || []);
-    } catch (err) {
-      Alerta.mostrar('alerta-formulario', 'error', 'No se pudo cargar el formulario. Intente más tarde.');
-    } finally {
-      Spinner.hide();
-    }
-  },
-
-  /**
-   * Renderiza preguntas dinámicas dentro de #contenedor-preguntas
-   * @param {Array} preguntas
-   */
-  renderPreguntas(preguntas) {
-    const contenedor = document.getElementById('contenedor-preguntas');
-    if (!contenedor) return;
-
-    contenedor.innerHTML = preguntas.map(p => {
-      let inputHtml = '';
-      switch (p.tipo) {
-        case 'TEXT':
-        case 'NUMBER':
-          inputHtml = `<input
-            type="${p.tipo.toLowerCase()}"
-            id="pregunta-${p.idPregunta}"
-            name="pregunta_${p.idPregunta}"
-            class="form-control-itt"
-            placeholder="${p.pregunta}"
-            required>`;
-          break;
-        case 'SELECT':
-          inputHtml = `<select id="pregunta-${p.idPregunta}" name="pregunta_${p.idPregunta}" class="form-control-itt">
-            <option value="">-- Seleccione --</option>
-            ${(p.opciones || []).map(o => `<option value="${o}">${o}</option>`).join('')}
-          </select>`;
-          break;
-        default:
-          inputHtml = `<input type="text" id="pregunta-${p.idPregunta}" name="pregunta_${p.idPregunta}" class="form-control-itt">`;
-      }
-
-      return `
-        <div class="form-group">
-          <label for="pregunta-${p.idPregunta}">${p.pregunta}<span class="requerido">*</span></label>
-          ${inputHtml}
-          <span class="mensaje-error" id="pregunta-${p.idPregunta}-error"></span>
-        </div>`;
-    }).join('');
-  },
-
-  iniciarNavegacion() {
-    const btnSig  = document.getElementById('btn-siguiente');
-    const btnAnt  = document.getElementById('btn-anterior');
-    const btnEnv  = document.getElementById('btn-enviar');
-
-    if (btnSig) btnSig.addEventListener('click', () => this.siguiente());
-    if (btnAnt) btnAnt.addEventListener('click', () => this.anterior());
-    if (btnEnv) btnEnv.addEventListener('click', () => this.enviar());
-  },
-
-  siguiente() {
-    if (this.pasoActual < this.totalPasos) {
-      this.irA(this.pasoActual + 1);
-    }
-  },
-
-  anterior() {
-    if (this.pasoActual > 1) {
-      this.irA(this.pasoActual - 1);
-    }
-  },
-
-  irA(paso) {
-    document.querySelectorAll('.paso-contenido').forEach(el => el.classList.add('hidden'));
-    const pasoDest = document.getElementById(`paso-${paso}`);
-    if (pasoDest) pasoDest.classList.remove('hidden');
-
-    this.actualizarStepper(paso);
-    this.pasoActual = paso;
-
-    // Mostrar/ocultar botones de navegación
-    const btnSig = document.getElementById('btn-siguiente');
-    const btnAnt = document.getElementById('btn-anterior');
-    const btnEnv = document.getElementById('btn-enviar');
-
-    if (btnAnt) btnAnt.style.display = paso === 1 ? 'none' : 'inline-flex';
-    if (btnSig) btnSig.style.display = paso === this.totalPasos ? 'none' : 'inline-flex';
-    if (btnEnv) btnEnv.style.display = paso === this.totalPasos ? 'inline-flex' : 'none';
-  },
-
-  actualizarStepper(pasoActivo) {
-    document.querySelectorAll('.step').forEach((step, idx) => {
-      const num = idx + 1;
-      step.classList.remove('activo', 'completado');
-      if (num < pasoActivo)       step.classList.add('completado');
-      else if (num === pasoActivo) step.classList.add('activo');
-
-      const linea = step.nextElementSibling;
-      if (linea && linea.classList.contains('step-linea')) {
-        linea.classList.toggle('completada', num < pasoActivo);
-      }
-    });
-  },
-
-  /** Envía el formulario a la API */
-  async enviar() {
-    const form = document.getElementById('form-solicitud');
-    if (!form) return;
-
-    const respuestas = [];
-    form.querySelectorAll('[name^="pregunta_"]').forEach(campo => {
-      const idPregunta = parseInt(campo.name.replace('pregunta_', ''), 10);
-      respuestas.push({ idPregunta, respuesta: campo.value });
-    });
-
-    Spinner.show();
-    try {
-      // const resultado = await Http.post('/solicitudes', { respuestas });
-      const resultado = { idSolicitud: 'TEST-2026' };
-      Alerta.mostrar('alerta-formulario', 'exito', `Solicitud enviada correctamente. Folio: ${resultado.idSolicitud}`);
-      // Redirigir a panel de estatus
-      setTimeout(() => { window.location.href = 'panel-estatus.html'; }, 2000);
-    } catch (err) {
-      Alerta.mostrar('alerta-formulario', 'error', 'Error al enviar la solicitud. Intente de nuevo.');
-    } finally {
-      Spinner.hide();
-    }
   },
 };
 
@@ -1259,6 +1104,5 @@ document.addEventListener('DOMContentLoaded', () => {
     case 'pagina-login-estudiante': LoginEstudiante.init();   break;
     case 'pagina-panel-estatus':
     case 'pagina-panel-aspirante':  PanelSolicitante.init();  break;
-    case 'pagina-formulario':       FormularioSolicitud.init(); break;
   }
 });

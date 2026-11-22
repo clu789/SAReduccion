@@ -3,6 +3,7 @@ package com.itt.sareduccion.service;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,36 @@ public class SolicitanteService {
             return solicitanteRepository.convocatorias(identidad);
         } catch (DataAccessException exception) {
             throw traducirError(identidad, "convocatorias", exception, "No se pudieron consultar las convocatorias");
+        }
+    }
+
+    /** Mapea cada {@code idSolicitudExistente} de las convocatorias disponibles a su estatus actual. */
+    public Map<Long, Integer> estatusPorSolicitud(IdentidadSolicitante identidad,
+            List<ConvocatoriaDisponible> convocatorias) {
+        if (convocatorias == null || convocatorias.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        boolean tieneExistente = false;
+        for (ConvocatoriaDisponible convocatoria : convocatorias) {
+            if (convocatoria.getIdSolicitudExistente() != null) {
+                tieneExistente = true;
+                break;
+            }
+        }
+        if (!tieneExistente) {
+            return Collections.emptyMap();
+        }
+        try {
+            Map<Long, Integer> estatus = new LinkedHashMap<Long, Integer>();
+            for (SolicitudPropia solicitud : solicitanteRepository.solicitudes(identidad)) {
+                if (solicitud.getIdSolicitud() != null) {
+                    estatus.put(solicitud.getIdSolicitud(), solicitud.getIdEstatus());
+                }
+            }
+            return estatus;
+        } catch (DataAccessException exception) {
+            throw traducirError(identidad, "estatusSolicitudes", exception,
+                    "No se pudo consultar el estatus de las solicitudes");
         }
     }
 

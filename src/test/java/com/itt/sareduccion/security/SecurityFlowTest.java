@@ -263,9 +263,14 @@ class SecurityFlowTest {
                 .andExpect(jsonPath("$.redirect").value("/solicitante/panel-estatus.html"));
         // Endpoints administrativos que existian fuera de /api/admin.
         mockMvc.perform(get("/api/solicitudes/probe").session(estudiante)).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/notificaciones/probe").session(estudiante)
+                .header(CSRF_HEADER, SessionAttributes.csrfToken(estudiante)))
+                .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/aspirante/probe").session(estudiante)).andExpect(status().isForbidden());
         verify(auditService).registrar(eq(SecurityEvent.ACCESO_DENEGADO), eq("21281181"), eq("ESTUDIANTE"), any(),
                 eq("GET /api/admin/probe"));
+        verify(auditService).registrar(eq(SecurityEvent.ACCESO_DENEGADO), eq("21281181"), eq("ESTUDIANTE"), any(),
+                eq("POST /api/notificaciones/probe"));
     }
 
     @Test
@@ -277,6 +282,9 @@ class SecurityFlowTest {
 
         mockMvc.perform(get("/api/admin/probe").session(admin)).andExpect(status().isOk());
         mockMvc.perform(get("/api/solicitudes/probe").session(admin)).andExpect(status().isOk());
+        mockMvc.perform(post("/api/notificaciones/probe").session(admin)
+                .header(CSRF_HEADER, SessionAttributes.csrfToken(admin)))
+                .andExpect(status().isOk());
         mockMvc.perform(get("/api/estudiante/probe").session(estudiante)).andExpect(status().isOk());
         mockMvc.perform(get("/api/aspirante/probe").session(aspirante)).andExpect(status().isOk());
         mockMvc.perform(get("/api/solicitante/probe").session(estudiante)).andExpect(status().isOk());
@@ -461,7 +469,7 @@ class SecurityFlowTest {
             return "ok";
         }
 
-        @PostMapping("/api/admin/probe")
+        @PostMapping({"/api/admin/probe", "/api/notificaciones/probe"})
         public String crear() {
             return "ok";
         }

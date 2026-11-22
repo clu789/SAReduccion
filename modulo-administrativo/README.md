@@ -33,6 +33,7 @@ modulo-administrativo/
 |---|---|---|
 | `login.html` | Autenticación exclusiva de administradores | **Equipo 1** |
 | `panel-admin.html` | Bandeja, detalle y resolución de solicitudes y deducciones | **Equipo 2** |
+| `convocatorias-admin.html`, `convocatorias-crear-editar.html`, `historial-convocatorias.html` | Gestión, edición de montos/fechas e historial de convocatorias | **Equipo 4** |
 | Notificaciones (backend) | Envío de avisos al cambiar estatus | **Equipo 6** |
 
 ---
@@ -81,10 +82,15 @@ document.addEventListener('DOMContentLoaded', () => {
 | `GET`  | `/api/convocatorias` | Convocatorias disponibles para los filtros |
 | `GET`  | `/api/deducciones` | Listar deducciones con filtro opcional `estatus` |
 | `PUT`  | `/api/solicitudes/{id}/aprobar` | Aprobar la solicitud y autorizar su deducción; el comentario es opcional |
-| `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud; exige comentario |
-| `PUT`  | `/api/solicitudes/{id}/correccion` | Devolver a corrección; hoy comparte la transición del rechazo |
+| `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud (o devolverla para corrección); exige comentario |
+| `PUT`  | `/api/deducciones/{id}/aplicar` | Aplicar definitivamente una deducción autorizada |
 | `PUT`  | `/api/deducciones/{id}/cancelar` | Cancelar una deducción autorizada; el comentario es opcional |
-| `POST` | `/api/notificaciones` | Envío manual de un aviso al aspirante |
+| `GET`  | `/api/admin/convocatorias` | Listar convocatorias registradas con su estado calculado |
+| `GET`  | `/api/admin/convocatorias/{id}` | Detalle de convocatoria, montos vigentes y banderas de edición |
+| `POST` | `/api/admin/convocatorias` | Crear nueva convocatoria con montos iniciales |
+| `PUT`  | `/api/admin/convocatorias/{id}` | Actualizar fechas y montos de una convocatoria |
+| `GET`  | `/api/admin/convocatorias/{id}/historial` | Historial de cambios de fechas de la convocatoria |
+| `POST` | `/api/notificaciones` | Envío manual de un aviso al solicitante (`ADMIN` + CSRF) |
 
 ---
 
@@ -98,9 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
 - La consulta usa el correo de `Aspirantes`. Una solicitud sin correo disponible devuelve `422`. Una falla de SMTP devuelve `503`.
 - Los filtros por chip llaman a `PanelAdmin.cargarSolicitudes(estatus)` con el estatus seleccionado.
 - El comentario es **obligatorio solo al rechazar**; es **opcional** al aprobar, reautorizar y cancelar la deducción. El monto base siempre es obligatorio en aprobar y reautorizar.
-- El detalle devuelve `historial` vacío: falta el procedimiento de consulta en la base de datos.
+- El detalle incluye el `historial` de movimientos de la solicitud y de la deducción desde Oracle.
 
-El backend también envía avisos automáticos al aprobar (incluida la reautorización), rechazar o cancelar una deducción. El cambio de estado se confirma en Oracle antes de consultar el destinatario y enviar el correo. Las incidencias de correo se registran sin revertir la decisión administrativa.
+El backend también envía avisos automáticos de forma asíncrona al aprobar (incluida la reautorización), rechazar, cancelar o aplicar una deducción. El cambio de estado se confirma en Oracle antes de programar el envío del correo; las incidencias de correo se registran sin revertir ni bloquear la respuesta administrativa.
 
 ## Decisiones y plantillas de correo del equipo 6
 

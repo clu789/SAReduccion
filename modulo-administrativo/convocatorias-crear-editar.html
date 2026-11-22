@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Convocatorias | SAReduccion - ITToluca</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/itt-base.css">
+    <link rel="stylesheet" href="css/administrativo.css">
+    <link rel="stylesheet" href="css/convocatorias.css">
+    <link rel="stylesheet" href="/compartido/css/itt-security.css">
+</head>
+<body id="pagina-convocatorias-admin">
+    <div class="main-wrapper">
+        <div class="top-banner-box">
+            <img src="img/header.png" alt="Tecnológico Nacional de México - Instituto Tecnológico de Toluca" class="img-fluid institutional-header-image" onerror="this.style.display='none'">
+        </div>
+
+        <div class="nav-bar-white">
+            <div class="nav-tabs-custom">
+                <a href="panel-admin.html" class="nav-tab-link">
+                    <i class="fa-solid fa-inbox"></i> Bandeja de Solicitudes
+                </a>
+                <a href="convocatorias-crear-editar.html" class="nav-tab-link active">
+                    <i class="fa-solid fa-calendar-days"></i> Convocatorias
+                </a>
+            </div>
+            <div class="user-info-bar">
+                <span><i class="fa-solid fa-shield-halved me-1"></i> Administrador</span>
+                <span><i class="fa-solid fa-circle-user me-1"></i> Subdirector</span>
+                <button type="button"
+                        class="btn-salir-top"
+                        data-auth-logout>
+                    <i class="fa-solid fa-right-from-bracket"></i> Salir
+                </button>
+            </div>
+        </div>
+
+        <div class="convocatorias-page-header">
+            <div class="convocatorias-page-heading">
+                <h2 class="page-title-itt">
+                    <i class="fa-regular fa-calendar-check"></i> Convocatorias
+                </h2>
+                <p class="page-subtitle-itt">
+                    Registra nuevas convocatorias definiendo el periodo académico,
+                    las fechas de vigencia y los montos iniciales de reducción.
+                </p>
+            </div>
+
+            <div class="btn-group mode-switch-group"
+                role="group"
+                aria-label="Navegación de convocatorias">
+
+                <a href="convocatorias-crear-editar.html"
+                class="btn btn-mode-active"
+                aria-current="page">
+                    <i class="fa-solid fa-plus me-1"></i>
+                    Crear convocatoria
+                </a>
+
+                <a href="convocatorias-admin.html"
+                class="btn btn-mode-inactive">
+                    <i class="fa-solid fa-list me-1"></i>
+                    Administrar convocatorias
+                </a>
+
+                <a href="historial-convocatorias.html"
+                class="btn btn-mode-inactive">
+                    <i class="fa-solid fa-list me-1"></i>
+                    Historial
+                </a>
+            </div>
+
+        </div>
+
+        <div class="panel-itt-card">
+            <div class="panel-itt-header">
+                <span>
+                    <i class="fa-solid fa-calendar-plus me-2"></i> Crear nueva convocatoria
+                </span>
+                <span class="badge bg-light text-dark fw-semibold badge-mode-itt">
+                    Modo: Crear convocatoria
+                </span>
+            </div>
+
+            <div class="panel-itt-body">
+                <div class="inner-fieldset-box">
+                    <div class="inner-box-title">
+                        Configurar vigencia y ciclo académico de la convocatoria
+                    </div>
+                    <div class="inner-box-subtitle">
+                        Define el periodo, año académico, las cuatro fechas por día calendario y los montos iniciales de reducción.
+                    </div>
+
+                    <div class="info-callout-itt">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>
+                            Las cuatro fechas deben respetar el orden secuencial (<strong>Inicio de solicitudes &le; Fin de solicitudes &le; Límite de autorización &le; Límite de aplicación</strong>) y no superponerse con otra convocatoria.
+                        </span>
+                    </div>
+
+                    <form id="formConvocatoria" novalidate>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="periodo" class="form-label-itt">Periodo académico</label>
+                                <select class="form-select" id="periodo" name="p_periodo" required>
+                                    <option value="" selected disabled>Seleccione un periodo</option>
+                                    <option value="1">Agosto - Diciembre</option>
+                                    <option value="2">Enero - Junio</option>
+                                </select>
+                                <div class="help-caption-itt">Semestre académico al que corresponde la convocatoria (1 o 2).</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="anio" class="form-label-itt">Año académico</label>
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    id="anio"
+                                    name="p_anio"
+                                    min="2000"
+                                    max="2200"
+                                    step="1"
+                                    value="2026"
+                                    placeholder="Ej. 2026"
+                                    required>
+                                <div class="help-caption-itt">Año del ciclo escolar (no únicamente año calendario).</div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6 col-lg-3">
+                                <label for="fechaInicio" class="form-label-itt">Inicio de solicitudes</label>
+                                <input type="date" class="form-control" id="fechaInicio" name="p_inicio" required>
+                                <div class="help-caption-itt">Fecha 1: Apertura de recepción.</div>
+                            </div>
+
+                            <div class="col-md-6 col-lg-3">
+                                <label for="fechaFin" class="form-label-itt">Fin de solicitudes</label>
+                                <input type="date" class="form-control" id="fechaFin" name="p_fin" required>
+                                <div class="help-caption-itt">Fecha 2: Cierre de recepción y reenvíos.</div>
+                            </div>
+
+                            <div class="col-md-6 col-lg-3">
+                                <label for="fechaAutorizacion" class="form-label-itt">Límite autorización</label>
+                                <input type="date" class="form-control" id="fechaAutorizacion" name="p_limite_autorizacion" required>
+                                <div class="help-caption-itt">Fecha 3: Límite para aprobar/rechazar.</div>
+                            </div>
+
+                            <div class="col-md-6 col-lg-3">
+                                <label for="fechaAplicacion" class="form-label-itt">Límite aplicación</label>
+                                <input type="date" class="form-control" id="fechaAplicacion" name="p_limite_aplicacion" required>
+                                <div class="help-caption-itt">Fecha 4: Cierre para aplicar deducciones.</div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3" id="filaMontosIniciales">
+                            <div class="col-md-6">
+                                <label for="montoInterno" class="form-label-itt">Personal interno</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">$</span>
+                                    <input type="number" class="form-control" id="montoInterno" name="p_monto_trabajador" min="0" step="0.01" placeholder="Ej. 500.00" required>
+                                </div>
+                                <div class="help-caption-itt">Tipo de solicitud: Hijo de trabajador</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="montoHomologado" class="form-label-itt">Personal homologado</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">$</span>
+                                    <input type="number" class="form-control" id="montoHomologado" name="p_monto_homologado" min="0" step="0.01" placeholder="Ej. 650.00" required>
+                                </div>
+                                <div class="help-caption-itt">Tipo de solicitud: Hijo de homologado</div>
+                            </div>
+                        </div>
+
+                        <div id="alertaValidacion" class="alert d-none mt-3 mb-2" role="alert"></div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                            <button type="reset" class="btn-gray-itt" onclick="ocultarAlerta()">
+                                <i class="fa-solid fa-eraser"></i> Limpiar
+                            </button>
+                            <button type="submit" class="btn-blue-itt" id="btnGuardarConvocatoria" disabled>
+                                <i class="fa-solid fa-floppy-disk"></i> Guardar convocatoria
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer-blue-itt">
+        <p class="fw-semibold">&copy; 2026 Instituto Tecnológico de Toluca &middot; Tecnológico Nacional de México</p>
+        <p class="small opacity-75">Subdirección Académica &middot; Sistema de Reducción de Monto de Inscripción</p>
+    </footer>
+
+    <script src="/compartido/js/itt-security.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        function mostrarAlerta(mensaje, tipo = 'danger') {
+            const alerta = document.getElementById('alertaValidacion');
+
+            const tiposPermitidos = ['success', 'danger', 'warning', 'info'];
+            const tipoSeguro = tiposPermitidos.includes(tipo) ? tipo : 'danger';
+
+            alerta.className = `alert alert-${tipoSeguro} mt-3 mb-2 small`;
+            alerta.textContent = mensaje;
+            alerta.classList.remove('d-none');
+
+            alerta.setAttribute(
+                'role',
+                tipoSeguro === 'danger' ? 'alert' : 'status'
+            );
+
+            alerta.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest'
+            });
+        }
+
+
+        function ocultarAlerta() {
+            document.getElementById('alertaValidacion').classList.add('d-none');
+        }
+
+        document.getElementById('formConvocatoria')
+            .addEventListener('submit', async function(e) {
+                e.preventDefault();
+                ocultarAlerta();
+
+                const form = this;
+
+            const btnGuardar = document.getElementById('btnGuardarConvocatoria');
+
+            if (btnGuardar.disabled) return;
+
+            const periodoTexto = document.getElementById('periodo').value;
+            const anioTexto = document.getElementById('anio').value.trim();
+            const fechaInicio = document.getElementById('fechaInicio').value;
+            const fechaFin = document.getElementById('fechaFin').value;
+            const fechaAutorizacion = document.getElementById('fechaAutorizacion').value;
+            const fechaAplicacion = document.getElementById('fechaAplicacion').value;
+            const montoInternoTexto = document.getElementById('montoInterno').value.trim();
+            const montoHomologadoTexto = document.getElementById('montoHomologado').value.trim();
+
+            // 1. Validar campos obligatorios.
+            if (!periodoTexto || !anioTexto || !fechaInicio || !fechaFin ||
+                !fechaAutorizacion || !fechaAplicacion ||
+                !montoInternoTexto || !montoHomologadoTexto) {
+
+                mostrarAlerta('Todos los campos son obligatorios. Complete la información antes de guardar.');
+                return;
+            }
+
+            const periodo = Number(periodoTexto);
+            const anio = Number(anioTexto);
+            const montoTrabajador = Number(montoInternoTexto);
+            const montoHomologado = Number(montoHomologadoTexto);
+
+            // 2. Validar periodo académico.
+            if (![1, 2].includes(periodo)) {
+                mostrarAlerta('Seleccione un periodo académico válido.');
+                return;
+            }
+
+            // 3. Validar año académico.
+            if (!Number.isInteger(anio) || anio < 2000 || anio > 2200) {
+                mostrarAlerta('El año académico debe ser un número entero entre 2000 y 2200.');
+                return;
+            }
+
+            // 4. Validar orden de fechas.
+            if (fechaInicio > fechaFin ||
+                fechaFin > fechaAutorizacion ||
+                fechaAutorizacion > fechaAplicacion) {
+
+                mostrarAlerta(
+                    'Orden de fechas inválido. Debe cumplirse: Inicio de solicitudes ≤ Fin de solicitudes ≤ Límite de autorización ≤ Límite de aplicación.'
+                );
+                return;
+            }
+
+            // 5. Validar límite de autorización.
+            const hoy = new Date();
+            const fechaHoy = [
+                hoy.getFullYear(),
+                String(hoy.getMonth() + 1).padStart(2, '0'),
+                String(hoy.getDate()).padStart(2, '0')
+            ].join('-');
+
+            if (fechaAutorizacion < fechaHoy) {
+                mostrarAlerta('La fecha límite de autorización no puede ser anterior a la fecha actual.');
+                return;
+            }
+
+            // 6. Validar montos.
+            const montos = [
+                { nombre: 'Personal interno', valor: montoTrabajador },
+                { nombre: 'Personal homologado', valor: montoHomologado }
+            ];
+
+            for (const monto of montos) {
+                if (!Number.isFinite(monto.valor) ||
+                    monto.valor < 0 ||
+                    monto.valor >= 100000000 ||
+                    !/^\d+(\.\d{1,2})?$/.test(
+                        monto.nombre === 'Personal interno'
+                            ? montoInternoTexto
+                            : montoHomologadoTexto
+                    )) {
+
+                    mostrarAlerta(
+                        `El monto de ${monto.nombre} debe ser positivo o cero, menor a 100,000,000 y tener como máximo dos decimales.`
+                    );
+                    return;
+                }
+            }
+
+            // 7. Preparar los datos para Spring Boot.
+            const datos = {
+                periodo,
+                anio,
+                fechaInicio,
+                fechaFin,
+                fechaLimiteAutorizacion: fechaAutorizacion,
+                fechaLimiteAplicacion: fechaAplicacion,
+                montoTrabajador,
+                montoHomologado
+            };
+
+            // 8. Enviar la solicitud.
+            btnGuardar.disabled = true;
+            btnGuardar.textContent = 'Guardando convocatoria...';
+            let errorSesionInvalida = false;
+
+            try {
+                const respuesta = await Http.post('/admin/convocatorias', datos);
+
+                mostrarAlerta(
+                    `Convocatoria creada correctamente. Identificador: ${respuesta.idConvocatoria}.`,
+                    'success'
+                );
+
+                form.reset();
+            } catch (error) {
+                errorSesionInvalida =
+                    error.status === 401 || error.status === 403;
+                if (error.status === 401) {
+                    mostrarAlerta(
+                        'Su sesión ha expirado. Inicie sesión nuevamente.'
+                    );
+
+                } else if (error.status === 403) {
+                    mostrarAlerta(
+                        'No tiene autorización para realizar esta operación o la sesión de seguridad ha expirado.'
+                    );
+
+                } else {
+                    mostrarAlerta(
+                        error.message || 'No fue posible registrar la convocatoria.'
+                    );
+                }
+            } finally {
+                btnGuardar.disabled = errorSesionInvalida;
+
+                btnGuardar.innerHTML =
+                    '<i class="fa-solid fa-floppy-disk"></i> Guardar convocatoria';
+            }
+        });
+
+    </script>
+</body>
+</html>

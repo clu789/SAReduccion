@@ -52,26 +52,6 @@ public class FormularioSolicitudController {
         this.service = service;
     }
 
-    @GetMapping("/formulario/perfil")
-    public ResponseEntity<?> perfil(HttpServletRequest request) {
-        SessionPrincipal principal = principal(request);
-        ResponseEntity<ErrorRespuesta> rechazo = rechazoDeAcceso(principal);
-        if (rechazo != null) {
-            return rechazo;
-        }
-        return ResponseEntity.ok(service.perfil(principal));
-    }
-
-    @GetMapping("/convocatorias-abiertas")
-    public ResponseEntity<?> convocatoriasAbiertas(HttpServletRequest request) {
-        SessionPrincipal principal = principal(request);
-        ResponseEntity<ErrorRespuesta> rechazo = rechazoDeAcceso(principal);
-        if (rechazo != null) {
-            return rechazo;
-        }
-        return ResponseEntity.ok(service.convocatoriasAbiertas(principal));
-    }
-
     @GetMapping("/formulario")
     public ResponseEntity<?> formulario(@RequestParam("convocatoria") Long convocatoria,
             @RequestParam("tipo") Integer tipo, HttpServletRequest request) {

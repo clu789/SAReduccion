@@ -192,8 +192,19 @@ const Spinner = {
 };
 
 /* ─────────────────────────────────────────
-   ALERTAS EN-PÁGINA
+   ESCAPE HTML Y ALERTAS EN-PÁGINA
 ───────────────────────────────────────── */
+const Html = {
+  escapar(valor) {
+    return String(valor ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+};
+
 const Alerta = {
   mostrar(contenedorId, tipo, mensaje, duracion = 0) {
     const contenedor = document.getElementById(contenedorId);
@@ -207,8 +218,14 @@ const Alerta = {
     }[tipo] || 'fa-info-circle';
 
     const div = document.createElement('div');
-    div.className = `alerta alerta-${tipo}`;
-    div.innerHTML = `<i class="fa ${icono}"></i><span>${mensaje}</span>`;
+    div.className = `alerta alerta-${Html.escapar(tipo)}`;
+    const iconEl = document.createElement('i');
+    iconEl.className = `fa ${icono}`;
+    iconEl.setAttribute('aria-hidden', 'true');
+    const spanEl = document.createElement('span');
+    spanEl.textContent = mensaje == null ? '' : String(mensaje);
+    div.appendChild(iconEl);
+    div.appendChild(spanEl);
     contenedor.innerHTML = '';
     contenedor.appendChild(div);
 
@@ -257,8 +274,13 @@ const Modal = {
     return new Promise((resolve) => {
       const tituloEl = document.getElementById('confirmar-titulo');
       const textoEl = document.getElementById('confirmar-texto');
-      if (tituloEl) tituloEl.innerHTML = `<i class="fa fa-question-circle"></i> ${titulo}`;
-      if (textoEl) textoEl.textContent = mensaje;
+      if (tituloEl) {
+        const iconEl = document.createElement('i');
+        iconEl.className = 'fa fa-question-circle';
+        iconEl.setAttribute('aria-hidden', 'true');
+        tituloEl.replaceChildren(iconEl, document.createTextNode(` ${titulo == null ? 'Confirmar acción' : String(titulo)}`));
+      }
+      if (textoEl) textoEl.textContent = mensaje == null ? '' : String(mensaje);
       this._confirmResolve = resolve;
       this.abrir('modal-confirmar');
     });
@@ -374,6 +396,17 @@ const PanelAdmin = {
     this.iniciarFiltros();
     this.iniciarBuscador();
     this.iniciarOrdenamiento();
+    const tbody = bandeja.querySelector('tbody');
+    if (tbody) {
+      tbody.addEventListener('click', (e) => {
+        const boton = e.target.closest('button[data-accion][data-id]');
+        if (!boton) return;
+        const id = Number(boton.dataset.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return;
+        if (boton.dataset.accion === 'detalle') this.verDetalle(id);
+        else if (boton.dataset.accion === 'respuestas') this.verRespuestas(id);
+      });
+    }
     Modal.iniciarCierre();
   },
 
@@ -394,10 +427,11 @@ const PanelAdmin = {
     const tipoMonto = tipoSolicitante === 'ESTUDIANTE' ? 'REINSCRIPCION' : 'INSCRIPCION';
     const opciones = (this.montos || []).filter(m => m.tipoMonto === tipoMonto);
 
-    select.innerHTML = '<option value="">Seleccione un monto…</option>' + opciones.map(m => {
+    select.replaceChildren(new Option('Seleccione un monto…', ''));
+    opciones.forEach(m => {
       const monto = Number(m.montoPago).toLocaleString('es-MX', { minimumFractionDigits: 2 });
-      return `<option value="${m.idMonto}">${m.idMonto} — $${monto}</option>`;
-    }).join('');
+      select.appendChild(new Option(`${m.idMonto} — $${monto}`, String(m.idMonto)));
+    });
   },
 
   /* ── Catálogo de convocatorias y selección inicial ── */
@@ -568,21 +602,23 @@ const PanelAdmin = {
     }
 
     tbody.innerHTML = solicitudes.map(s => {
-      const badgeClass = ESTATUS_BADGE[s.estatus] || 'badge-revision';
-      const actualizado = this.formatearFecha(s.fechaActualizacion ?? s.fecha_actualizacion);
+      const id = Number(s.idSolicitud);
+      const badgeClass = Html.escapar(ESTATUS_BADGE[s.estatus] || 'badge-revision');
+      const actualizado = Html.escapar(this.formatearFecha(s.fechaActualizacion ?? s.fecha_actualizacion));
+      const idEsc = Number.isSafeInteger(id) ? id : Html.escapar(s.idSolicitud);
 
       return `<tr>
-        <td>${s.idSolicitud}</td>
-        <td>${s.nombreSolicitante || s.solicitante || '—'}</td>
-        <td>${s.tipoSolicitante   || '—'}</td>
-        <td>${s.tipoSolicitud      || '—'}</td>
+        <td>${idEsc}</td>
+        <td>${Html.escapar(s.nombreSolicitante || s.solicitante || '—')}</td>
+        <td>${Html.escapar(s.tipoSolicitante   || '—')}</td>
+        <td>${Html.escapar(s.tipoSolicitud      || '—')}</td>
         <td>${actualizado}</td>
-        <td><span class="badge-estatus ${badgeClass}">${s.estatus}</span></td>
+        <td><span class="badge-estatus ${badgeClass}">${Html.escapar(s.estatus)}</span></td>
         <td class="acciones-celda">
-          <button class="btn-itt btn-primario btn-accion-icono" onclick="PanelAdmin.verDetalle(${s.idSolicitud})" title="Ver detalle">
+          <button class="btn-itt btn-primario btn-accion-icono" data-accion="detalle" data-id="${idEsc}" title="Ver detalle">
             <i class="fa fa-eye"></i>
           </button>
-          <button class="btn-itt btn-secundario btn-accion-icono" onclick="PanelAdmin.verRespuestas(${s.idSolicitud})" title="Ver respuestas del formulario">
+          <button class="btn-itt btn-secundario btn-accion-icono" data-accion="respuestas" data-id="${idEsc}" title="Ver respuestas del formulario">
             <i class="fa fa-list-alt"></i>
           </button>
         </td>
@@ -675,8 +711,8 @@ const PanelAdmin = {
     if (solicitud.respuestas && solicitud.respuestas.length) {
       lista.innerHTML = solicitud.respuestas.map(r =>
         `<div class="detalle-campo">
-          <label>Pregunta #${r.idPregunta}</label>
-          <div class="valor">${r.respuesta || '—'}</div>
+          <label>Pregunta #${Html.escapar(r.idPregunta)}</label>
+          <div class="valor">${Html.escapar(r.respuesta || '—')}</div>
         </div>`
       ).join('');
     } else {
@@ -725,14 +761,14 @@ const PanelAdmin = {
         historialEl.innerHTML = solicitud.historial.map(h => {
           const { clase, icon } = ESTATUS_ICONO[h.estatus] || { clase: 'pendiente', icon: 'fa-info' };
           const comentarioHtml = h.comentario
-            ? `<div class="hist-comentario"><i class="fa fa-quote-left"></i> ${h.comentario}</div>`
+            ? `<div class="hist-comentario"><i class="fa fa-quote-left"></i> ${Html.escapar(h.comentario)}</div>`
             : '';
           return `
             <li class="historial-item">
-              <div class="historial-icono ${clase}"><i class="fa ${icon}"></i></div>
+              <div class="historial-icono ${Html.escapar(clase)}"><i class="fa ${Html.escapar(icon)}"></i></div>
               <div class="historial-info">
-                <div class="hist-titulo">${h.estatusNombre || h.estatus}</div>
-                <div class="hist-meta">${this.formatearFecha(h.fecha)} · ${h.administrador || 'Alumno'}</div>
+                <div class="hist-titulo">${Html.escapar(h.estatusNombre || h.estatus)}</div>
+                <div class="hist-meta">${Html.escapar(this.formatearFecha(h.fecha))} · ${Html.escapar(h.administrador || 'Alumno')}</div>
                 ${comentarioHtml}
               </div>
             </li>`;
@@ -774,7 +810,7 @@ const PanelAdmin = {
       </div>
       <div class="detalle-campo">
         <label>Estatus deducción</label>
-        <div class="valor">${deduccion.estatus || '—'}</div>
+        <div class="valor">${Html.escapar(deduccion.estatus || '—')}</div>
       </div>`;
   },
 
@@ -1061,6 +1097,28 @@ const Notificaciones = {
 };
 
 /* ─────────────────────────────────────────
+   MÓDULO: GESTIÓN DE CONVOCATORIAS
+   Equipo 4
+───────────────────────────────────────── */
+const ConvocatoriasAdmin = {
+  async listar() {
+    const respuesta = await Http.get('/admin/convocatorias');
+    if (!Array.isArray(respuesta.convocatorias)) {
+      throw new Error('La respuesta del listado de convocatorias no es válida.');
+    }
+    return respuesta.convocatorias;
+  },
+
+  async consultar(idConvocatoria) {
+    const id = Number(idConvocatoria);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new Error('Seleccione un identificador de convocatoria válido.');
+    }
+    return Http.get(`/admin/convocatorias/${id}`);
+  },
+};
+
+/* ─────────────────────────────────────────
    INICIALIZACIÓN AUTOMÁTICA
 ───────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1070,5 +1128,24 @@ document.addEventListener('DOMContentLoaded', () => {
   switch (pagina) {
     case 'pagina-login-admin':  LoginAdmin.init();  break;
     case 'pagina-panel-admin':  PanelAdmin.init();  break;
+    case 'pagina-convocatorias-admin':
+      (async () => {
+        const btnGuardar = document.getElementById('btnGuardarConvocatoria');
+        if (btnGuardar) {
+          btnGuardar.disabled = true;
+          btnGuardar.textContent = 'Verificando sesión...';
+        }
+        const autorizado = await AuthSession.requireRole('ADMIN', 'login.html', '/solicitante/login.html');
+        if (!autorizado) return;
+        AuthSession.bindLogout('login.html', 'alertaValidacion');
+        if (btnGuardar) {
+          btnGuardar.disabled = false;
+          const iconEl = document.createElement('i');
+          iconEl.className = 'fa-solid fa-floppy-disk';
+          iconEl.setAttribute('aria-hidden', 'true');
+          btnGuardar.replaceChildren(iconEl, document.createTextNode(' Guardar convocatoria'));
+        }
+      })();
+      break;
   }
 });

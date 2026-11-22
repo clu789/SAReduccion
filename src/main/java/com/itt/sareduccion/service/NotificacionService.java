@@ -1,24 +1,38 @@
 package com.itt.sareduccion.service;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.PreDestroy;
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DataAccessException;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.web.util.HtmlUtils;
-import javax.mail.MessagingException;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.util.StreamUtils;
-import java.nio.charset.StandardCharsets;
-import java.io.IOException;
-import java.io.InputStream;
-import javax.mail.internet.MimeMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.HtmlUtils;
 
 import com.itt.sareduccion.repository.AdministradorRepository;
 
@@ -31,17 +45,50 @@ public class NotificacionService {
     private final ObjectProvider<JavaMailSender> mailSender;
     private final String remitente;
     private final String plantilla;
+    private final Executor executor;
+    private final boolean ownsExecutor;
 
+    @Autowired
     public NotificacionService(AdministradorRepository administradorRepository, ObjectProvider<JavaMailSender> mailSender,
             @Value("${SAR_MAIL_FROM:}") String remitente) {
+        this(administradorRepository, mailSender, remitente, crearEjecutorPorDefecto(), true);
+    }
+
+    NotificacionService(AdministradorRepository administradorRepository, ObjectProvider<JavaMailSender> mailSender,
+            String remitente, Executor executor) {
+        this(administradorRepository, mailSender, remitente, executor, false);
+    }
+
+    private NotificacionService(AdministradorRepository administradorRepository, ObjectProvider<JavaMailSender> mailSender,
+            String remitente, Executor executor, boolean ownsExecutor) {
         this.administradorRepository = administradorRepository;
         this.mailSender = mailSender;
         this.remitente = remitente;
+        this.executor = executor;
+        this.ownsExecutor = ownsExecutor;
         try (InputStream archivo = new ClassPathResource("mail/aviso-tramite.html").getInputStream()) {
             this.plantilla = StreamUtils.copyToString(archivo, StandardCharsets.UTF_8);
         } catch (IOException ex) {
             throw new IllegalStateException("No se pudo cargar la plantilla de notificaciones", ex);
         }
+    }
+
+    @PreDestroy
+    void cerrarEjecutor() {
+        if (ownsExecutor && executor instanceof ExecutorService) {
+            ((ExecutorService) executor).shutdown();
+        }
+    }
+
+    private static ExecutorService crearEjecutorPorDefecto() {
+        AtomicInteger secuencia = new AtomicInteger(1);
+        ThreadFactory factory = runnable -> {
+            Thread hilo = new Thread(runnable, "sar-notificacion-" + secuencia.getAndIncrement());
+            hilo.setDaemon(true);
+            return hilo;
+        };
+        return new ThreadPoolExecutor(1, 2, 60L, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>(256), factory, new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
     public enum Evento {
@@ -63,6 +110,29 @@ public class NotificacionService {
     }
 
     public void avisarCambio(String idAdministrador, long idSolicitud, Evento evento, String comentario) {
+        final Map<String, String> contextoMdc = MDC.getCopyOfContextMap();
+        try {
+            executor.execute(() -> {
+                if (contextoMdc != null) {
+                    MDC.setContextMap(contextoMdc);
+                } else {
+                    MDC.clear();
+                }
+                try {
+                    ejecutarAvisoCambio(idAdministrador, idSolicitud, evento, comentario);
+                } catch (RuntimeException ex) {
+                    LOG.warn("Error inesperado al enviar aviso {} para solicitud {} ({})",
+                            evento, idSolicitud, ex.getClass().getSimpleName());
+                } finally {
+                    MDC.clear();
+                }
+            });
+        } catch (RejectedExecutionException ex) {
+            LOG.warn("Aviso {} descartado por cierre del ejecutor para solicitud {}", evento, idSolicitud);
+        }
+    }
+
+    private void ejecutarAvisoCambio(String idAdministrador, long idSolicitud, Evento evento, String comentario) {
         String destinatario;
         try {
             destinatario = administradorRepository.consultarCorreoSolicitud(idAdministrador, idSolicitud);

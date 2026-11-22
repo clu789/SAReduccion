@@ -63,9 +63,11 @@ public class SolicitanteController {
         if (identidad == null) {
             return noAutorizado();
         }
+        List<ConvocatoriaDisponible> convocatorias = solicitanteService.convocatorias(identidad);
+        Map<Long, Integer> estatusPorSolicitud = solicitanteService.estatusPorSolicitud(identidad, convocatorias);
         List<Map<String, Object>> respuesta = new ArrayList<Map<String, Object>>();
-        for (ConvocatoriaDisponible convocatoria : solicitanteService.convocatorias(identidad)) {
-            respuesta.add(convocatoriaJson(convocatoria));
+        for (ConvocatoriaDisponible convocatoria : convocatorias) {
+            respuesta.add(convocatoriaJson(convocatoria, estatusPorSolicitud));
         }
         return ResponseEntity.ok(respuesta);
     }
@@ -105,22 +107,6 @@ public class SolicitanteController {
         }
         solicitanteService.retirar(identidad, id);
         return ResponseEntity.ok(mensaje("Solicitud retirada correctamente."));
-    }
-
-    @PutMapping("/solicitudes/{id}/reenviar")
-    public ResponseEntity<?> reenviar(@PathVariable("id") long id,
-            @RequestBody(required = false) SolicitanteService.Reenvio body,
-            @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
-            HttpServletRequest request) {
-        IdentidadSolicitante identidad = solicitante(request);
-        if (identidad == null) {
-            return noAutorizado();
-        }
-        if (!SessionAttributes.validCsrf(request.getSession(false), csrfHeader)) {
-            return csrfInvalido();
-        }
-        solicitanteService.reenviar(identidad, id, body);
-        return ResponseEntity.ok(mensaje("Solicitud reenviada correctamente."));
     }
 
     @ExceptionHandler(ReglaNegocioException.class)
@@ -174,7 +160,8 @@ public class SolicitanteController {
         return fila;
     }
 
-    private Map<String, Object> convocatoriaJson(ConvocatoriaDisponible convocatoria) {
+    private Map<String, Object> convocatoriaJson(ConvocatoriaDisponible convocatoria,
+            Map<Long, Integer> estatusPorSolicitud) {
         Map<String, Object> fila = new LinkedHashMap<String, Object>();
         fila.put("idConvocatoria", convocatoria.getIdConvocatoria());
         fila.put("periodo", convocatoria.getPeriodo());
@@ -188,8 +175,11 @@ public class SolicitanteController {
         fila.put("idFormulario", convocatoria.getIdFormulario());
         fila.put("formulario", convocatoria.getFormularioNombre());
         fila.put("montoDeduccion", convocatoria.getMontoDeduccion());
-        fila.put("idSolicitudExistente", convocatoria.getIdSolicitudExistente());
-        fila.put("puedeIniciar", convocatoria.getIdSolicitudExistente() == null);
+        Long idSolicitudExistente = convocatoria.getIdSolicitudExistente();
+        fila.put("idSolicitudExistente", idSolicitudExistente);
+        fila.put("idEstatusSolicitud",
+                idSolicitudExistente == null ? null : estatusPorSolicitud.get(idSolicitudExistente));
+        fila.put("puedeIniciar", idSolicitudExistente == null);
         return fila;
     }
 

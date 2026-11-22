@@ -174,11 +174,13 @@
       await cargarPerfil(sesion);
 
       const params = new URLSearchParams(window.location.search);
-      const idSolicitud = params.get('solicitud');
-      if (params.get('modo') === 'reenvio' && /^[0-9]{1,18}$/.test(idSolicitud || '')) {
+      const idSolicitud = params.get('modo') === 'reenvio'
+        ? params.get('solicitud')
+        : params.get('reenviar');
+      if (/^[0-9]{1,18}$/.test(idSolicitud || '')) {
         await iniciarReenvio(idSolicitud);
       } else {
-        await iniciarNuevo();
+        await iniciarNuevo(params);
       }
     } catch (e) {
       manejarError(e);
@@ -189,13 +191,16 @@
 
   async function cargarPerfil(sesion) {
     try {
-      const p = await api('GET', '/solicitante/formulario/perfil');
-      $('info-nombre').textContent = p.nombre || (p.rol === 'ASPIRANTE' ? 'Aspirante de nuevo ingreso' : 'Estudiante');
-      $('info-control').textContent = (p.rol === 'ASPIRANTE' ? 'Ficha ' : '') + (p.identidad || '—');
-      $('info-extra').textContent = p.rol === 'ASPIRANTE'
+      const p = await api('GET', '/solicitante/perfil');
+      const tipo = p.tipo || p.rol;
+      const identificador = p.identificador || p.identidad;
+      const nombre = p.nombreCompleto || p.nombre;
+      $('info-nombre').textContent = nombre || (tipo === 'ASPIRANTE' ? 'Aspirante de nuevo ingreso' : 'Estudiante');
+      $('info-control').textContent = (tipo === 'ASPIRANTE' ? 'Ficha ' : '') + (identificador || '—');
+      $('info-extra').textContent = tipo === 'ASPIRANTE'
         ? 'Periodo ' + p.periodo + ' / ' + p.anio
         : (p.semestre !== null && p.semestre !== undefined ? p.semestre + '.º semestre' : '—');
-      if (p.nombre) $('nombre-usuario-nav').textContent = p.nombre;
+      if (nombre) $('nombre-usuario-nav').textContent = nombre;
     } catch (e) {
       // La tarjeta es informativa: si falla se deja la identidad de la sesion.
       $('info-nombre').textContent = sesion.role === 'APPLICANT' ? 'Aspirante de nuevo ingreso' : 'Estudiante';
@@ -204,14 +209,67 @@
     }
   }
 
+  function agruparConvocatorias(lista) {
+    const porId = new Map();
+    (lista || []).forEach((item) => {
+      if (!item || item.idConvocatoria === null || item.idConvocatoria === undefined) return;
+      const clave = String(item.idConvocatoria);
+      let conv = porId.get(clave);
+      if (!conv) {
+        const idExistente = item.idSolicitud !== undefined ? item.idSolicitud : item.idSolicitudExistente;
+        conv = {
+          idConvocatoria: item.idConvocatoria,
+          idPeriodo: item.idPeriodo !== undefined ? item.idPeriodo : item.periodo,
+          periodo: item.periodo !== undefined ? item.periodo : item.idPeriodo,
+          periodoDescripcion: item.periodoDescripcion || null,
+          anio: item.anio,
+          fechaInicio: item.fechaInicio,
+          fechaFin: item.fechaFin,
+          idSolicitud: idExistente == null ? null : idExistente,
+          idEstatusSolicitud: item.idEstatusSolicitud == null ? null : item.idEstatusSolicitud,
+          tipos: [],
+        };
+        porId.set(clave, conv);
+      }
+      if (conv.idSolicitud == null) {
+        const idExistente = item.idSolicitud !== undefined ? item.idSolicitud : item.idSolicitudExistente;
+        if (idExistente != null) conv.idSolicitud = idExistente;
+      }
+      if (conv.idEstatusSolicitud == null && item.idEstatusSolicitud != null) {
+        conv.idEstatusSolicitud = item.idEstatusSolicitud;
+      }
+      if (Array.isArray(item.tipos)) {
+        item.tipos.forEach((t) => {
+          if (t && !conv.tipos.some((x) => Number(x.idTipoSolicitud) === Number(t.idTipoSolicitud))) {
+            conv.tipos.push(t);
+          }
+        });
+      } else if (item.idTipoSolicitud != null &&
+          !conv.tipos.some((x) => Number(x.idTipoSolicitud) === Number(item.idTipoSolicitud))) {
+        conv.tipos.push({
+          idTipoSolicitud: item.idTipoSolicitud,
+          nombre: item.tipoSolicitud || item.nombre || ('Tipo ' + item.idTipoSolicitud),
+          descripcion: item.tipoDescripcion || null,
+          idFormulario: item.idFormulario,
+        });
+      }
+    });
+    return Array.from(porId.values());
+  }
+
   /* ───────────────── modo nuevo ───────────────── */
-  async function iniciarNuevo() {
-    const lista = await api('GET', '/solicitante/convocatorias-abiertas');
-    if (!lista || !lista.length) {
+  async function iniciarNuevo(params) {
+    const cruda = await api('GET', '/solicitante/convocatorias');
+    const lista = agruparConvocatorias(cruda);
+    if (!lista.length) {
       alertar('advertencia', 'No hay una convocatoria con periodo de recepción abierto en este momento.', [enlacePanel()]);
       return;
     }
-    estado.convocatoria = lista[0];
+    const convParam = params && params.get('convocatoria');
+    const encontrada = convParam
+      ? lista.find((c) => String(c.idConvocatoria) === String(convParam))
+      : null;
+    estado.convocatoria = encontrada || lista[0];
     if (estado.convocatoria.idSolicitud !== null && estado.convocatoria.idSolicitud !== undefined) {
       mostrarSolicitudExistente(estado.convocatoria);
       return;
@@ -224,10 +282,15 @@
       mostrar('form-solicitud', false);
       return;
     }
-    renderSelectorTipo(tipos, null);
-    if (tipos.length === 1) {
-      await cargarFormulario(tipos[0].idTipoSolicitud, {});
-      renderSelectorTipo(tipos, tipos[0].idTipoSolicitud);
+    const tipoParam = params && params.get('tipo');
+    const tipoElegido = tipoParam
+      ? tipos.find((t) => String(t.idTipoSolicitud) === String(tipoParam))
+      : null;
+    const seleccionado = tipoElegido || (tipos.length === 1 ? tipos[0] : null);
+    renderSelectorTipo(tipos, seleccionado ? seleccionado.idTipoSolicitud : null);
+    if (seleccionado) {
+      await cargarFormulario(seleccionado.idTipoSolicitud, {});
+      renderSelectorTipo(tipos, seleccionado.idTipoSolicitud);
     } else {
       vaciar($('instrucciones'));
       vaciar($('contenedor-preguntas'));
