@@ -19,10 +19,8 @@ class NotificacionServiceTest {
     @Test
     void plantillasIncluyenEstadoYComentarioSeguroConTextoAlternativo() throws Exception {
         JavaMailSender sender = mock(JavaMailSender.class);
-        ObjectProvider<JavaMailSender> provider = mock(ObjectProvider.class);
-        when(provider.getIfAvailable()).thenReturn(sender);
         NotificacionService service = new NotificacionService(
-                mock(AdministradorRepository.class), provider, "sar@example.test");
+                mock(AdministradorRepository.class), providerDe(sender), "sar@example.test");
         for (NotificacionService.Evento evento : NotificacionService.Evento.values()) {
             for (String comentario : new String[] {null, "Revisar <script>ejemplo</script>\nGracias"}) {
                 MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
@@ -51,8 +49,6 @@ class NotificacionServiceTest {
     void avisarCambioPropagaMdcEnEjecutorAsincronoYNoLanzaExcepcionSiFallaRepositorio() {
         AdministradorRepository repo = mock(AdministradorRepository.class);
         JavaMailSender sender = mock(JavaMailSender.class);
-        ObjectProvider<JavaMailSender> provider = mock(ObjectProvider.class);
-        when(provider.getIfAvailable()).thenReturn(sender);
         MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
         when(sender.createMimeMessage()).thenReturn(message);
 
@@ -62,7 +58,7 @@ class NotificacionServiceTest {
             return "aspirante@example.test";
         });
 
-        NotificacionService service = new NotificacionService(repo, provider, "sar@example.test", Runnable::run);
+        NotificacionService service = new NotificacionService(repo, providerDe(sender), "sar@example.test", Runnable::run);
         MDC.put("correlationId", "req-notif-123");
         try {
             service.avisarCambio("SA01", 77L, NotificacionService.Evento.APROBACION, "Listo");
@@ -87,5 +83,29 @@ class NotificacionServiceTest {
             }
         }
         return "";
+    }
+
+    private ObjectProvider<JavaMailSender> providerDe(final JavaMailSender sender) {
+        return new ObjectProvider<JavaMailSender>() {
+            @Override
+            public JavaMailSender getObject() {
+                return sender;
+            }
+
+            @Override
+            public JavaMailSender getObject(Object... args) {
+                return sender;
+            }
+
+            @Override
+            public JavaMailSender getIfAvailable() {
+                return sender;
+            }
+
+            @Override
+            public JavaMailSender getIfUnique() {
+                return sender;
+            }
+        };
     }
 }

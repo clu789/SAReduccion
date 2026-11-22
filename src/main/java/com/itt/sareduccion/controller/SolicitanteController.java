@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -121,7 +120,10 @@ public class SolicitanteController {
                 .body(new ErrorResponse(exception.getMessage(), "NO_ENCONTRADA"));
     }
 
-    /** Identidad del estudiante o aspirante de la sesion, o {@code null} si no hay una valida. */
+    /**
+     * Identidad del estudiante o aspirante de la sesion, o {@code null} si no hay
+     * una valida.
+     */
     private IdentidadSolicitante solicitante(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         return IdentidadSolicitante.desde(SessionAttributes.principal(session));

@@ -302,15 +302,6 @@ public class SolicitudAdminService {
         return nombre == null ? "Tipo " + idTipo : nombre;
     }
 
-    private SolicitudAdmin buscar(String idAdministrador, long idSolicitud) {
-        for (SolicitudAdmin solicitud : administradorRepository.listarSolicitudes(idAdministrador)) {
-            if (solicitud.getIdSolicitud() != null && solicitud.getIdSolicitud().longValue() == idSolicitud) {
-                return solicitud;
-            }
-        }
-        return null;
-    }
-
     /** ORA-01403 (NO_DATA_FOUND), estandar de Oracle. */
     private static final int ORACLE_NO_DATA_FOUND = 1403;
     /** PKG_ADMINISTRADOR.comprobar_plazo: "Plazo administrativo cerrado". */
