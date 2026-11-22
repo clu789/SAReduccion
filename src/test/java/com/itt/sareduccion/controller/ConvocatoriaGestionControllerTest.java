@@ -30,6 +30,7 @@ import com.itt.sareduccion.security.GlobalExceptionHandler;
 import com.itt.sareduccion.security.SecurityAuditService;
 import com.itt.sareduccion.security.WebSecurityConfig;
 import com.itt.sareduccion.service.ConvocatoriaGestionService;
+import com.itt.sareduccion.service.ConvocatoriaNoEncontradaException;
 import com.itt.sareduccion.service.ReglaNegocioException;
 
 class ConvocatoriaGestionControllerTest {
@@ -113,6 +114,21 @@ class ConvocatoriaGestionControllerTest {
                 .content(cuerpo))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("El plazo ya vencio"));
+
+        when(service.listarHistorialConvocatoria("SA01", 999L))
+                .thenThrow(new ConvocatoriaNoEncontradaException("No se encontro la convocatoria solicitada."));
+        when(service.actualizarConvocatoria(eq("SA01"), eq(999L), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new ConvocatoriaNoEncontradaException("No se encontro la convocatoria solicitada."));
+
+        mockMvc.perform(get("/api/admin/convocatorias/999/historial").session(admin))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("No se encontro la convocatoria solicitada."));
+        mockMvc.perform(put("/api/admin/convocatorias/999").session(admin)
+                .header(SessionAttributes.CSRF_HEADER, csrf)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(cuerpo))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("No se encontro la convocatoria solicitada."));
     }
 
     private MockHttpSession sesion(AuthenticatedPrincipal principal) {

@@ -45,8 +45,11 @@ class ConvocatoriaGestionServiceTest {
 
         List<Map<String, Object>> lista = service.listarConvocatorias("SA01");
         assertEquals("ACTIVA", lista.get(0).get("estado"));
+        assertEquals(Boolean.TRUE, lista.get(0).get("activa"));
         assertEquals("PROXIMA", lista.get(1).get("estado"));
+        assertEquals(Boolean.FALSE, lista.get(1).get("activa"));
         assertEquals("CERRADA", lista.get(2).get("estado"));
+        assertEquals(Boolean.FALSE, lista.get(2).get("activa"));
 
         when(repository.consultarMontosConvocatoria("SA01", 3L)).thenReturn(Collections.emptyList());
         Map<String, Object> detalle = service.consultarConvocatoria("SA01", 3L);
@@ -94,6 +97,20 @@ class ConvocatoriaGestionServiceTest {
         assertFalse(resultado.isEmpty());
         verify(repository).actualizarConvocatoria("SA01", 900010L, hoy, hoy.plusDays(6), hoy.plusDays(11),
                 hoy.plusDays(16), new BigDecimal("550"), new BigDecimal("650"));
+
+        when(repository.listarHistorialConvocatoria("SA01", 999L))
+                .thenThrow(new DataIntegrityViolationException("ORA-20915",
+                        new SQLException("No registrada", "72000", 20915)));
+        assertThrows(ConvocatoriaNoEncontradaException.class,
+                () -> service.listarHistorialConvocatoria("SA01", 999L));
+
+        when(repository.actualizarConvocatoria("SA01", 999L, hoy, hoy.plusDays(6), hoy.plusDays(11),
+                hoy.plusDays(16), new BigDecimal("550"), new BigDecimal("650")))
+                .thenThrow(new DataIntegrityViolationException("ORA-20915",
+                        new SQLException("No registrada", "72000", 20915)));
+        assertThrows(ConvocatoriaNoEncontradaException.class,
+                () -> service.actualizarConvocatoria("SA01", 999L, hoy, hoy.plusDays(6),
+                        hoy.plusDays(11), hoy.plusDays(16), new BigDecimal("550"), new BigDecimal("650")));
     }
 
     private Map<String, Object> fila(long id, LocalDate ini, LocalDate fin, LocalDate aut, LocalDate apl) {

@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.itt.sareduccion.auth.AuthRole;
 import com.itt.sareduccion.auth.SessionAttributes;
 import com.itt.sareduccion.auth.SessionPrincipal;
-import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.DeduccionAdmin;
 import com.itt.sareduccion.model.HistorialDeduccionAdmin;
 import com.itt.sareduccion.model.HistorialSolicitudAdmin;
@@ -78,30 +77,6 @@ public class SolicitudAdminController {
             return noAutorizado();
         }
         return ResponseEntity.ok(solicitudAdminService.estadisticas(principal.getIdentity(), convocatoria));
-    }
-
-    @GetMapping("/convocatorias")
-    public ResponseEntity<?> convocatorias(HttpServletRequest request) {
-        SessionPrincipal principal = administrador(request);
-        if (principal == null) {
-            return noAutorizado();
-        }
-        List<ConvocatoriaAdmin> convocatorias = solicitudAdminService
-                .listarConvocatorias(principal.getIdentity());
-        List<Map<String, Object>> respuesta = new ArrayList<Map<String, Object>>();
-        for (ConvocatoriaAdmin convocatoria : convocatorias) {
-            Map<String, Object> fila = new LinkedHashMap<String, Object>();
-            fila.put("idConvocatoria", convocatoria.getIdConvocatoria());
-            fila.put("fechaInicio", convocatoria.getFechaInicio());
-            fila.put("fechaFin", convocatoria.getFechaFin());
-            fila.put("fechaLimiteAutorizacion", convocatoria.getFechaLimiteAutorizacion());
-            fila.put("fechaLimiteAplicacion", convocatoria.getFechaLimiteAplicacion());
-            fila.put("periodo", convocatoria.getPeriodo());
-            fila.put("anio", convocatoria.getAnio());
-            fila.put("activa", convocatoria.isActiva());
-            respuesta.add(fila);
-        }
-        return ResponseEntity.ok(respuesta);
     }
 
     @GetMapping("/solicitudes/{id}")

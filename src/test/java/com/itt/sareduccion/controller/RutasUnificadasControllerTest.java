@@ -115,6 +115,8 @@ class RutasUnificadasControllerTest {
                 .andExpect(jsonPath("$.estatus").value("PENDIENTE"));
 
         MockHttpSession admin = sesion(new AuthenticatedPrincipal("SA01", "SA01", AuthRole.ADMIN));
+        mockMvc.perform(get("/api/convocatorias").session(admin))
+                .andExpect(status().isNotFound());
         mockMvc.perform(put("/api/solicitudes/10/correccion").session(admin)
                 .header(SessionAttributes.CSRF_HEADER, SessionAttributes.csrfToken(admin))
                 .contentType(MediaType.APPLICATION_JSON)

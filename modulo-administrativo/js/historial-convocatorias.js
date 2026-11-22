@@ -81,6 +81,9 @@ const HistorialConvocatorias = {
     document.getElementById('modal-cambio').addEventListener('click', (e) => {
       if (e.target.id === 'modal-cambio') this.cerrarDetalle();
     });
+    document.querySelectorAll('[data-cerrar-detalle]').forEach((btn) => {
+      btn.addEventListener('click', () => this.cerrarDetalle());
+    });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.cerrarDetalle(); });
   },
 

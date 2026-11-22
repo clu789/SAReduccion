@@ -44,7 +44,9 @@ public class ConvocatoriaGestionService {
             for (Map<String, Object> convocatoria : convocatorias) {
                 LocalDate inicio = (LocalDate) convocatoria.get("fechaInicio");
                 LocalDate fin = (LocalDate) convocatoria.get("fechaFin");
-                convocatoria.put("estado", calcularEstado(inicio, fin, hoy));
+                String estado = calcularEstado(inicio, fin, hoy);
+                convocatoria.put("estado", estado);
+                convocatoria.put("activa", "ACTIVA".equals(estado));
             }
 
             return convocatorias;
@@ -308,6 +310,10 @@ public class ConvocatoriaGestionService {
                 return new ReglaNegocioException(
                         "El catalogo de tipos de solicitud esta incompleto.");
 
+            case 20915:
+                return new ConvocatoriaNoEncontradaException(
+                        "No se encontro la convocatoria solicitada.");
+
             case 20916:
                 return new ReglaNegocioException(
                         "Ya existe una convocatoria para ese periodo y anio.");
@@ -362,3 +368,6 @@ public class ConvocatoriaGestionService {
         return null;
     }
 }
+
+
+

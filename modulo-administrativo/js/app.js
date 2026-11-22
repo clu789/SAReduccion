@@ -438,7 +438,7 @@ const PanelAdmin = {
   async cargarConvocatorias() {
     const select = document.getElementById('filtro-convocatoria');
     try {
-      const convocatorias = await Http.get('/convocatorias');
+      const convocatorias = await ConvocatoriasAdmin.listar();
       const lista = Array.isArray(convocatorias) ? convocatorias : [];
       if (!select) return;
 

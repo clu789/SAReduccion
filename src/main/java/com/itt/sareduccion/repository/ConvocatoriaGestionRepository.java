@@ -27,14 +27,8 @@ public class ConvocatoriaGestionRepository {
     private static final String CONSULTAR_MONTOS_CONVOCATORIA_CALL =
         "{call SA_REDUCCION.PKG_ADMINISTRADOR.consultar_montos_convocatoria(?, ?, ?)}";
 
-    private static final String ACTUALIZAR_FECHAS_CALL =
-            "{call SA_REDUCCION.PKG_ADMINISTRADOR.actualizar_fechas_convocatoria(?, ?, ?, ?, ?, ?)}";
-    private static final String ACTUALIZAR_MONTO_CALL =
-            "{call SA_REDUCCION.PKG_ADMINISTRADOR.actualizar_monto_oficial(?, ?, ?, ?)}";
-
-    // IDs del catalogo oficial Tipo_Solicitudes: 1 trabajador, 2 homologado.
-    private static final int TIPO_TRABAJADOR = 1;
-    private static final int TIPO_HOMOLOGADO = 2;
+    private static final String ACTUALIZAR_CONVOCATORIA_CALL =
+            "{call SA_REDUCCION.PKG_ADMINISTRADOR.actualizar_convocatoria(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
 
     private static final String LISTAR_HISTORIAL_CONVOCATORIA_CALL =
             "{call SA_REDUCCION.PKG_ADMINISTRADOR.listar_historial_convocatoria(?, ?, ?)}";
@@ -239,98 +233,29 @@ public class ConvocatoriaGestionRepository {
             BigDecimal montoTrabajador,
             BigDecimal montoHomologado) {
 
-        // La lectura por cursores no bloquea filas: las ediciones simultaneas
-        // requieren una operacion atomica en PL/SQL para proteccion completa.
         return jdbcTemplate.execute((ConnectionCallback<Map<String, Object>>) connection -> {
             boolean autoCommitAnterior = connection.getAutoCommit();
             connection.setAutoCommit(false);
 
-            try {
-                // Leer mediante el paquete autorizado: SAR_BACKEND solo tiene
-                // EXECUTE sobre PKG_ADMINISTRADOR, no SELECT sobre las tablas.
-                LocalDate inicioActual = null;
-                LocalDate finActual = null;
-                LocalDate autorizacionActual = null;
-                LocalDate aplicacionActual = null;
-                boolean encontrada = false;
+            try (CallableStatement statement = connection.prepareCall(ACTUALIZAR_CONVOCATORIA_CALL)) {
+                statement.setString(1, idAdministrador);
+                statement.setLong(2, idConvocatoria);
+                statement.setDate(3, Date.valueOf(fechaInicio));
+                statement.setDate(4, Date.valueOf(fechaFin));
+                statement.setDate(5, Date.valueOf(fechaLimiteAutorizacion));
+                statement.setDate(6, Date.valueOf(fechaLimiteAplicacion));
+                statement.setBigDecimal(7, montoTrabajador);
+                statement.setBigDecimal(8, montoHomologado);
+                statement.registerOutParameter(9, Types.NUMERIC);
+                statement.registerOutParameter(10, Types.NUMERIC);
+                statement.registerOutParameter(11, Types.NUMERIC);
 
-                try (CallableStatement consulta = connection.prepareCall(LISTAR_CONVOCATORIAS_CALL)) {
-                    consulta.setString(1, idAdministrador);
-                    consulta.registerOutParameter(2, Types.REF_CURSOR);
-                    consulta.execute();
-                    try (ResultSet resultado = (ResultSet) consulta.getObject(2)) {
-                        while (resultado.next()) {
-                            if (resultado.getLong("ID_CONVOCATORIA") == idConvocatoria.longValue()) {
-                                encontrada = true;
-                                inicioActual = obtenerFecha(resultado, "FECHA_INICIO_SOLICITUDES");
-                                finActual = obtenerFecha(resultado, "FECHA_FIN_SOLICITUDES");
-                                autorizacionActual = obtenerFecha(resultado, "FECHA_LIMITE_AUTORIZACION");
-                                aplicacionActual = obtenerFecha(resultado, "FECHA_LIMITE_APLICACION");
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (!encontrada) {
-                    throw new SQLException("Convocatoria no encontrada: " + idConvocatoria);
-                }
-
-                BigDecimal trabajadorActual = null;
-                BigDecimal homologadoActual = null;
-                int encontrados = 0;
-                try (CallableStatement consulta = connection.prepareCall(CONSULTAR_MONTOS_CONVOCATORIA_CALL)) {
-                    consulta.setString(1, idAdministrador);
-                    consulta.setLong(2, idConvocatoria);
-                    consulta.registerOutParameter(3, Types.REF_CURSOR);
-                    consulta.execute();
-                    try (ResultSet resultado = (ResultSet) consulta.getObject(3)) {
-                        while (resultado.next()) {
-                            int tipo = resultado.getInt("ID_TIPO_SOLICITUD");
-                            if (tipo == TIPO_TRABAJADOR) {
-                                trabajadorActual = resultado.getBigDecimal("MONTO_DEDUCCION");
-                                encontrados++;
-                            } else if (tipo == TIPO_HOMOLOGADO) {
-                                homologadoActual = resultado.getBigDecimal("MONTO_DEDUCCION");
-                                encontrados++;
-                            }
-                        }
-                    }
-                }
-                if (encontrados != 2 || trabajadorActual == null || homologadoActual == null) {
-                    throw new SQLException("La convocatoria no tiene configurados ambos montos oficiales");
-                }
-
-                boolean fechasModificadas =
-                        !fechaInicio.equals(inicioActual)
-                        || !fechaFin.equals(finActual)
-                        || !fechaLimiteAutorizacion.equals(autorizacionActual)
-                        || !fechaLimiteAplicacion.equals(aplicacionActual);
-                boolean trabajadorModificado = montoTrabajador.compareTo(trabajadorActual) != 0;
-                boolean homologadoModificado = montoHomologado.compareTo(homologadoActual) != 0;
-
-                if (fechasModificadas) {
-                    try (CallableStatement statement =
-                            connection.prepareCall(ACTUALIZAR_FECHAS_CALL)) {
-                        statement.setString(1, idAdministrador);
-                        statement.setLong(2, idConvocatoria);
-                        statement.setDate(3, Date.valueOf(fechaInicio));
-                        statement.setDate(4, Date.valueOf(fechaFin));
-                        statement.setDate(5, Date.valueOf(fechaLimiteAutorizacion));
-                        statement.setDate(6, Date.valueOf(fechaLimiteAplicacion));
-                        statement.execute();
-                    }
-                }
-
-                if (trabajadorModificado) {
-                    actualizarMontoEnConexion(connection, idAdministrador,
-                            idConvocatoria, TIPO_TRABAJADOR, montoTrabajador);
-                }
-                if (homologadoModificado) {
-                    actualizarMontoEnConexion(connection, idAdministrador,
-                            idConvocatoria, TIPO_HOMOLOGADO, montoHomologado);
-                }
-
+                statement.execute();
                 connection.commit();
+
+                boolean fechasModificadas = banderaOut(statement.getObject(9));
+                boolean trabajadorModificado = banderaOut(statement.getObject(10));
+                boolean homologadoModificado = banderaOut(statement.getObject(11));
 
                 Map<String, Object> cambios = new LinkedHashMap<>();
                 cambios.put("fechasModificadas", fechasModificadas);
@@ -353,19 +278,8 @@ public class ConvocatoriaGestionRepository {
         });
     }
 
-    private void actualizarMontoEnConexion(
-            java.sql.Connection connection,
-            String idAdministrador,
-            Long idConvocatoria,
-            int tipo,
-            BigDecimal monto) throws SQLException {
-        try (CallableStatement statement = connection.prepareCall(ACTUALIZAR_MONTO_CALL)) {
-            statement.setString(1, idAdministrador);
-            statement.setLong(2, idConvocatoria);
-            statement.setInt(3, tipo);
-            statement.setBigDecimal(4, monto);
-            statement.execute();
-        }
+    private static boolean banderaOut(Object valor) {
+        return valor instanceof Number && ((Number) valor).intValue() == 1;
     }
 
     private LocalDate obtenerFecha(

@@ -19,35 +19,17 @@
     <link rel="stylesheet" href="/compartido/css/itt-security.css" />
   </head>
   <body id="pagina-historial-convocatorias">
-    <div class="main-wrapper">
-      <div class="top-banner-box">
+    <header class="itt-header">
+      <div class="itt-header-top">
         <img
           src="img/header.png"
-          alt="Tecnológico Nacional de México - Instituto Tecnológico de Toluca"
-          class="img-fluid institutional-header-image"
-          onerror="this.style.display = 'none'"
+          alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca"
+          class="logo-header"
         />
       </div>
-
-      <div class="nav-bar-white">
-        <div class="nav-tabs-custom">
-          <a href="panel-admin.html" class="nav-tab-link">
-            <i class="fa-solid fa-inbox"></i> Bandeja de Solicitudes
-          </a>
-          <a href="convocatorias-crear-editar.html" class="nav-tab-link">
-            <i class="fa-solid fa-calendar-days"></i> Convocatorias
-          </a>
-        </div>
-        <div class="user-info-bar">
-          <span
-            ><i class="fa-solid fa-shield-halved me-1"></i> Administrador</span
-          >
-          <span><i class="fa-solid fa-circle-user me-1"></i> Subdirector</span>
-          <button type="button" class="btn-salir-top" data-auth-logout>
-            <i class="fa-solid fa-right-from-bracket"></i> Salir
-          </button>
-        </div>
-      </div>
+      <nav class="itt-navbar" data-itt-nav aria-label="Navegación administrativa"></nav>
+    </header>
+    <div class="main-wrapper">
       <div class="convocatorias-page-header">
         <div class="convocatorias-page-heading">
           <h2 class="page-title-itt">
@@ -209,7 +191,7 @@
           <button
             type="button"
             class="hc-modal-close"
-            onclick="HistorialConvocatorias.cerrarDetalle()"
+            data-cerrar-detalle
             aria-label="Cerrar"
           >
             &times;
@@ -252,7 +234,7 @@
           <button
             type="button"
             class="btn-gray-itt"
-            onclick="HistorialConvocatorias.cerrarDetalle()"
+            data-cerrar-detalle
           >
             Cerrar
           </button>

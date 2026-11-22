@@ -27,6 +27,7 @@ import com.itt.sareduccion.auth.SessionAttributes;
 import com.itt.sareduccion.auth.SessionPrincipal;
 import com.itt.sareduccion.security.RequiereRol;
 import com.itt.sareduccion.service.ConvocatoriaGestionService;
+import com.itt.sareduccion.service.ConvocatoriaNoEncontradaException;
 import com.itt.sareduccion.service.ReglaNegocioException;
 
 @RestController
@@ -224,6 +225,15 @@ public class ConvocatoriaGestionController {
         }
         return ResponseEntity.ok(service.listarHistorialConvocatoria(
                 principal.getIdentity(), idConvocatoria));
+    }
+
+    @ExceptionHandler(ConvocatoriaNoEncontradaException.class)
+    public ResponseEntity<?> manejarNoEncontrada(
+            ConvocatoriaNoEncontradaException exception) {
+
+        return error(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage());
     }
 
     @ExceptionHandler(ReglaNegocioException.class)

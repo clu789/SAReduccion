@@ -460,6 +460,20 @@ CREATE OR REPLACE PACKAGE PKG_ADMINISTRADOR AUTHID DEFINER AS
     p_convocatoria NUMBER,
     p_resultado OUT SYS_REFCURSOR
   );
+
+  PROCEDURE actualizar_convocatoria(
+    p_id_administrador VARCHAR2,
+    p_convocatoria NUMBER,
+    p_inicio DATE,
+    p_fin DATE,
+    p_limite_autorizacion DATE,
+    p_limite_aplicacion DATE,
+    p_monto_trabajador NUMBER,
+    p_monto_homologado NUMBER,
+    p_fechas_mod OUT NUMBER,
+    p_trabajador_mod OUT NUMBER,
+    p_homologado_mod OUT NUMBER
+  );
 END PKG_ADMINISTRADOR;
 /
 
@@ -819,6 +833,58 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
       FROM Historial_Convocatorias h
       WHERE h.id_convocatoria=p_convocatoria
       ORDER BY h.fecha_registro DESC,h.id_historial_convocatoria DESC;
+  END;
+
+  PROCEDURE actualizar_convocatoria(p_id_administrador VARCHAR2,p_convocatoria NUMBER,
+    p_inicio DATE,p_fin DATE,p_limite_autorizacion DATE,p_limite_aplicacion DATE,
+    p_monto_trabajador NUMBER,p_monto_homologado NUMBER,
+    p_fechas_mod OUT NUMBER,p_trabajador_mod OUT NUMBER,p_homologado_mod OUT NUMBER) IS
+    c Convocatorias%ROWTYPE;
+    v_trab_actual NUMBER;
+    v_hom_actual NUMBER;
+  BEGIN
+    SAVEPOINT sp_act_conv_e4;
+    PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+    BEGIN
+      SELECT * INTO c FROM Convocatorias WHERE id_convocatoria=p_convocatoria FOR UPDATE;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20915,'Convocatoria no registrada');
+    END;
+    BEGIN
+      SELECT monto_deduccion INTO v_trab_actual
+        FROM Convocatorias_TipoSolicitudes
+       WHERE id_convocatoria=p_convocatoria AND id_tipo_solicitud=1 FOR UPDATE;
+      SELECT monto_deduccion INTO v_hom_actual
+        FROM Convocatorias_TipoSolicitudes
+       WHERE id_convocatoria=p_convocatoria AND id_tipo_solicitud=2 FOR UPDATE;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20887,'Tipo no configurado en convocatoria');
+    END;
+    p_fechas_mod:=0;
+    p_trabajador_mod:=0;
+    p_homologado_mod:=0;
+    IF TRUNC(p_inicio)<>TRUNC(c.fecha_inicio_solicitudes)
+       OR TRUNC(p_fin)<>TRUNC(c.fecha_fin_solicitudes)
+       OR TRUNC(p_limite_autorizacion)<>TRUNC(c.fecha_limite_autorizacion)
+       OR TRUNC(p_limite_aplicacion)<>TRUNC(c.fecha_limite_aplicacion) THEN
+      actualizar_fechas_convocatoria(p_id_administrador,p_convocatoria,
+        p_inicio,p_fin,p_limite_autorizacion,p_limite_aplicacion);
+      p_fechas_mod:=1;
+    END IF;
+    IF v_trab_actual<>p_monto_trabajador THEN
+      actualizar_monto_oficial(p_id_administrador,p_convocatoria,1,p_monto_trabajador);
+      p_trabajador_mod:=1;
+    END IF;
+    IF v_hom_actual<>p_monto_homologado THEN
+      actualizar_monto_oficial(p_id_administrador,p_convocatoria,2,p_monto_homologado);
+      p_homologado_mod:=1;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK TO sp_act_conv_e4;
+      RAISE;
   END;
 END PKG_ADMINISTRADOR;
 /

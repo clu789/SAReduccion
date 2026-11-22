@@ -79,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
 | `GET`  | `/api/solicitudes` | Listar solicitudes; filtros opcionales `estatus`, `convocatoria` y `solicitante` |
 | `GET`  | `/api/solicitudes/estadisticas` | Contadores por estatus |
 | `GET`  | `/api/solicitudes/{id}` | Detalle + respuestas + deducción |
-| `GET`  | `/api/convocatorias` | Convocatorias disponibles para los filtros |
 | `GET`  | `/api/deducciones` | Listar deducciones con filtro opcional `estatus` |
 | `PUT`  | `/api/solicitudes/{id}/aprobar` | Aprobar la solicitud y autorizar su deducción; el comentario es opcional |
 | `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud (o devolverla para corrección); exige comentario |
