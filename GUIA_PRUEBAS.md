@@ -120,8 +120,9 @@ Deben pasar **15 de 15** pruebas (`AuthenticationIntegrationTest`, `ApplicantAut
 2. **Bandeja (`panel-admin.html`):**
    - Probar tarjetas de estadísticas y todos los chips de filtro (`Todas`, `Pendientes`, `Autorizadas`, `Rechazadas`, `Canceladas`, `Aplicadas`, **`Retiradas`**), el filtro por convocatoria, el buscador por folio/nombre y el ordenamiento de columnas.
    - Abrir detalle (`👁`) y respuestas (`📄`) de varias solicitudes.
+   - En **Ver respuestas**, comprobar que aparezcan todas las preguntas del formulario en orden. Las respuestas de opción deben mostrar la opción elegida y las respuestas mixtas deben incluir su especificación; una observación opcional sin contenido debe aparecer como "Sin respuesta".
 3. **Ciclo de decisión:**
-   - En una solicitud `PENDIENTE` (ej. `F2026B007` o `21281189`): aprobar eligiendo un monto base (comentario opcional) -> debe cambiar a `AUTORIZADO`, generar deducción y permitir luego **Aplicar deducción** (estado final inmutable `APLICADO`) o **Cancelar deducción** (pasa a `CANCELADO` y habilita **Reautorizar**).
+   - En una solicitud `PENDIENTE` (ej. `F2026B007` o `21281189`): aprobar sin seleccionar un monto (comentario opcional). El backend deberá usar automáticamente inscripción para aspirantes o reinscripción para estudiantes y el monto con ID más alto de ese tipo. La solicitud deberá cambiar a `AUTORIZADO`, generar deducción y permitir luego **Aplicar deducción** (estado final inmutable `APLICADO`) o **Cancelar deducción** (pasa a `CANCELADO` y habilita **Reautorizar**).
    - En otra solicitud `PENDIENTE`: probar **Rechazar** sin comentario (debe exigir motivo obligatorio) y luego con motivo (cambia a `RECHAZADO`).
 4. **Módulo de Convocatorias (Equipo 4) y barra común:**
    - Usar el menú **`Vistas ▾`** de la barra superior en `panel-admin.html` para navegar entre:

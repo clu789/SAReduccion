@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import com.itt.sareduccion.model.DeduccionAdmin;
 import com.itt.sareduccion.model.HistorialDeduccionAdmin;
 import com.itt.sareduccion.model.HistorialSolicitudAdmin;
+import com.itt.sareduccion.model.MontoAdmin;
 import com.itt.sareduccion.model.RespuestaSolicitud;
 import com.itt.sareduccion.model.SolicitudAdmin;
 import com.itt.sareduccion.repository.AdministradorRepository;
@@ -75,6 +77,8 @@ class SolicitudAdminServiceTest {
     @Test
     void traduceCodigosOraclePositivosYNegativosCorrectamente() {
         when(repository.buscarSolicitud("SA01", 10L)).thenReturn(solicitudEstudiante(10L, 1));
+        when(repository.listarMontos("SA01")).thenReturn(Collections.singletonList(
+                new MontoAdmin(2L, new BigDecimal("1600"), "REINSCRIPCION")));
 
         // OJDBC devuelve codigos positivos (e.g. 20870, 20865, 20042, 1403)
         doThrow(errorOracle(20870)).when(repository).autorizarDeduccion("SA01", 10L, null, 2L, null);
@@ -110,8 +114,12 @@ class SolicitudAdminServiceTest {
     @Test
     void aprobarCancelarYAplicarUsanBusquedaPuntualYNotifican() {
         when(repository.buscarSolicitud("SA01", 10L)).thenReturn(solicitudEstudiante(10L, 1));
-        service.aprobar("SA01", 10L, null, 4L, "  Aprobada  ");
-        verify(repository).autorizarDeduccion("SA01", 10L, null, 4L, "Aprobada");
+        when(repository.listarMontos("SA01")).thenReturn(Arrays.asList(
+                new MontoAdmin(4L, new BigDecimal("1450"), "REINSCRIPCION"),
+                new MontoAdmin(6L, new BigDecimal("1600"), "REINSCRIPCION"),
+                new MontoAdmin(5L, new BigDecimal("1900"), "INSCRIPCION")));
+        service.aprobar("SA01", 10L, null, null, "  Aprobada  ");
+        verify(repository).autorizarDeduccion("SA01", 10L, null, 6L, "Aprobada");
         verify(notificacionService).avisarCambio("SA01", 10L, NotificacionService.Evento.APROBACION, "Aprobada");
 
         when(repository.buscarDeduccion("SA01", 5L)).thenReturn(deduccion(5L, 10L, 2));
@@ -124,9 +132,31 @@ class SolicitudAdminServiceTest {
         verify(notificacionService).avisarCambio("SA01", 10L, NotificacionService.Evento.APLICACION, "Aplicada");
     }
 
+    @Test
+    void aprobacionSeleccionaElMontoMasRecientePorPerfil() {
+        when(repository.buscarSolicitud("SA01", 10L)).thenReturn(solicitudEstudiante(10L, 1));
+        when(repository.buscarSolicitud("SA01", 11L)).thenReturn(solicitudAspirante(11L, 1));
+        when(repository.listarMontos("SA01")).thenReturn(Arrays.asList(
+                new MontoAdmin(2L, new BigDecimal("1450"), "REINSCRIPCION"),
+                new MontoAdmin(7L, new BigDecimal("1600"), "REINSCRIPCION"),
+                new MontoAdmin(3L, new BigDecimal("1750"), "INSCRIPCION"),
+                new MontoAdmin(8L, new BigDecimal("1900"), "INSCRIPCION")));
+
+        service.aprobar("SA01", 10L, null, null, null);
+        verify(repository).autorizarDeduccion("SA01", 10L, null, 7L, null);
+
+        service.aprobar("SA01", 11L, null, null, null);
+        verify(repository).autorizarDeduccion("SA01", 11L, 8L, null, null);
+    }
+
     private SolicitudAdmin solicitudEstudiante(long id, int estatus) {
         return new SolicitudAdmin(id, "21281181", null, 2, 2026, 900002L, estatus, 1,
                 LocalDateTime.now(), "Hijo de trabajador", "Sofia Lopez");
+    }
+
+    private SolicitudAdmin solicitudAspirante(long id, int estatus) {
+        return new SolicitudAdmin(id, null, "F2026A001", 2, 2026, 900002L, estatus, 2,
+                LocalDateTime.now(), "Hijo de homologado", "Carlos Perez");
     }
 
     private DeduccionAdmin deduccion(long idDeduccion, long idSolicitud, int estatus) {

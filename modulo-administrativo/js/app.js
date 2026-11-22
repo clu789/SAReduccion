@@ -376,7 +376,6 @@ const ESTATUS_ICONO = {
 
 const PanelAdmin = {
   solicitudes: [],      // Datos cargados desde la API
-  montos: [],            // Catálogo de montos (inscripción + reinscripción)
   filtroActual: 'todos',
   filtroConvocatoria: '',
   filtroSolicitante: '',
@@ -392,7 +391,7 @@ const PanelAdmin = {
     AuthSession.bindLogout('login.html', 'alerta-admin');
 
     await this.cargarConvocatorias();
-    await Promise.all([this.cargarEstadisticas(), this.cargarSolicitudes(), this.cargarMontos()]);
+    await Promise.all([this.cargarEstadisticas(), this.cargarSolicitudes()]);
     this.iniciarFiltros();
     this.iniciarBuscador();
     this.iniciarOrdenamiento();
@@ -408,30 +407,6 @@ const PanelAdmin = {
       });
     }
     Modal.iniciarCierre();
-  },
-
-  /* ── Catálogo de montos base (inscripción/reinscripción) ── */
-  async cargarMontos() {
-    try {
-      this.montos = await Http.get('/montos');
-    } catch (err) {
-      this.montos = [];
-      console.warn('No se pudieron cargar los montos:', err.message);
-    }
-  },
-
-  /* ── Llena el <select> de monto según el tipo de solicitante ── */
-  poblarSelectMonto(tipoSolicitante) {
-    const select = document.getElementById('select-monto');
-    if (!select) return;
-    const tipoMonto = tipoSolicitante === 'ESTUDIANTE' ? 'REINSCRIPCION' : 'INSCRIPCION';
-    const opciones = (this.montos || []).filter(m => m.tipoMonto === tipoMonto);
-
-    select.replaceChildren(new Option('Seleccione un monto…', ''));
-    opciones.forEach(m => {
-      const monto = Number(m.montoPago).toLocaleString('es-MX', { minimumFractionDigits: 2 });
-      select.appendChild(new Option(`${m.idMonto} — $${monto}`, String(m.idMonto)));
-    });
   },
 
   /* ── Catálogo de convocatorias y selección inicial ── */
@@ -709,12 +684,28 @@ const PanelAdmin = {
     const lista = document.getElementById('lista-respuestas');
     if (!lista) return;
     if (solicitud.respuestas && solicitud.respuestas.length) {
-      lista.innerHTML = solicitud.respuestas.map(r =>
-        `<div class="detalle-campo">
-          <label>Pregunta #${Html.escapar(r.idPregunta)}</label>
-          <div class="valor">${Html.escapar(r.respuesta || '—')}</div>
-        </div>`
-      ).join('');
+      const filas = [...solicitud.respuestas].sort((a, b) => {
+        const ordenA = Number.isFinite(a.orden) ? a.orden : Number.MAX_SAFE_INTEGER;
+        const ordenB = Number.isFinite(b.orden) ? b.orden : Number.MAX_SAFE_INTEGER;
+        return ordenA - ordenB;
+      });
+      lista.innerHTML = filas.map(r => {
+        let respuesta = '';
+        if (r.tipoPregunta === 'OPCION_UNICA' || r.tipoPregunta === 'MIXTA') {
+          respuesta = r.opcion || 'Sin opción registrada';
+          if (r.tipoPregunta === 'MIXTA' && r.respuesta) {
+            respuesta += ` — ${r.respuesta}`;
+          }
+        } else {
+          respuesta = r.respuesta || 'Sin respuesta';
+        }
+        const etiqueta = r.obligatoria === 'S' ? 'Obligatoria' : 'Opcional';
+        const pregunta = r.pregunta || `Pregunta #${r.idPregunta || '—'}`;
+        return `<div class="detalle-campo">
+          <label>${Html.escapar(pregunta)} · ${etiqueta}</label>
+          <div class="valor">${Html.escapar(respuesta)}</div>
+        </div>`;
+      }).join('');
     } else {
       lista.innerHTML =
         '<p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>';
@@ -898,7 +889,6 @@ const PanelAdmin = {
       aplicar:     document.getElementById('btn-aplicar-deduccion'),
     };
     const grupoComentario = document.getElementById('grupo-comentario');
-    const grupoMonto = document.getElementById('grupo-monto');
     const areaDecision = document.getElementById('area-decision');
 
     this.cerrarEditorCorreo();
@@ -908,13 +898,7 @@ const PanelAdmin = {
 
     Object.values(botones).forEach(b => { if (b) b.style.display = 'none'; });
     if (grupoComentario) grupoComentario.style.display = 'none';
-    if (grupoMonto) grupoMonto.style.display = 'none';
     if (areaDecision) areaDecision.style.display = (esPendiente || esCancelado || esAutorizado) ? '' : 'none';
-
-    if (esPendiente || esCancelado) {
-      this.poblarSelectMonto(solicitud.tipoSolicitante);
-      if (grupoMonto) grupoMonto.style.display = '';
-    }
 
     if (esPendiente) {
       if (botones.aprobar)  botones.aprobar.style.display = '';
@@ -938,8 +922,6 @@ const PanelAdmin = {
     this._solicitudActual = null;
     const comentario = document.getElementById('comentario-correccion');
     if (comentario) comentario.value = '';
-    const selectMonto = document.getElementById('select-monto');
-    if (selectMonto) selectMonto.value = '';
     Alerta.limpiar('alerta-decision');
   },
 
@@ -963,22 +945,10 @@ const PanelAdmin = {
 
   async _autorizarComun(mensajeConfirm, mensajeExito) {
     if (!this._solicitudActual) return;
-    const idMonto = document.getElementById('select-monto')?.value;
-    if (!idMonto) {
-      Alerta.mostrar('alerta-decision', 'advertencia', 'Seleccione el monto base a utilizar.');
-      return;
-    }
     // El comentario es opcional al aprobar o reautorizar; solo rechazar lo exige.
     const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
-
-
     const idActual = this._solicitudActual.idSolicitud;
-    const esEstudiante = this._solicitudActual.tipoSolicitante === 'ESTUDIANTE';
-    const body = {
-      comentario,
-      idMontoInscripcion: esEstudiante ? null : Number(idMonto),
-      idMontoReinscripcion: esEstudiante ? Number(idMonto) : null,
-    };
+    const body = { comentario };
     Spinner.show();
     try {
       await Http.put(`/solicitudes/${idActual}/aprobar`, body);

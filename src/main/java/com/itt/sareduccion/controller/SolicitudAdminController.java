@@ -106,7 +106,12 @@ public class SolicitudAdminController {
         for (RespuestaSolicitud item : detalle.getRespuestas()) {
             Map<String, Object> fila = new LinkedHashMap<String, Object>();
             fila.put("idPregunta", item.getIdPregunta());
+            fila.put("pregunta", item.getTextoPregunta());
+            fila.put("obligatoria", item.getObligatoria());
+            fila.put("tipoPregunta", item.getTipoPregunta());
+            fila.put("orden", item.getOrden());
             fila.put("idOpcion", item.getIdOpcion());
+            fila.put("opcion", item.getTextoOpcion());
             fila.put("respuesta", item.getTextoRespuesta());
             respuestas.add(fila);
         }

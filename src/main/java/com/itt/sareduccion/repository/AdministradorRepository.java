@@ -344,15 +344,20 @@ public class AdministradorRepository {
         return ejecutarCursor(connection, LISTAR_RESPUESTAS_CALL, idAdministrador, "listar_respuestas", resultSet -> {
             List<RespuestaSolicitud> respuestas = new ArrayList<RespuestaSolicitud>();
             while (resultSet.next()) {
-                Long idSolicitud = longOrNull(resultSet.getObject(2));
+                Long idSolicitud = longOrNull(resultSet.getObject(1));
                 if (idSolicitudFiltro == null
                         || (idSolicitud != null && idSolicitud.longValue() == idSolicitudFiltro.longValue())) {
                     respuestas.add(new RespuestaSolicitud(
-                            longOrNull(resultSet.getObject(1)),
+                            longOrNull(resultSet.getObject(7)),
                             idSolicitud,
-                            longOrNull(resultSet.getObject(3)),
-                            longOrNull(resultSet.getObject(4)),
-                            resultSet.getString(5)));
+                            longOrNull(resultSet.getObject(2)),
+                            resultSet.getString(3),
+                            resultSet.getString(4),
+                            resultSet.getString(5),
+                            intOrNull(resultSet.getObject(6)),
+                            longOrNull(resultSet.getObject(8)),
+                            resultSet.getString(9),
+                            resultSet.getString(10)));
                 }
             }
             return respuestas;

@@ -158,8 +158,10 @@ public class SolicitudAdminService {
      * su deduccion. Admite solicitudes PENDIENTE o CANCELADO, igual que
      * {@code autorizar_deduccion} (el panel expone esto con dos botones
      * distintos — "Aprobar" y "Reautorizar" — pero ambos llaman este metodo).
-     * El monto se elige segun el tipo de solicitante. El comentario es
-     * opcional: si no se captura, el historial queda sin motivo.
+     * El monto base se selecciona automaticamente segun el tipo de solicitante:
+     * aspirante usa inscripcion y estudiante usa reinscripcion. Cuando existan
+     * varios valores del tipo, se usa el registro con el identificador mas alto.
+     * El comentario es opcional: si no se captura, el historial queda sin motivo.
      */
     public void aprobar(String idAdministrador, long idSolicitud, Long idMontoInscripcion,
             Long idMontoReinscripcion, String comentario) {
@@ -179,20 +181,14 @@ public class SolicitudAdminService {
             throw new ReglaNegocioException("Solo se pueden aprobar solicitudes pendientes o canceladas");
         }
 
-        // El monto base lo elige el administrador (GET /api/montos), nunca se
-        // calcula automaticamente: cualquier administrador puede determinar que
-        // monto corresponde. El cliente debe mandar exactamente el id que aplica
-        // segun el tipo de solicitante.
+        String tipoMonto = solicitud.esEstudiante() ? "REINSCRIPCION" : "INSCRIPCION";
+        MontoAdmin montoBase = montoBaseMasReciente(idAdministrador, tipoMonto);
         if (solicitud.esEstudiante()) {
-            if (idMontoReinscripcion == null || idMontoInscripcion != null) {
-                throw new ReglaNegocioException(
-                        "Debe seleccionar un monto de reinscripcion para un estudiante");
-            }
+            idMontoInscripcion = null;
+            idMontoReinscripcion = montoBase.getIdMonto();
         } else {
-            if (idMontoInscripcion == null || idMontoReinscripcion != null) {
-                throw new ReglaNegocioException(
-                        "Debe seleccionar un monto de inscripcion para un aspirante");
-            }
+            idMontoInscripcion = montoBase.getIdMonto();
+            idMontoReinscripcion = null;
         }
 
         try {
@@ -300,6 +296,33 @@ public class SolicitudAdminService {
         }
         String nombre = TIPO_SOLICITUD_NOMBRES.get(idTipo);
         return nombre == null ? "Tipo " + idTipo : nombre;
+    }
+
+    private MontoAdmin montoBaseMasReciente(String idAdministrador, String tipoMonto) {
+        final List<MontoAdmin> montos;
+        try {
+            montos = administradorRepository.listarMontos(idAdministrador);
+        } catch (DataAccessException exception) {
+            throw traducirError(exception, "No se pudo consultar el monto base");
+        }
+
+        MontoAdmin elegido = null;
+        if (montos != null) {
+            for (MontoAdmin monto : montos) {
+                if (monto != null && tipoMonto.equals(monto.getTipoMonto())
+                        && (elegido == null
+                                || (monto.getIdMonto() != null
+                                        && elegido.getIdMonto() != null
+                                        && monto.getIdMonto().longValue() > elegido.getIdMonto().longValue()))) {
+                    elegido = monto;
+                }
+            }
+        }
+        if (elegido == null || elegido.getIdMonto() == null) {
+            String descripcion = "INSCRIPCION".equals(tipoMonto) ? "inscripcion" : "reinscripcion";
+            throw new ReglaNegocioException("No existe un monto base de " + descripcion + " configurado");
+        }
+        return elegido;
     }
 
     /** ORA-01403 (NO_DATA_FOUND), estandar de Oracle. */

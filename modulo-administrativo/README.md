@@ -102,8 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
 - Si la base ya fue inicializada, actualiza el paquete `PKG_ADMINISTRADOR` con el script `docker/init-db/05-crear-paquetes-permisos.sql` siguiendo el proceso de integración de Oracle. Docker solo ejecuta los scripts de inicialización sobre una base nueva.
 - La consulta usa el correo de `Aspirantes`. Una solicitud sin correo disponible devuelve `422`. Una falla de SMTP devuelve `503`.
 - Los filtros por chip llaman a `PanelAdmin.cargarSolicitudes(estatus)` con el estatus seleccionado.
-- El comentario es **obligatorio solo al rechazar**; es **opcional** al aprobar, reautorizar y cancelar la deducción. El monto base siempre es obligatorio en aprobar y reautorizar.
+- El comentario es **obligatorio solo al rechazar**; es **opcional** al aprobar, reautorizar y cancelar la deducción. El monto base se selecciona automáticamente: inscripción para aspirantes y reinscripción para estudiantes; si existe más de uno del tipo correspondiente, se usa el ID más alto.
 - El detalle incluye el `historial` de movimientos de la solicitud y de la deducción desde Oracle.
+- Al abrir **Ver respuestas**, el modal debe mostrar todas las preguntas del formulario en su orden, junto con la opción o el texto registrado y la indicación de obligatoria/opcional.
 
 El backend también envía avisos automáticos de forma asíncrona al aprobar (incluida la reautorización), rechazar, cancelar o aplicar una deducción. El cambio de estado se confirma en Oracle antes de programar el envío del correo; las incidencias de correo se registran sin revertir ni bloquear la respuesta administrativa.
 

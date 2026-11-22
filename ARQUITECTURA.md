@@ -328,7 +328,7 @@ La compatibilidad con Oracle 12c y los recibos institucionales quedan fuera del 
 | Sin verificación por correo | No existen todavía envío de correos, códigos de un solo uso ni recuperación de acceso. |
 | Módulo solicitante simulado | Las vistas de alta de solicitud y carga de formulario del solicitante siguen operando con datos locales; la consulta y resolución administrativas ya usan la API. |
 | Historial no disponible en la API | El detalle de solicitud devuelve `historial` vacío; falta el procedimiento de consulta en la base. |
-| Monto por defecto en la aprobación | Si el cliente no envía `idMontoInscripcion` ni `idMontoReinscripcion`, el servicio usa el id de la convocatoria como valor por defecto de desarrollo. |
+| Selección automática del monto base | Al aprobar o reautorizar, el servicio elige por perfil: inscripción para aspirantes y reinscripción para estudiantes. Si existen varios registros del tipo correspondiente, utiliza el ID más alto. |
 | Edición solo por reenvío | Una solicitud `PENDIENTE` no se edita: las respuestas se sustituyen al reenviar (`reenviar_solicitud`), que admite `RECHAZADO`, `RETIRADO` y `CANCELADO` dentro del periodo de recepción. Corregir una solicitud sin reenviarla no está soportado. |
 | Retiro sin endpoint | La base ya expone `retirar_solicitud` para estudiante y aspirante; el backend y las pantallas todavía no lo invocan. |
 | Sin captcha ni rate limiting general | El captcha no está implementado y el límite de intentos solo cubre el login de aspirante. |

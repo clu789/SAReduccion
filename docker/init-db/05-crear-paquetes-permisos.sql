@@ -539,7 +539,18 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
  PROCEDURE listar_respuestas(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
   PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
-  OPEN p_resultado FOR SELECT id_respuesta,id_solicitud,id_pregunta,id_opcion,texto_respuesta FROM Respuestas;
+  OPEN p_resultado FOR
+   SELECT s.id_solicitud,p.id_pregunta,p.texto_pregunta,p.obligatoria,
+          tp.nombre AS tipo_pregunta,fp.orden,
+          r.id_respuesta,r.id_opcion,o.texto_opcion,r.texto_respuesta
+     FROM Solicitudes s
+     JOIN Formularios f ON f.id_formulario=s.id_formulario
+     JOIN Formulario_Preguntas fp ON fp.id_formulario=f.id_formulario
+     JOIN Preguntas p ON p.id_pregunta=fp.id_pregunta
+     JOIN Tipo_Preguntas tp ON tp.id_tipo_pregunta=p.tipo_pregunta
+     LEFT JOIN Respuestas r ON r.id_solicitud=s.id_solicitud AND r.id_pregunta=p.id_pregunta
+     LEFT JOIN Opciones o ON o.id_opcion=r.id_opcion
+    ORDER BY s.id_solicitud,fp.orden;
  END;
  PROCEDURE listar_deducciones(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
