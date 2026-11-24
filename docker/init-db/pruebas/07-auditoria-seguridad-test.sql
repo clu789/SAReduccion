@@ -56,6 +56,19 @@ BEGIN
  v_correo := PKG_SEGURIDAD.correo_aspirante('NO-EXISTE',1,2000);
  ok(v_correo IS NULL,'correo_aspirante devuelve NULL si no existe el aspirante');
 
+ -- 6. Depuracion exige retencion minima de 30 dias.
+ BEGIN
+  PRC_SEG_DEPURAR_AUDITORIA(29);
+  ok(FALSE,'una retencion menor a 30 dias debe rechazarse');
+ EXCEPTION WHEN OTHERS THEN
+  ok(SQLCODE=-20852,'una retencion menor a 30 dias se rechaza con ORA-20852');
+ END;
+
+ -- 7. Job programado de depuracion diario existe y esta habilitado.
+ SELECT COUNT(*) INTO n FROM USER_SCHEDULER_JOBS
+  WHERE JOB_NAME = 'JOB_SEG_DEPURAR_AUDITORIA' AND ENABLED = 'TRUE';
+ ok(n=1,'JOB_SEG_DEPURAR_AUDITORIA existe y esta habilitado');
+
  DELETE FROM SEG_AUDITORIA_ACCESOS WHERE correlation_id LIKE 'TEST-E1-%';
  COMMIT;
  DBMS_OUTPUT.PUT_LINE('PRUEBAS PKG_SEGURIDAD: TODAS CORRECTAS');

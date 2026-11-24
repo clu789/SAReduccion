@@ -25,19 +25,19 @@
     <div class="login-admin-card">
 
       <!-- Badge de área -->
-      <div style="text-align:center;margin-bottom:16px;">
+      <div class="login-admin-centrado">
         <span class="badge-admin">
           <i class="fa fa-shield"></i> Panel Administrativo
         </span>
       </div>
 
       <!-- Logo ITT -->
-      <div style="text-align:center;margin-bottom:16px;">
-        <img src="img/logo.png" alt="Instituto Tecnológico de Toluca" style="max-height:70px;" />
+      <div class="login-admin-centrado">
+        <img src="img/logo.png" alt="Instituto Tecnológico de Toluca" class="login-admin-logo" />
       </div>
 
-      <h1 style="text-align:center;font-size:1.1rem;margin-bottom:4px;color:var(--itt-azul);">SAReducción</h1>
-      <p style="text-align:center;font-size:.8rem;color:var(--itt-texto-claro);margin-bottom:24px;">
+      <h1 class="login-admin-titulo">SAReducción</h1>
+      <p class="login-admin-subtitulo">
         Subdirección Académica<br />
         <strong>Instituto Tecnológico de Toluca</strong>
       </p>
@@ -49,14 +49,13 @@
       <form id="form-login-admin" novalidate>
         <div class="form-group">
           <label for="usuario-admin">Usuario Administrativo <span class="requerido">*</span></label>
-          <div style="position:relative;">
-            <i class="fa fa-user" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
+          <div class="input-con-icono">
+            <i class="fa fa-user"></i>
             <input
               type="text"
               id="usuario-admin"
               name="usuario-admin"
               class="form-control-itt"
-              style="padding-left:34px;"
               placeholder="ID de administrador"
               autocomplete="username"
               required
@@ -67,14 +66,13 @@
 
         <div class="form-group">
           <label for="password-admin">Contraseña <span class="requerido">*</span></label>
-          <div style="position:relative;">
-            <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
+          <div class="input-con-icono">
+            <i class="fa fa-lock"></i>
             <input
               type="password"
               id="password-admin"
               name="password-admin"
               class="form-control-itt"
-              style="padding-left:34px;"
               placeholder="Contraseña"
               autocomplete="current-password"
               required
@@ -86,12 +84,12 @@
         <!-- Captcha con alternativa accesible (Equipo 1) -->
         <div id="captcha-login-admin" data-itt-captcha></div>
 
-        <button type="submit" id="btn-login-admin" class="btn-itt btn-primario w-100" style="margin-top:12px;justify-content:center;">
+        <button type="submit" id="btn-login-admin" class="btn-itt btn-primario w-100 btn-login-admin">
           <i class="fa fa-sign-in"></i> Acceder al Panel
         </button>
       </form>
 
-      <p style="text-align:center;margin-top:18px;font-size:.76rem;color:var(--itt-texto-claro);">
+      <p class="login-admin-aviso">
         Acceso restringido a personal autorizado de la<br /><strong>Subdirección Académica</strong>.
       </p>
     </div>

@@ -48,7 +48,7 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 | Matriz | Implementado | Parcial | Pendiente | Acordado |
 | --- | ---: | ---: | ---: | ---: |
 | Requerimientos funcionales | 100 | 5 | 1 | 0 |
-| Requerimientos no funcionales | 55 | 5 | 8 | 0 |
+| Requerimientos no funcionales | 58 | 4 | 6 | 0 |
 
 | ID | Nombre del requerimiento | Descripción | Actor | Prioridad | Módulo | Criterios de aceptación | Estado |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -212,7 +212,7 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 | RNF-47 | Registro de errores importantes | El sistema deberá registrar los errores que impidan completar operaciones importantes. | Recuperación y auditoría | Alta | Los registros incluirán el identificador de correlación y no información sensible innecesaria. | Implementado |
 | RNF-48 | Fallo no bloqueante del correo | Un fallo de SMTP no deberá revertir una decisión ya confirmada en Oracle. | Recuperación y confiabilidad | Alta | La operación administrativa conservará su resultado y el fallo quedará disponible para diagnóstico. | Implementado |
 | RNF-49 | Persistencia de datos Oracle | Los datos de Oracle deberán conservarse fuera de la capa escribible de los contenedores. | Disponibilidad y persistencia | Alta | El reinicio o recreación de contenedores sin eliminar el volumen conservará los datos. | Implementado |
-| RNF-50 | Respaldo lógico documentado | El sistema deberá contar con procedimientos documentados de respaldo y restauración lógica de Oracle. | Recuperación y confiabilidad | Alta | Podrá generarse un respaldo de `SA_REDUCCION` y restaurarse en un entorno aislado siguiendo la documentación. | Parcial |
+| RNF-50 | Respaldo lógico documentado | El sistema deberá contar con procedimientos documentados de respaldo y restauración lógica de Oracle. | Recuperación y confiabilidad | Alta | Podrá generarse un respaldo de `SA_REDUCCION` y restaurarse en un entorno aislado siguiendo la documentación. | Implementado |
 | RNF-51 | Verificación de servicios | El sistema deberá permitir verificar el estado de los servicios necesarios. | Disponibilidad y confiabilidad | Media | Podrán consultarse el estado de Oracle, backend y frontend mediante los mecanismos documentados de Docker Compose o salud del servicio. | Implementado |
 | RNF-52 | Despliegue con Docker Compose | El sistema deberá desplegarse mediante Docker Compose. | Despliegue y portabilidad | Alta | Oracle, backend y frontend deberán levantarse con la configuración documentada y perfiles correspondientes. | Implementado |
 | RNF-53 | Puerto configurable | Los puertos publicados de Oracle, backend y frontend deberán configurarse mediante variables de entorno. | Despliegue y portabilidad | Media | Cambiar las variables configuradas no requerirá editar `docker-compose.yml`. | Implementado |
@@ -228,8 +228,8 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 | RNF-63 | Separación de secretos | Los secretos de Oracle, correo y sesiones deberán mantenerse separados y fuera de archivos versionados. | Seguridad y despliegue | Alta | Las credenciales reales no aparecerán en Git y su configuración podrá sustituirse mediante variables de entorno. | Implementado |
 | RNF-64 | TLS y configuración segura de producción | El despliegue productivo deberá utilizar HTTPS/TLS y configurar las medidas de seguridad de sesiones asociadas. | Seguridad y despliegue | Alta | En producción se habilitará TLS, `SESSION_COOKIE_SECURE=true` y HSTS cuando corresponda; las variables de despliegue deberán quedar separadas de las configuraciones locales. | Pendiente |
 | RNF-65 | Autenticación y correo institucionales en producción | El entorno productivo deberá activar la verificación OTP, utilizar el servidor SMTP institucional y configurar los proxies y credenciales reales. | Seguridad y despliegue | Alta | `SAR_OTP_ENABLED=true`, `SAR_OTP_LOG_CODE=false`, el remitente SMTP institucional, las credenciales definitivas y `SAR_TRUSTED_PROXIES` concordantes con el proxy real deberán estar configurados sin secretos expuestos en el repositorio. | Pendiente |
-| RNF-66 | Política CSP sin contenido en línea | El despliegue productivo deberá retirar `unsafe-inline` de la política de seguridad de contenido después de eliminar scripts y manejadores en línea. | Seguridad web y mantenibilidad | Alta | Nginx aplicará una CSP sin `unsafe-inline` y las páginas utilizarán archivos externos y controladores de eventos no inline. | Pendiente |
-| RNF-67 | Depuración programada de auditoría | El sistema deberá contar con una tarea programada para ejecutar la depuración de registros de auditoría. | Auditoría y recuperación | Media | Existirá una configuración o job productivo que invoque periódicamente `PRC_SEG_DEPURAR_AUDITORIA` y conserve como mínimo el periodo indicado por la política configurada. | Pendiente |
+| RNF-66 | Política CSP sin contenido en línea | El despliegue productivo deberá retirar `unsafe-inline` de la política de seguridad de contenido después de eliminar scripts y manejadores en línea. | Seguridad web y mantenibilidad | Alta | Nginx aplicará una CSP sin `unsafe-inline` y las páginas utilizarán archivos externos y controladores de eventos no inline. | Implementado |
+| RNF-67 | Depuración programada de auditoría | El sistema deberá contar con una tarea programada para ejecutar la depuración de registros de auditoría. | Auditoría y recuperación | Media | Existirá una configuración o job productivo que invoque periódicamente `PRC_SEG_DEPURAR_AUDITORIA` y conserve como mínimo el periodo indicado por la política configurada. | Implementado |
 | RNF-68 | Rate limiting compartido para réplicas | Si el backend se despliega con más de una réplica, el límite de intentos deberá mantenerse fuera de la memoria local del proceso. | Seguridad y escalabilidad | Alta | Con una sola réplica puede utilizarse el limitador actual; con varias réplicas se verificará que el bloqueo compartido persista y aplique a todas las instancias sin quedar aislado en memoria local. | Pendiente |
 
 ## 7. Reglas de negocio relacionadas
@@ -273,12 +273,11 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 | Parcial | RF-97, RF-98, RF-99, RF-100 | Las plantillas y el envío automático existen, pero la documentación indica cobertura completa para aspirantes y cobertura pendiente para estudiantes. |
 | Parcial | RNF-32 | El frontend usa tecnologías compatibles, pero no se encontró una matriz documentada de pruebas verificadas en Chrome, Firefox, Safari y Chromium. |
 | Parcial | RNF-42, RNF-43 | Las consultas y cargas usan paquetes e índices, pero no se encontró una prueba cuantitativa o de carga acordada. |
-| Parcial | RNF-50 | El respaldo y la restauración están documentados, pero la revisión no encontró evidencia suficiente de una prueba end-to-end aplicada durante esta auditoría. |
 | Parcial | RNF-59 | La inicialización es controlada y visible, pero los cambios sobre una base existente requieren un procedimiento manual y no existe una migración automática. |
 | Pendiente | RF-106 | El procedimiento solo consulta correo de aspirantes; falta integrar la fuente institucional de correo para estudiantes. |
 | Pendiente | RNF-57 | Oracle 12c institucional no ha sido probado ni se ha validado la compatibilidad de scripts, objetos, permisos y configuración del seed. |
 | Pendiente | RNF-44, RNF-45 | Las métricas de tiempo máximo de respuesta, horario de operación y SLA de disponibilidad no han sido definidas ni acordadas. |
-| Pendiente | RNF-64, RNF-65, RNF-66, RNF-67, RNF-68 | Faltan las configuraciones de producción para TLS, OTP, SMTP, proxies confiables, CSP estricta, depuración de auditoría y limitación compartida bajo réplicas. |
+| Pendiente | RNF-64, RNF-65, RNF-68 | Faltan las configuraciones de producción para TLS, OTP, SMTP, proxies confiables y limitación compartida bajo réplicas. |
 
 ## 8. Observaciones y decisiones pendientes
 

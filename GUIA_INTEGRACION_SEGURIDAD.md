@@ -261,7 +261,7 @@ SELECT fecha_evento, evento, tipo_perfil, identificador_usuario, direccion_ip, d
   FROM SEG_AUDITORIA_ACCESOS ORDER BY fecha_evento DESC FETCH FIRST 20 ROWS ONLY;
 ```
 
-Retención: `EXEC PRC_SEG_DEPURAR_AUDITORIA(365)` borra lo anterior a 365 días (mínimo 30).
+Retención: `JOB_SEG_DEPURAR_AUDITORIA` (`DBMS_SCHEDULER`) ejecuta automáticamente `PRC_SEG_DEPURAR_AUDITORIA(365)` cada día a las 03:00 (borra lo anterior a 365 días; mínimo permitido 30). También puede invocarse manualmente como `SA_REDUCCION` con `EXEC PRC_SEG_DEPURAR_AUDITORIA(365)`.
 
 > Para el Equipo 7: el script cambia `init-db.sh` (23 tablas esperadas y `PKG_SEGURIDAD` en las verificaciones de paquetes y permisos). Si otro equipo agrega tablas o paquetes, esas constantes deben sumarse al integrar.
 
@@ -317,7 +317,7 @@ executor.submit(() -> {
 - **IP del cliente.** Nginx sobrescribe `X-Forwarded-For` y `X-Real-IP` con la IP de la conexión, de modo que el cliente no puede falsearlas. El backend (`server.forward-headers-strategy=native`) solo acepta esas cabeceras cuando la conexión viene de un proxy de confianza (`SAR_TRUSTED_PROXIES`; por omisión la red interna de Docker). En tu código usa siempre `request.getRemoteAddr()`; no leas `X-Forwarded-For` directamente.
 - **Puerto 8080.** En desarrollo el backend también está publicado en el host. En un despliegue real no debe exponerse: todo el tráfico entra por Nginx.
 - **Cabeceras.** La API responde con `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'`, `Cache-Control: no-store` y, por HTTPS, `Strict-Transport-Security`. Las páginas reciben de Nginx `nosniff`, `X-Frame-Options`, `Referrer-Policy` y una CSP que solo permite recursos propios y los CDN de fuentes e iconos en uso.
-- **CSP de las páginas.** Conserva `'unsafe-inline'` porque las vistas actuales tienen estilos y manejadores en línea (`onclick="..."`). Código nuevo: usa archivos `.js`/`.css` y `addEventListener`, para poder retirarlo.
+- **CSP de las páginas.** `docker/nginx/nginx.conf` aplica CSP estricta sin `'unsafe-inline'` en `script-src` ni `style-src`; todo código y estilo vive en archivos `.js`/`.css` externos con `addEventListener`.
 - **HTTPS.** Al desplegar con TLS: `SESSION_COOKIE_SECURE=true` y descomentar la línea de HSTS en `docker/nginx/nginx.conf`.
 
 ---

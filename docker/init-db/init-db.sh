@@ -228,6 +228,12 @@ BEGIN
    WHERE GRANTEE = '${ORACLE_APP_USER}' AND GRANTED_ROLE = 'DBA';
   assert_count(n, 0, 'SA_REDUCCION sin rol DBA');
 
+  SELECT COUNT(*) INTO n FROM DBA_SCHEDULER_JOBS
+   WHERE OWNER = '${ORACLE_APP_USER}'
+     AND JOB_NAME = 'JOB_SEG_DEPURAR_AUDITORIA'
+     AND ENABLED = 'TRUE';
+  assert_count(n, 1, 'job programado de depuracion de auditoria activo');
+
   -- Datos de aplicacion: deben existir solo si el seed de desarrollo esta activo.
   SELECT COUNT(*) INTO n FROM ${ORACLE_APP_USER}.Estudiantes;
   IF '&&SAR_SEED_ACTIVO' = 'true' THEN

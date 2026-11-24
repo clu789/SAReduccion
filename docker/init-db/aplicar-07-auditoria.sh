@@ -28,6 +28,19 @@ DEFINE ORACLE_BACKEND_USER = ${ORACLE_BACKEND_USER}
 SQL
 }
 
+grant_create_job() {
+  sqlplus -L -s / as sysdba <<SQL
+WHENEVER OSERROR EXIT FAILURE
+WHENEVER SQLERROR EXIT SQL.SQLCODE
+SET ECHO OFF
+SET VERIFY OFF
+ALTER SESSION SET CONTAINER = ${oracle_pdb};
+GRANT CREATE JOB TO ${ORACLE_APP_USER};
+EXIT SUCCESS
+SQL
+}
+
+grant_create_job
 run_as_app 07-auditoria-seguridad.sql
 if [[ "${1:-}" == "--probar" ]]; then
   run_as_app pruebas/07-auditoria-seguridad-test.sql

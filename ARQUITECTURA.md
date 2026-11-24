@@ -106,8 +106,6 @@ Códigos de respuesta del panel: `200` en operación correcta, `401` sin sesión
 
 Ambos módulos frontend (`modulo-administrativo/` y `modulo-solicitante/`) consumen directamente la API real integrada detrás de Nginx e incluyen el cliente común `modulo-compartido/js/itt-security.js`.
 
-Reglas de `asignacion_Modulos.md` que este conjunto de endpoints todavía no cubre: la operación de «corrección» no distingue su transición del rechazo, no existe retiro solicitado por el propio estudiante o aspirante, no hay aplicación de deducciones y el historial se devuelve vacío. La base ya implementa esas operaciones en `PKG_ESTUDIANTE`, `PKG_ASPIRANTE` y `PKG_ADMINISTRADOR`; falta exponerlas en el controlador con los nombres vigentes del paquete.
-
 ## Oracle, cuentas y permisos
 
 Oracle XE 21c usa el PDB existente `XEPDB1` y el volumen nombrado `sareduccion_oracle_data`.
@@ -128,14 +126,14 @@ El propietario crea el esquema y sus objetos. Los roles de estudiante y administ
 | Tipo | Privilegio |
 | --- | --- |
 | Sistema | `CREATE SESSION`. |
-| Objeto | `EXECUTE` sobre `SA_REDUCCION.PKG_ESTUDIANTE`, `SA_REDUCCION.PKG_ADMINISTRADOR` y `SA_REDUCCION.PKG_ASPIRANTE`. |
+| Objeto | `EXECUTE` sobre `SA_REDUCCION.PKG_ESTUDIANTE`, `SA_REDUCCION.PKG_ADMINISTRADOR`, `SA_REDUCCION.PKG_ASPIRANTE`, `SA_REDUCCION.PKG_SEGURIDAD` y `SA_REDUCCION.PKG_FORMULARIO`. |
 | Directorio | Ninguno. |
 
 No dispone de `SELECT`, `INSERT`, `UPDATE` ni `DELETE` directos sobre las tablas, ni de roles adicionales. Todo el acceso a datos ocurre a través de los paquetes.
 
 ### Paquetes PL/SQL
 
-El esquema declara cuatro paquetes `AUTHID DEFINER`: tres públicos (`PKG_ESTUDIANTE`, `PKG_ASPIRANTE` y `PKG_ADMINISTRADOR`) y uno interno (`PKG_SOLICITUDES_CORE`), sin `EXECUTE` para `SAR_BACKEND`. Sus firmas reciben la identidad como parámetro y no usan `SESSION_USER` para decidir qué usuario de aplicación actúa.
+El esquema declara cinco paquetes públicos `AUTHID DEFINER` (`PKG_ESTUDIANTE`, `PKG_ASPIRANTE`, `PKG_ADMINISTRADOR`, `PKG_SEGURIDAD` y `PKG_FORMULARIO`) y uno interno (`PKG_SOLICITUDES_CORE`), sin `EXECUTE` para `SAR_BACKEND`. Sus firmas reciben la identidad como parámetro y no usan `SESSION_USER` para decidir qué usuario de aplicación actúa.
 
 `PKG_SOLICITUDES_CORE` concentra las reglas compartidas: validación de estudiante, aspirante y administrador; comprobación de que convocatoria, tipo y formulario están dentro del periodo de recepción; carga y sustitución de respuestas; registro del historial; y las operaciones `crear`, `retirar` y `reenviar`. `guardar_respuestas_completas` recibe las respuestas como arreglo JSON en `CLOB` (`[{"id_pregunta":…,"id_opcion":…,"texto_respuesta":…}]`) y exige una respuesta por cada pregunta obligatoria del formulario. Cada operación abre un `SAVEPOINT` y revierte hasta él si falla; el `COMMIT` lo controla el cliente.
 
@@ -278,8 +276,10 @@ Esta protección es de experiencia de usuario, no de seguridad: la autoridad rea
 2. `02-crear-estructura.sql`: crea tablas, secuencias, triggers, relaciones, índices y catálogos como `SA_REDUCCION`.
 3. `03-crear-identidades-roles.sql`: crea roles y cuentas individuales como SYS.
 4. `04-crear-cuenta-tecnica.sql`: crea/verifica `SAR_BACKEND` y concede `CREATE SESSION` como SYS.
-5. `05-crear-paquetes-permisos.sql`: crea los paquetes y concede sus permisos como `SA_REDUCCION`.
-6. `06-seed-desarrollo.sql`: datos ficticios de desarrollo, solo si `SAR_LOAD_DEV_SEED` está activo.
+5. `05-crear-paquetes-permisos.sql`: crea los paquetes base y concede sus permisos como `SA_REDUCCION`.
+6. `07-auditoria-seguridad.sql`: crea `SEG_AUDITORIA_ACCESOS`, `PKG_SEGURIDAD`, `PRC_SEG_DEPURAR_AUDITORIA` y el job `JOB_SEG_DEPURAR_AUDITORIA` como `SA_REDUCCION`.
+7. `07-paquete-formulario.sql`: crea `PKG_FORMULARIO` y concede `EXECUTE` a `SAR_BACKEND` como `SA_REDUCCION`.
+8. `06-seed-desarrollo.sql`: datos ficticios de desarrollo, solo si `SAR_LOAD_DEV_SEED` está activo.
 
 El nombre de cada archivo coincide con su número de orden. Los scripts 01, 03 y 04 se ejecutan como SYS; 02, 05 y 06 como `SA_REDUCCION`, porque los paquetes deben pertenecer a ese usuario para que `AUTHID DEFINER` quede ligado al propietario y no a SYS.
 
@@ -322,19 +322,13 @@ La compatibilidad con Oracle 12c y los recibos institucionales quedan fuera del 
 
 | Limitación | Descripción |
 | --- | --- |
-| Autenticación provisional de aspirantes | Ficha y CURP no son secretos fuertes; está previsto migrar a verificación por correo electrónico. |
-| Rate limiting en memoria | `LoginAttemptLimiter` usa un mapa en memoria del proceso: se reinicia con el backend y no se comparte entre instancias. La clave es `IP + ficha`, por lo que la rotación de fichas desde una misma IP elude parcialmente el límite. |
+| Autenticación provisional de aspirantes | Cuando `SAR_OTP_ENABLED=false`, ficha y CURP no son secretos fuertes; en producción debe activarse la verificación por correo (`SAR_OTP_ENABLED=true`). |
+| Rate limiting en memoria | `LoginAttemptLimiter` usa un mapa en memoria del proceso: se reinicia con el backend y no se comparte entre múltiples réplicas. |
 | CURP no validada contra la fecha de nacimiento | La comprobación es de coincidencia exacta con el registro y de longitud, no de consistencia interna. |
-| Sin verificación por correo | No existen todavía envío de correos, códigos de un solo uso ni recuperación de acceso. |
-| Módulo solicitante simulado | Las vistas de alta de solicitud y carga de formulario del solicitante siguen operando con datos locales; la consulta y resolución administrativas ya usan la API. |
-| Historial no disponible en la API | El detalle de solicitud devuelve `historial` vacío; falta el procedimiento de consulta en la base. |
 | Selección automática del monto base | Al aprobar o reautorizar, el servicio elige por perfil: inscripción para aspirantes y reinscripción para estudiantes. Si existen varios registros del tipo correspondiente, utiliza el ID más alto. |
 | Edición solo por reenvío | Una solicitud `PENDIENTE` no se edita: las respuestas se sustituyen al reenviar (`reenviar_solicitud`), que admite `RECHAZADO`, `RETIRADO` y `CANCELADO` dentro del periodo de recepción. Corregir una solicitud sin reenviarla no está soportado. |
-| Retiro sin endpoint | La base ya expone `retirar_solicitud` para estudiante y aspirante; el backend y las pantallas todavía no lo invocan. |
-| Sin captcha ni rate limiting general | El captcha no está implementado y el límite de intentos solo cubre el login de aspirante. |
 | Cobertura de notificaciones | Los avisos usan el correo de aspirantes registrado en Oracle. Los estudiantes quedan pendientes de una fuente institucional de correo. |
-| Protección de rutas solo en cliente | La redirección por rol es de experiencia de usuario; el backend aún no autoriza operaciones del módulo solicitante. |
-| Cambios de esquema manuales | Los scripts de `docker/init-db/` solo se aplican sobre un volumen vacío; actualizar una base existente exige reinstalarla desde un respaldo. |
+| Cambios de esquema manuales | Los scripts de `docker/init-db/` solo se aplican sobre un volumen vacío; actualizar una base existente exige aplicar scripts idempotentes o restaurar desde un respaldo. |
 
 ## Diagnóstico rápido
 

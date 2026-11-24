@@ -1,12 +1,13 @@
 -- ============================================================================
 -- 07-auditoria-seguridad.sql
--- Equipo 1 (Autenticacion y seguridad). Pendiente de revision del Equipo 7.
+-- Equipo 1 (Autenticacion y seguridad), integrado con el Equipo 7.
 --
 -- Auditoria de intentos de acceso y eventos de sesion:
 --   * Tabla      SEG_AUDITORIA_ACCESOS
 --   * Secuencia  SEQ_SEG_AUDITORIA_ACCESOS
 --   * Paquete    PKG_SEGURIDAD (EXECUTE para la cuenta tecnica del backend)
 --   * Procedim.  PRC_SEG_DEPURAR_AUDITORIA (retencion; sin GRANT al backend)
+--   * Job        JOB_SEG_DEPURAR_AUDITORIA (DBMS_SCHEDULER diario a las 03:00)
 --
 -- Se ejecuta como SA_REDUCCION, despues de 05-crear-paquetes-permisos.sql.
 -- Es re-ejecutable: si la tabla o la secuencia ya existen, las conserva. Para
@@ -144,6 +145,29 @@ BEGIN
 END;
 /
 
+PROMPT ===== JOB PROGRAMADO DE DEPURACION =====
+DECLARE
+ e_job_no_existe EXCEPTION;
+ PRAGMA EXCEPTION_INIT(e_job_no_existe, -27475);
+BEGIN
+ BEGIN
+  DBMS_SCHEDULER.DROP_JOB(job_name => 'JOB_SEG_DEPURAR_AUDITORIA', force => TRUE);
+ EXCEPTION WHEN e_job_no_existe THEN
+  NULL;
+ END;
+ DBMS_SCHEDULER.CREATE_JOB(
+  job_name        => 'JOB_SEG_DEPURAR_AUDITORIA',
+  job_type        => 'PLSQL_BLOCK',
+  job_action      => 'BEGIN PRC_SEG_DEPURAR_AUDITORIA(365); END;',
+  start_date      => SYSTIMESTAMP,
+  repeat_interval => 'FREQ=DAILY;BYHOUR=3;BYMINUTE=0;BYSECOND=0',
+  enabled         => TRUE,
+  auto_drop       => FALSE,
+  comments        => 'Depuracion periodica diaria de SEG_AUDITORIA_ACCESOS (retencion minima 365 dias)'
+ );
+END;
+/
+
 -- ============================================================================
 -- COMPROBACION Y PERMISOS
 -- ============================================================================
@@ -153,7 +177,10 @@ BEGIN
  SELECT COUNT(*) INTO n FROM USER_OBJECTS
   WHERE OBJECT_NAME IN ('PKG_SEGURIDAD','PRC_SEG_DEPURAR_AUDITORIA') AND STATUS<>'VALID';
  IF n>0 THEN RAISE_APPLICATION_ERROR(-20853,'Objetos INVALID: consultar USER_ERRORS'); END IF;
- DBMS_OUTPUT.PUT_LINE('OK: PKG_SEGURIDAD y PRC_SEG_DEPURAR_AUDITORIA compilados');
+ SELECT COUNT(*) INTO n FROM USER_SCHEDULER_JOBS
+  WHERE JOB_NAME = 'JOB_SEG_DEPURAR_AUDITORIA' AND ENABLED = 'TRUE';
+ IF n<>1 THEN RAISE_APPLICATION_ERROR(-20854,'Job JOB_SEG_DEPURAR_AUDITORIA ausente o deshabilitado'); END IF;
+ DBMS_OUTPUT.PUT_LINE('OK: PKG_SEGURIDAD, PRC_SEG_DEPURAR_AUDITORIA y JOB_SEG_DEPURAR_AUDITORIA validos');
 END;
 /
 PROMPT ===== CONCEDER EXECUTE A LA CUENTA TECNICA =====

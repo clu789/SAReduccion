@@ -697,7 +697,7 @@ docker exec -i -e SYS_PW="$ORACLE_PASSWORD" sar-rest-test \
   sh -c 'sqlplus -s "SYS/${SYS_PW}@//localhost:1521/XEPDB1 as sysdba"' <<'SQL'
 SET ECHO OFF
 CREATE USER SA_REDUCCION_REST IDENTIFIED BY "<ClaveDestino1>";
-GRANT CREATE SESSION, RESOURCE, UNLIMITED TABLESPACE TO SA_REDUCCION_REST;
+GRANT CREATE SESSION, RESOURCE, UNLIMITED TABLESPACE, CREATE JOB TO SA_REDUCCION_REST;
 GRANT READ, WRITE ON DIRECTORY SAR_BACKUP_DIR TO SA_REDUCCION_REST;
 EXIT
 SQL
@@ -709,7 +709,7 @@ SQL
 @'
 SET ECHO OFF
 CREATE USER SA_REDUCCION_REST IDENTIFIED BY "<ClaveDestino1>";
-GRANT CREATE SESSION, RESOURCE, UNLIMITED TABLESPACE TO SA_REDUCCION_REST;
+GRANT CREATE SESSION, RESOURCE, UNLIMITED TABLESPACE, CREATE JOB TO SA_REDUCCION_REST;
 GRANT READ, WRITE ON DIRECTORY SAR_BACKUP_DIR TO SA_REDUCCION_REST;
 EXIT
 '@ | docker exec -i -e SYS_PW=$env:ORACLE_PASSWORD sar-rest-test sh -c 'sqlplus -s "SYS/${SYS_PW}@//localhost:1521/XEPDB1 as sysdba"'
@@ -745,7 +745,7 @@ SELECT COUNT(*) AS indices  FROM user_indexes   WHERE table_name NOT LIKE 'SYS_%
 SELECT COUNT(*) AS invalidos FROM user_objects  WHERE status <> 'VALID';
 ```
 
-Resultados esperados: **22 tablas** y el número de índices correspondiente al script vigente y **0 objetos inválidos**, más los conteos de filas que se quieran contrastar con el origen.
+Resultados esperados: **23 tablas** y el número de índices correspondiente al script vigente y **0 objetos inválidos**, más los conteos de filas que se quieran contrastar con el origen.
 
 > Durante la importación, Data Pump crea una **tabla maestra transitoria** llamada `SYS_IMPORT_FULL_01` con sus propios índices. Por eso un `COUNT(*)` sin filtrar sobre `user_tables` puede incluir objetos transitorios adicionales. El filtro `table_name NOT LIKE 'SYS_%'` excluye los objetos transitorios con ese prefijo; comparar el inventario restante con el esquema vigente.
 

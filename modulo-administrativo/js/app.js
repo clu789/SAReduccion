@@ -244,6 +244,7 @@ const Alerta = {
 ───────────────────────────────────────── */
 const Modal = {
   _confirmResolve: null,
+  _cierreIniciado: false,
 
   abrir(modalId) {
     const el = document.getElementById(modalId);
@@ -261,10 +262,18 @@ const Modal = {
     }
   },
   iniciarCierre() {
+    if (this._cierreIniciado) return;
+    this._cierreIniciado = true;
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) this.cerrar(overlay.id);
       });
+    });
+    document.querySelectorAll('[data-modal-cerrar]').forEach(btn => {
+      btn.addEventListener('click', () => this.cerrar(btn.dataset.modalCerrar));
+    });
+    document.querySelectorAll('[data-confirmar-valor]').forEach(btn => {
+      btn.addEventListener('click', () => this.resolverConfirmar(btn.dataset.confirmarValor === 'true'));
     });
   },
 
@@ -395,6 +404,7 @@ const PanelAdmin = {
     this.iniciarFiltros();
     this.iniciarBuscador();
     this.iniciarOrdenamiento();
+    this.iniciarEventosModales();
     const tbody = bandeja.querySelector('tbody');
     if (tbody) {
       tbody.addEventListener('click', (e) => {
@@ -570,8 +580,8 @@ const PanelAdmin = {
       const motivo = this.hayFiltroConvocatoria
         ? 'No hay solicitudes para la convocatoria seleccionada.'
         : 'No hay solicitudes que mostrar.';
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:24px;color:var(--itt-texto-claro)">
-        <i class="fa fa-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center tabla-estado-vacia">
+        <i class="fa fa-inbox tabla-vacia-icono"></i>
         ${motivo}</td></tr>`;
       return;
     }
@@ -707,8 +717,7 @@ const PanelAdmin = {
         </div>`;
       }).join('');
     } else {
-      lista.innerHTML =
-        '<p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>';
+      lista.innerHTML = '<p class="texto-vacio-italica">Sin respuestas registradas.</p>';
     }
   },
 
@@ -765,8 +774,7 @@ const PanelAdmin = {
             </li>`;
         }).join('');
       } else {
-        historialEl.innerHTML =
-          '<li style="color:var(--itt-texto-claro);font-style:italic;padding:8px 0;">Sin historial registrado.</li>';
+        historialEl.innerHTML = '<li class="historial-vacio">Sin historial registrado.</li>';
       }
     }
 
@@ -780,10 +788,10 @@ const PanelAdmin = {
     if (!bloque || !contenido) return;
 
     if (!deduccion) {
-      bloque.style.display = 'none';
+      bloque.hidden = true;
       return;
     }
-    bloque.style.display = '';
+    bloque.hidden = false;
 
     const monto = (valor) => valor == null ? '—' : `$${Number(valor).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
     contenido.innerHTML = `
@@ -803,6 +811,23 @@ const PanelAdmin = {
         <label>Estatus deducción</label>
         <div class="valor">${Html.escapar(deduccion.estatus || '—')}</div>
       </div>`;
+  },
+
+  /* ── Eventos de botones y formularios dentro de modales (sin inline handlers) ── */
+  iniciarEventosModales() {
+    document.querySelectorAll('[data-cerrar-detalle]').forEach(btn => {
+      btn.addEventListener('click', () => this.cerrarDetalle());
+    });
+    document.getElementById('btn-aprobar')?.addEventListener('click', () => this.aprobar());
+    document.getElementById('btn-rechazar')?.addEventListener('click', () => this.solicitarCorreccion());
+    document.getElementById('btn-reautorizar')?.addEventListener('click', () => this.reautorizar());
+    document.getElementById('btn-cancelar-deduccion')?.addEventListener('click', () => this.cancelarDeduccion());
+    document.getElementById('btn-aplicar-deduccion')?.addEventListener('click', () => this.aplicarDeduccion());
+    document.getElementById('agregar-comentario')?.addEventListener('change', () => this.alternarComentario());
+    document.getElementById('comentario-correccion')?.addEventListener('input', () => this.actualizarVistaCorreo());
+    document.getElementById('confirmar-decision-correo')?.addEventListener('click', () => this.confirmarDecisionCorreo());
+    document.getElementById('btn-volver-decision-correo')?.addEventListener('click', () => this.cerrarEditorCorreo());
+    document.getElementById('form-notificacion')?.addEventListener('submit', (e) => Notificaciones.enviarManual(e));
   },
 
   /* ── Muestra u oculta botones según el estatus de la solicitud ── */

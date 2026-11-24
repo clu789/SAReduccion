@@ -387,8 +387,8 @@ const TabsTipoUsuario = {
   cambiarVista(tipo) {
     const camposAlumno    = document.getElementById('campos-alumno');
     const camposAspirante = document.getElementById('campos-aspirante');
-    if (camposAlumno)    camposAlumno.style.display    = tipo === 'alumno'    ? 'block' : 'none';
-    if (camposAspirante) camposAspirante.style.display = tipo === 'aspirante' ? 'block' : 'none';
+    if (camposAlumno)    camposAlumno.hidden    = tipo !== 'alumno';
+    if (camposAspirante) camposAspirante.hidden = tipo !== 'aspirante';
 
     // Al cambiar de pestaña se descartan datos sensibles y avisos previos.
     const password = document.getElementById('password-alumno');

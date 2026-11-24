@@ -394,3 +394,51 @@
   padding: 6px 10px;
   border-radius: 0 4px 4px 0;
 }
+
+/* ── Clases de apoyo sin estilos en línea (RNF-66) ── */
+.login-admin-centrado { text-align: center; margin-bottom: 16px; }
+.login-admin-logo { max-height: 70px; }
+.login-admin-titulo { text-align: center; font-size: 1.1rem; margin-bottom: 4px; color: var(--itt-azul); }
+.login-admin-subtitulo { text-align: center; font-size: .8rem; color: var(--itt-texto-claro); margin-bottom: 24px; }
+.input-con-icono { position: relative; }
+.input-con-icono > i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--itt-texto-claro); }
+.input-con-icono > .form-control-itt { padding-left: 34px; }
+.btn-login-admin { margin-top: 12px; justify-content: center; }
+.login-admin-aviso { text-align: center; margin-top: 18px; font-size: .76rem; color: var(--itt-texto-claro); }
+
+.icono-titulo-seccion { color: var(--itt-azul-claro); }
+.buscador-icono { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--itt-texto-claro); }
+.buscador-input { padding-left: 32px; width: 260px; height: 34px; }
+.filtro-etiqueta { font-weight: 600; font-size: .85rem; color: var(--itt-texto-claro); }
+.filtro-convocatoria-select { width: 250px; height: 34px; }
+.card-body-sin-padding { padding: 0; }
+.col-acciones { width: 110px; }
+.tabla-estado-celda { padding: 32px; color: var(--itt-texto-claro); }
+.tabla-estado-vacia { padding: 24px; color: var(--itt-texto-claro); }
+.tabla-estado-icono { font-size: 1.5rem; display: block; margin-bottom: 8px; }
+.tabla-vacia-icono { font-size: 2rem; display: block; margin-bottom: 8px; }
+
+.modal-box--detalle { max-width: 680px; }
+.modal-box--respuestas { max-width: 620px; }
+.modal-box--confirmar { max-width: 420px; }
+.modal-body--scroll { max-height: 70vh; overflow-y: auto; }
+.modal-overlay--confirmar { z-index: 1060; }
+
+.detalle-estatus-barra { margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.detalle-estatus-etiqueta { font-weight: 700; color: var(--itt-texto-claro); font-size: .8rem; }
+.detalle-card { margin-bottom: 16px; }
+.detalle-card[hidden] { display: none; }
+.detalle-card-header { font-size: .85rem; }
+.detalle-historial-body { padding: 12px 16px; }
+.texto-vacio-italica { color: var(--itt-texto-claro); font-style: italic; }
+.historial-vacio { color: var(--itt-texto-claro); font-style: italic; padding: 8px 0; }
+.nota-opcional { font-weight: 400; color: var(--itt-texto-claro); }
+
+.correo-preview-wrap { margin: 12px 0; }
+.correo-preview-card { border: 1px solid #dce5ed; border-radius: 8px; overflow: hidden; }
+.correo-preview-header { background: #193b65; color: #fff; padding: 18px; }
+.correo-preview-body { padding: 20px; }
+.correo-preview-comentario { background: #f2f6fa; padding: 16px; border-left: 4px solid #315e8c; }
+.correo-preview-comentario-texto { white-space: pre-wrap; }
+.respuestas-subtitulo { margin: 0 0 12px; font-size: .82rem; color: var(--itt-texto-claro); }
+.confirmar-texto { margin: 0; }

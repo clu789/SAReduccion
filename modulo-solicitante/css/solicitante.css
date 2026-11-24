@@ -543,3 +543,9 @@
   #nombre-usuario-nav { display: none; }
   .panel-solicitante .itt-navbar-links li a i { display: none; }
 }
+
+/* ── Clases de apoyo sin estilos en línea (RNF-66) ── */
+.icono-titulo-seccion { color: var(--itt-azul-claro); }
+.input-mayusculas { text-transform: uppercase; }
+.btn-login-submit { margin-top: 8px; justify-content: center; }
+.login-ayuda { text-align: center; margin-top: 18px; font-size: .78rem; color: var(--itt-texto-claro); }

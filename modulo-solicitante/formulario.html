@@ -25,7 +25,7 @@
   <!-- ═══ HEADER ═══ -->
   <header class="itt-header">
     <div class="itt-header-top">
-      <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" style="max-height:54px;" />
+      <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header logo-header--formulario" />
     </div>
     <nav class="itt-navbar" aria-label="Navegación principal">
       <ul class="itt-navbar-links">
@@ -44,7 +44,7 @@
 
   <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
   <main class="itt-main">
-    <h2><i class="fa fa-file-text-o" style="color:var(--itt-azul-claro);"></i> <span id="titulo-formulario">Formulario de Solicitud</span></h2>
+    <h2><i class="fa fa-file-text-o icono-titulo-seccion"></i> <span id="titulo-formulario">Formulario de Solicitud</span></h2>
 
     <!-- Alertas globales (los mensajes se insertan como texto) -->
     <div id="alerta-formulario" aria-live="polite"></div>
@@ -107,9 +107,9 @@
               <span id="aviso-confirmacion">Verifique que la información sea correcta. La solicitud se envía completa y no se guardan borradores.</span>
             </div>
             <dl class="resumen-solicitud" id="resumen-solicitud"></dl>
-            <div style="margin-top:16px;">
-              <label style="display:flex;align-items:flex-start;gap:10px;font-weight:500;cursor:pointer;">
-                <input type="checkbox" id="confirmacion-datos" style="margin-top:3px;" />
+            <div class="confirmacion-bloque">
+              <label class="confirmacion-label">
+                <input type="checkbox" id="confirmacion-datos" class="confirmacion-check" />
                 <span>Confirmo que los datos ingresados son correctos y completos.</span>
               </label>
             </div>
@@ -118,11 +118,11 @@
       </div>
 
       <!-- Botones -->
-      <div class="d-flex justify-between" id="barra-botones" style="margin-top:16px;flex-wrap:wrap;gap:10px;">
+      <div class="d-flex justify-between barra-botones-formulario" id="barra-botones">
         <button type="button" id="btn-anterior" class="btn-itt btn-secundario hidden">
           <i class="fa fa-arrow-left"></i> Anterior
         </button>
-        <div style="margin-left:auto;display:flex;gap:10px;">
+        <div class="barra-botones-acciones">
           <button type="button" id="btn-siguiente" class="btn-itt btn-primario" disabled>
             Siguiente <i class="fa fa-arrow-right"></i>
           </button>
@@ -140,7 +140,6 @@
     <p>Subdirección Académica · Sistema de Reducción de Monto de Inscripción</p>
   </footer>
 
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
   <script src="/compartido/js/itt-security.js"></script>
   <script src="js/app.js"></script>
   <script src="js/formulario.js"></script>

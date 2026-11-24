@@ -127,3 +127,11 @@
   #barra-botones > div { margin-left: 0 !important; width: 100%; flex-direction: column; }
   #barra-botones .btn-itt { width: 100%; justify-content: center; }
 }
+
+/* Clases de apoyo sin estilos en linea (RNF-66) */
+.logo-header--formulario { max-height: 54px; }
+.confirmacion-bloque { margin-top: 16px; }
+.confirmacion-label { display: flex; align-items: flex-start; gap: 10px; font-weight: 500; cursor: pointer; }
+.confirmacion-check { margin-top: 3px; }
+.barra-botones-formulario { margin-top: 16px; flex-wrap: wrap; gap: 10px; }
+.barra-botones-acciones { margin-left: auto; display: flex; gap: 10px; }

@@ -29,7 +29,7 @@
 
   <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
   <main class="itt-main">
-    <h2><i class="fa fa-inbox" style="color:var(--itt-azul-claro);"></i> Bandeja de Solicitudes</h2>
+    <h2><i class="fa fa-inbox icono-titulo-seccion"></i> Bandeja de Solicitudes</h2>
 
     <!-- ── Estadísticas ── -->
     <div class="stats-grid">
@@ -76,12 +76,11 @@
     <!-- ── Búsqueda rápida (arriba, sobre los filtros) ── -->
     <div class="bandeja-buscador-top">
       <div class="buscador-itt">
-        <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--itt-texto-claro);"></i>
+        <i class="fa fa-search buscador-icono"></i>
         <input
           type="text"
           id="buscador"
-          class="form-control-itt"
-          style="padding-left:32px;width:260px;height:34px;"
+          class="form-control-itt buscador-input"
           placeholder="Buscar folio o solicitante..."
         />
       </div>
@@ -89,7 +88,7 @@
 
     <!-- ── Filtros ── -->
     <div class="bandeja-filtros">
-      <span style="font-weight:600;font-size:.85rem;color:var(--itt-texto-claro);">Filtrar:</span>
+      <span class="filtro-etiqueta">Filtrar:</span>
       <button class="filtro-chip todos activo"   data-estatus="todos" id="filtro-todos">Todas</button>
       <button class="filtro-chip pendiente"       data-estatus="1"     id="filtro-pendiente">Pendientes</button>
       <button class="filtro-chip aprobado"        data-estatus="2"     id="filtro-autorizado">Autorizadas</button>
@@ -99,7 +98,7 @@
       <button class="filtro-chip retirado"        data-estatus="6"     id="filtro-retirado">Retiradas</button>
 
       <!-- Filtro por convocatoria (llenado desde la API) -->
-      <select id="filtro-convocatoria" class="form-control-itt" style="width:250px;height:34px;" disabled>
+      <select id="filtro-convocatoria" class="form-control-itt filtro-convocatoria-select" disabled>
         <option value="">Cargando convocatorias...</option>
       </select>
     </div>
@@ -109,7 +108,7 @@
       <div class="card-itt-header">
         <i class="fa fa-list"></i> Solicitudes
       </div>
-      <div class="card-itt-body" style="padding:0;">
+      <div class="card-itt-body card-body-sin-padding">
         <div class="tabla-solicitudes-scroll">
           <table class="tabla-itt tabla-tec" id="tabla-solicitudes">
             <thead>
@@ -120,14 +119,14 @@
                 <th class="th-ordenable" data-col="tipoSolicitud">Tipo de solicitud <i class="fa fa-sort"></i></th>
                 <th class="th-ordenable" data-col="fechaActualizacion">Actualizado <i class="fa fa-sort"></i></th>
                 <th class="th-ordenable" data-col="estatus">Estatus <i class="fa fa-sort"></i></th>
-                <th style="width:110px;">Acciones</th>
+                <th class="col-acciones">Acciones</th>
               </tr>
             </thead>
             <tbody>
               <!-- Renderizado por PanelAdmin.renderTabla() -->
               <tr>
-                <td colspan="7" class="text-center" style="padding:32px;color:var(--itt-texto-claro);">
-                  <i class="fa fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:8px;"></i>
+                <td colspan="7" class="text-center tabla-estado-celda">
+                  <i class="fa fa-spinner fa-spin tabla-estado-icono"></i>
                   Cargando solicitudes...
                 </td>
               </tr>
@@ -140,16 +139,16 @@
 
   <!-- ═══ MODAL: DETALLE DE SOLICITUD ═══ -->
   <div id="modal-detalle" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-detalle-titulo">
-    <div class="modal-box" style="max-width:680px;">
+    <div class="modal-box modal-box--detalle">
       <div class="modal-header">
         <h3 id="modal-detalle-titulo"><i class="fa fa-file-text-o"></i> Detalle de Solicitud</h3>
-        <button class="modal-cerrar" onclick="PanelAdmin.cerrarDetalle()" aria-label="Cerrar">&times;</button>
+        <button type="button" class="modal-cerrar" data-cerrar-detalle aria-label="Cerrar">&times;</button>
       </div>
-      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div class="modal-body modal-body--scroll">
 
         <!-- Badge de estatus -->
-        <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">
-          <span style="font-weight:700;color:var(--itt-texto-claro);font-size:.8rem;">ESTATUS:</span>
+        <div class="detalle-estatus-barra">
+          <span class="detalle-estatus-etiqueta">ESTATUS:</span>
           <span id="det-badge-estatus" class="badge-estatus badge-pendiente">—</span>
         </div>
 
@@ -182,8 +181,8 @@
         </div>
 
         <!-- Deducción autorizada (se oculta si no existe) -->
-        <div class="card-itt" id="det-deduccion" style="margin-bottom:16px;display:none;">
-          <div class="card-itt-header" style="font-size:.85rem;">
+        <div class="card-itt detalle-card" id="det-deduccion" hidden>
+          <div class="card-itt-header detalle-card-header">
             <i class="fa fa-money"></i> Deducción Autorizada
           </div>
           <div class="card-itt-body">
@@ -192,13 +191,13 @@
         </div>
 
         <!-- Historial de cambios -->
-        <div class="card-itt" style="margin-bottom:16px;">
-          <div class="card-itt-header" style="font-size:.85rem;">
+        <div class="card-itt detalle-card">
+          <div class="card-itt-header detalle-card-header">
             <i class="fa fa-history"></i> Historial de Cambios
           </div>
-          <div class="card-itt-body" style="padding:12px 16px;">
+          <div class="card-itt-body detalle-historial-body">
             <ul id="historial-lista" class="historial-lista">
-              <li style="color:var(--itt-texto-claro);font-style:italic;padding:8px 0;">Sin historial registrado.</li>
+              <li class="historial-vacio">Sin historial registrado.</li>
             </ul>
           </div>
         </div>
@@ -213,30 +212,30 @@
           <div id="alerta-decision"></div>
 
           <div class="decision-acciones">
-            <button type="button" id="btn-aprobar" class="btn-aprobar" onclick="PanelAdmin.aprobar()">
+            <button type="button" id="btn-aprobar" class="btn-aprobar">
               <i class="fa fa-check"></i> Aprobar Solicitud
             </button>
-            <button type="button" id="btn-rechazar" class="btn-rechazar" onclick="PanelAdmin.solicitarCorreccion()">
+            <button type="button" id="btn-rechazar" class="btn-rechazar">
               <i class="fa fa-times"></i> Rechazar / Solicitar Corrección
             </button>
-            <button type="button" id="btn-reautorizar" class="btn-aprobar" onclick="PanelAdmin.reautorizar()">
+            <button type="button" id="btn-reautorizar" class="btn-aprobar">
               <i class="fa fa-refresh"></i> Reautorizar Deducción
             </button>
-            <button type="button" id="btn-cancelar-deduccion" class="btn-cancelar" onclick="PanelAdmin.cancelarDeduccion()">
+            <button type="button" id="btn-cancelar-deduccion" class="btn-cancelar">
               <i class="fa fa-ban"></i> Cancelar Deducción
             </button>
-            <button type="button" id="btn-aplicar-deduccion" class="btn-aprobar" onclick="PanelAdmin.aplicarDeduccion()">
+            <button type="button" id="btn-aplicar-deduccion" class="btn-aprobar">
               <i class="fa fa-flag-checkered"></i> Aplicar Deducción
             </button>
           </div>
         </div>
           <section id="editor-decision-correo" hidden aria-label="Confirmar decisión y correo">
             <h4 id="titulo-decision-correo"></h4>
-            <label><input type="checkbox" id="agregar-comentario" onchange="PanelAdmin.alternarComentario()"> Agregar comentario</label>
+            <label><input type="checkbox" id="agregar-comentario"> Agregar comentario</label>
           <div class="form-group" id="grupo-comentario" hidden>
             <label for="comentario-correccion">
               Comentario para el solicitante
-              <span style="font-weight:400;color:var(--itt-texto-claro);">(opcional; obligatorio solo al rechazar)</span>
+              <span class="nota-opcional">(opcional; obligatorio solo al rechazar)</span>
             </label>
             <textarea
               id="comentario-correccion"
@@ -244,28 +243,27 @@
               class="form-control-itt"
               rows="3"
               maxlength="2000"
-              oninput="PanelAdmin.actualizarVistaCorreo()"
               placeholder="Escriba el comentario que recibirá el solicitante..."
             ></textarea>
           </div>
 
-          <div style="margin:12px 0">
+          <div class="correo-preview-wrap">
             <p>Vista previa del correo que recibirá el solicitante</p>
-            <article style="border:1px solid #dce5ed;border-radius:8px;overflow:hidden">
-              <header style="background:#193b65;color:white;padding:18px"><b>SAReducción</b><br>Instituto Tecnológico de Toluca</header>
-              <div style="padding:20px">
+            <article class="correo-preview-card">
+              <header class="correo-preview-header"><b>SAReducción</b><br>Instituto Tecnológico de Toluca</header>
+              <div class="correo-preview-body">
                 <p id="correo-asunto"></p><h3 id="correo-estado"></h3><p id="correo-texto"></p>
-                <section id="correo-comentario-bloque" style="background:#f2f6fa;padding:16px;border-left:4px solid #315e8c">
-                  <b>Comentario del administrador</b><p id="correo-comentario" style="white-space:pre-wrap"></p>
+                <section id="correo-comentario-bloque" class="correo-preview-comentario">
+                  <b>Comentario del administrador</b><p id="correo-comentario" class="correo-preview-comentario-texto"></p>
                 </section>
                 <p>Consulta el estado y los detalles en el portal de SAReduccion.</p>
               </div>
             </article>
           </div>
-            <button type="button" class="btn-aprobar" id="confirmar-decision-correo" onclick="PanelAdmin.confirmarDecisionCorreo()">Confirmar y enviar</button>
-            <button type="button" class="btn-itt btn-secundario" onclick="PanelAdmin.cerrarEditorCorreo()">Volver</button>
+            <button type="button" class="btn-aprobar" id="confirmar-decision-correo">Confirmar y enviar</button>
+            <button type="button" class="btn-itt btn-secundario" id="btn-volver-decision-correo">Volver</button>
           </section>
-        <form id="form-notificacion" onsubmit="Notificaciones.enviarManual(event)">
+        <form id="form-notificacion">
           <div class="form-grupo">
             <label for="mensaje-notificacion">Aviso por correo</label>
             <textarea id="mensaje-notificacion" name="mensaje" rows="3" maxlength="2000" required></textarea>
@@ -275,7 +273,7 @@
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-itt btn-secundario" onclick="PanelAdmin.cerrarDetalle()">
+        <button type="button" class="btn-itt btn-secundario" data-cerrar-detalle>
           <i class="fa fa-times"></i> Cerrar
         </button>
       </div>
@@ -284,21 +282,21 @@
 
   <!-- ═══ MODAL: RESPUESTAS DEL FORMULARIO ═══ -->
   <div id="modal-respuestas" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-respuestas-titulo">
-    <div class="modal-box" style="max-width:620px;">
+    <div class="modal-box modal-box--respuestas">
       <div class="modal-header">
         <h3 id="modal-respuestas-titulo"><i class="fa fa-list-alt"></i> Respuestas del Formulario</h3>
-        <button class="modal-cerrar" onclick="Modal.cerrar('modal-respuestas')" aria-label="Cerrar">&times;</button>
+        <button type="button" class="modal-cerrar" data-modal-cerrar="modal-respuestas" aria-label="Cerrar">&times;</button>
       </div>
-      <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
-        <p style="margin:0 0 12px;font-size:.82rem;color:var(--itt-texto-claro);">
+      <div class="modal-body modal-body--scroll">
+        <p class="respuestas-subtitulo">
           Folio <strong id="resp-folio">—</strong> · <span id="resp-solicitante">—</span>
         </p>
         <div id="lista-respuestas" class="detalle-grid">
-          <p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>
+          <p class="texto-vacio-italica">Sin respuestas registradas.</p>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-itt btn-secundario" onclick="Modal.cerrar('modal-respuestas')">
+        <button type="button" class="btn-itt btn-secundario" data-modal-cerrar="modal-respuestas">
           <i class="fa fa-times"></i> Cerrar
         </button>
       </div>
@@ -306,20 +304,20 @@
   </div>
 
   <!-- ═══ MODAL: CONFIRMACIÓN GENÉRICA ═══ -->
-  <div id="modal-confirmar" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmar-titulo" style="z-index:1060;">
-    <div class="modal-box" style="max-width:420px;">
+  <div id="modal-confirmar" class="modal-overlay modal-overlay--confirmar" role="dialog" aria-modal="true" aria-labelledby="confirmar-titulo">
+    <div class="modal-box modal-box--confirmar">
       <div class="modal-header">
         <h3 id="confirmar-titulo"><i class="fa fa-question-circle"></i> Confirmar acción</h3>
-        <button class="modal-cerrar" onclick="Modal.cerrar('modal-confirmar')" aria-label="Cerrar">&times;</button>
+        <button type="button" class="modal-cerrar" data-modal-cerrar="modal-confirmar" aria-label="Cerrar">&times;</button>
       </div>
       <div class="modal-body">
-        <p id="confirmar-texto" style="margin:0;"></p>
+        <p id="confirmar-texto" class="confirmar-texto"></p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-itt btn-secundario" onclick="Modal.resolverConfirmar(false)">
+        <button type="button" class="btn-itt btn-secundario" data-confirmar-valor="false">
           Cancelar
         </button>
-        <button type="button" class="btn-itt btn-primario" onclick="Modal.resolverConfirmar(true)">
+        <button type="button" class="btn-itt btn-primario" data-confirmar-valor="true">
           Confirmar
         </button>
       </div>
@@ -332,7 +330,6 @@
     <p>Subdirección Académica · Sistema de Reducción de Monto de Inscripción</p>
   </footer>
 
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
   <script src="/compartido/js/itt-security.js"></script>
   <script src="js/app.js"></script>
 </body>

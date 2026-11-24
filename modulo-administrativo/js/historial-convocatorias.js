@@ -245,7 +245,7 @@ const HistorialConvocatorias = {
           <td>${idSeguro}</td>
           <td>${this.escapar(Fecha.conHora(r.fechaRegistro))}</td>
           <td>${r.administradorNombre ? `${this.escapar(r.administradorNombre)}<span class="hc-admin-id">${this.escapar(r.idAdministrador)}</span>` : this.escapar(r.idAdministrador)}</td>
-          <td><div class="hc-chips">${chips || '<em style="color:#999;">Sin diferencias</em>'}</div></td>
+          <td><div class="hc-chips">${chips || '<em class="hc-sin-diferencias">Sin diferencias</em>'}</div></td>
           <td class="text-center">
             <button type="button" class="btn-blue-itt"
                     title="Ver detalle" data-historial-id="${idSeguro}">

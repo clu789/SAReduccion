@@ -86,17 +86,16 @@
         </div>
 
         <!-- Campos aspirante (nuevo ingreso) -->
-        <div id="campos-aspirante" style="display:none;">
+        <div id="campos-aspirante" hidden>
           <div class="form-group">
             <label for="curp-aspirante">CURP <span class="requerido">*</span></label>
             <input
               type="text"
               id="curp-aspirante"
               name="curp-aspirante"
-              class="form-control-itt"
+              class="form-control-itt input-mayusculas"
               placeholder="Ej. LOML920101HDFPZS09"
               maxlength="18"
-              style="text-transform:uppercase;"
             />
             <span class="mensaje-error" id="curp-aspirante-error"></span>
           </div>
@@ -140,12 +139,12 @@
           </div>
         </div>
 
-        <button type="submit" id="btn-login" class="btn-itt btn-primario w-100" style="margin-top:8px;justify-content:center;">
+        <button type="submit" id="btn-login" class="btn-itt btn-primario w-100 btn-login-submit">
           <i class="fa fa-sign-in"></i> Ingresar al Sistema
         </button>
       </form>
 
-      <p style="text-align:center;margin-top:18px;font-size:.78rem;color:var(--itt-texto-claro);">
+      <p class="login-ayuda">
         ¿Problemas para acceder? Contacte a la <strong>Subdirección Académica</strong>.
       </p>
     </div>

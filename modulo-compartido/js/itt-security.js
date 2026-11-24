@@ -430,6 +430,8 @@
      <div data-itt-captcha></div>  captcha (accesible con ITTSecurity.captchaDe(el)) */
   var captchas = new Map();
   document.addEventListener('DOMContentLoaded', function () {
+    var anio = document.getElementById('year');
+    if (anio) anio.textContent = String(new Date().getFullYear());
     document.querySelectorAll('[data-itt-captcha]').forEach(function (el) {
       captchas.set(el, Captcha.montar(el));
     });

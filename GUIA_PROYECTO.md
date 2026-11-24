@@ -35,6 +35,7 @@ SAReduccion/
 │
 ├── modulo-solicitante/          → Frontend del alumno/aspirante
 ├── modulo-administrativo/       → Frontend del personal administrativo
+├── modulo-compartido/           → Cliente común de seguridad, navegación y captcha (Equipo 1)
 ├── src/                         → Backend Java (Spring Boot)
 ├── docker/                      → Infraestructura Docker
 ├── backups/oracle/              → Respaldos Data Pump (no versionado)
@@ -75,9 +76,12 @@ Interfaz web estática servida por Nginx. Contiene las pantallas que usa el pers
 | Archivo / Carpeta | Descripción |
 |---|---|
 | `login.html` | Pantalla de inicio de sesión del administrador |
-| `panel-admin.html` | Panel de gestión de solicitudes de alumnos |
+| `panel-admin.html` | Panel de gestión de solicitudes de alumnos y aspirantes |
+| `convocatorias-admin.html` | Listado, detalle y edición de convocatorias y montos |
+| `convocatorias-crear-editar.html` | Creación y edición de convocatorias |
+| `historial-convocatorias.html` | Consulta del historial de cambios de fechas en convocatorias |
 | `css/` | Hojas de estilo del módulo |
-| `js/` | Lógica JavaScript del panel administrativo |
+| `js/` | Lógica JavaScript del panel administrativo y convocatorias |
 | `img/` | Imágenes e íconos del módulo |
 
 ---
@@ -89,41 +93,61 @@ Código fuente del servidor REST. Sigue la estructura estándar de Maven.
 ```
 src/main/java/com/itt/sareduccion/
 │
-├── SareduccionApplication.java   → Punto de entrada (main) de la aplicación
+├── SareduccionApplication.java          → Punto de entrada (main) de la aplicación
 │
-├── auth/                         → Capa de autenticación y seguridad
-│   ├── AuthenticationService.java    → Lógica central de login
-│   ├── OracleCredentialValidator.java→ Valida credenciales contra Oracle DB
-│   ├── LoginAttemptLimiter.java      → Limita intentos de login fallidos
-│   ├── AuthRole.java                 → Roles del sistema (STUDENT, ADMIN, APPLICANT)
-│   ├── ApplicantPrincipal.java       → Identidad del aspirante autenticado
-│   ├── AuthenticatedPrincipal.java   → Interfaz base del usuario autenticado
-│   ├── SessionAttributes.java        → Nombres de atributos de la sesión HTTP
-│   └── SessionPrincipal.java         → Datos guardados en la sesión HTTP
+├── auth/                                → Capa de autenticación e identidad
+│   ├── AuthenticationService.java       → Lógica central de login
+│   ├── OracleCredentialValidator.java   → Valida credenciales contra Oracle DB
+│   ├── LoginAttemptLimiter.java         → Limita intentos de login fallidos
+│   ├── AuthRole.java                    → Roles del sistema (STUDENT, ADMIN, APPLICANT)
+│   ├── ApplicantPrincipal.java          → Identidad del aspirante autenticado
+│   ├── AuthenticatedPrincipal.java      → Interfaz base del usuario autenticado
+│   ├── SessionAttributes.java           → Claves y CSRF de la sesión HTTP
+│   └── SessionPrincipal.java            → Datos guardados en la sesión HTTP
 │
-├── controller/                   → Endpoints REST (API HTTP)
-│   ├── AuthController.java           → Login, /me y logout de los tres perfiles
-│   └── SolicitudAdminController.java → Consulta y resolución de solicitudes
+├── security/                            → Seguridad transversal, captcha, OTP, auditoría y logs
+│   ├── WebSecurityConfig.java           → Registro de interceptores de autorización
+│   ├── AuthorizationInterceptor.java    → Sesión, CSRF y control por rol en /api/**
+│   ├── CaptchaService.java              → Captcha de imagen y pregunta accesible
+│   ├── OtpService.java / CorreoOtpDelivery.java → Verificación temporal por correo
+│   ├── SecurityAuditService.java        → Auditoría de accesos en Oracle
+│   ├── SecurityHeadersFilter.java       → Cabeceras de seguridad HTTP de la API
+│   ├── CorrelationIdFilter.java         → Identificador de correlación en MDC y cabeceras
+│   ├── GlobalExceptionHandler.java      → Manejo uniforme de errores sin filtrar detalles
+│   └── logging/                         → Enmascarado automático de datos sensibles
 │
-├── service/                      → Reglas de negocio
-│   ├── SolicitudAdminService.java    → Reglas del panel administrativo
-│   └── ReglaNegocioException.java    → Conflicto de negocio (HTTP 409)
+├── controller/                          → Endpoints REST (API HTTP)
+│   ├── AuthController.java              → Login, /me, captcha, OTP y logout
+│   ├── SolicitudAdminController.java    → Consulta y resolución administrativa
+│   ├── ConvocatoriaGestionController.java → Gestión e historial de convocatorias
+│   ├── SolicitanteController.java       → Perfil, convocatorias, seguimiento y retiro
+│   ├── FormularioSolicitudController.java → Formulario dinámico, envío y reenvío
+│   └── NotificacionController.java      → Envío manual de avisos por correo
 │
-├── model/                        → Modelos / entidades de datos
-│   ├── ApplicantIdentity.java        → Identidad del aspirante
-│   ├── ConvocatoriaAdmin.java        → Convocatoria para el panel
-│   ├── DeduccionAdmin.java           → Deducción autorizada
-│   ├── EstudianteDatos.java          → Datos del estudiante traídos de la BD
-│   ├── RespuestaSolicitud.java       → Respuesta de un formulario
-│   └── SolicitudAdmin.java           → Solicitud vista por administración
+├── service/                             → Reglas de negocio y notificaciones
+│   ├── SolicitudAdminService.java       → Reglas del panel administrativo y deducciones
+│   ├── ConvocatoriaGestionService.java  → Validación y gestión de convocatorias
+│   ├── SolicitanteService.java          → Reglas de seguimiento y retiro del solicitante
+│   ├── FormularioSolicitudService.java  → Carga, validación y envío atómico de respuestas
+│   ├── NotificacionService.java         → Plantillas y envío asíncrono de correos
+│   ├── ValidadorRespuestas.java         → Validación de preguntas y opciones
+│   └── TraductorErroresOracle.java      → Traducción segura de códigos ORA
 │
-└── repository/                   → Acceso a base de datos (JDBC)
-    ├── ApplicantRepository.java      → Consultas relacionadas a aspirantes
-    ├── AdministradorRepository.java  → Consultas relacionadas a administradores
-    └── EstudianteRepository.java     → Consultas de datos de estudiantes
+├── model/                               → Modelos / DTOs de dominio y transferencia
+│
+└── repository/                          → Acceso a base de datos (JDBC / PL/SQL)
+    ├── AdministradorRepository.java     → Operaciones administrativas y correos
+    ├── ConvocatoriaGestionRepository.java → Gestión e historial de convocatorias
+    ├── SolicitanteRepository.java       → Operaciones del solicitante
+    ├── FormularioSolicitudRepository.java → Operaciones de PKG_FORMULARIO
+    ├── AuditoriaSeguridadRepository.java → Registro en PKG_SEGURIDAD
+    ├── ApplicantRepository.java         → Validación de aspirantes
+    └── EstudianteRepository.java        → Consulta de datos de estudiantes
 
 src/main/resources/
-└── application.properties        → Configuración del servidor (DB, sesión, pool)
+├── application.properties               → Configuración del servidor (DB, sesión, seguridad, SMTP)
+├── logback-spring.xml                   → Formato, rotación y enmascarado de logs
+└── mail/aviso-tramite.html              → Plantilla HTML de notificaciones por correo
 ```
 
 ---
@@ -139,11 +163,13 @@ src/main/resources/
 
 | Script | Qué hace |
 |---|---|
-| `01-configurar-esquema.sql` | Crea el esquema `SA_REDUCCION` y el directorio de respaldos |
+| `01-configurar-esquema.sql` | Crea/configura el esquema `SA_REDUCCION`, privilegios (incluido `CREATE JOB`) y directorio de respaldos |
 | `02-crear-estructura.sql` | Crea tablas, restricciones, índices, secuencias, triggers y catálogos base |
 | `03-crear-identidades-roles.sql` | Crea roles y cuentas individuales de estudiante y administrador |
 | `04-crear-cuenta-tecnica.sql` | Crea la cuenta técnica `SAR_BACKEND` del backend (JDBC) |
-| `05-crear-paquetes-permisos.sql` | Crea los cuatro paquetes PL/SQL y concede `EXECUTE` sobre los públicos |
+| `05-crear-paquetes-permisos.sql` | Crea los paquetes PL/SQL base y concede `EXECUTE` sobre los públicos |
+| `07-auditoria-seguridad.sql` | Crea `SEG_AUDITORIA_ACCESOS`, `PKG_SEGURIDAD`, `PRC_SEG_DEPURAR_AUDITORIA` y el job `JOB_SEG_DEPURAR_AUDITORIA` |
+| `07-paquete-formulario.sql` | Crea `PKG_FORMULARIO` y concede `EXECUTE` a `SAR_BACKEND` |
 | `06-seed-desarrollo.sql` | Inserta datos ficticios si `SAR_LOAD_DEV_SEED=true` |
 | `init-db.sh` | Orquesta la ejecución en orden y verifica el resultado |
 
