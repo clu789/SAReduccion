@@ -1,6 +1,6 @@
-# Guía de pruebas de SAReducción
+# Guía de pruebas — SAReducción
 
-Checklist práctico de todas las pruebas automatizadas, manuales, de correo SMTP y de seguridad que puedes ejecutar sobre el estado actual del proyecto (rama `dev`).
+Checklist práctico de todas las pruebas automatizadas, manuales, de correo SMTP y de seguridad que puedes ejecutar sobre el estado actual del proyecto (rama `main`).
 
 ---
 
@@ -49,16 +49,18 @@ Debes ver `sareduccion-oracle` en estado `healthy`, los `OK:` de `init-db.sh` (`
 ## 2. Pruebas automatizadas rápidas (sin base de datos)
 
 ### A. Pruebas unitarias de Java (86 pruebas en 12 clases)
-Si `mvn` no está en el `PATH` global, usa la ruta de Maven de NetBeans:
 ```powershell
-& "C:\Program Files\NetBeans-20\netbeans\java\maven\bin\mvn.cmd" -o test "-Dtest=!*IntegrationTest"
+mvn -o test "-Dtest=!*IntegrationTest"
 ```
+*(Si `mvn` no está en el `PATH` global en Windows, puedes usar el binario incluido en NetBeans: `& "C:\Program Files\NetBeans-20\netbeans\java\maven\bin\mvn.cmd" -o test "-Dtest=!*IntegrationTest"`.)*
 Validan:
 - Seguridad (`SecurityUnitTest`, `SecurityFlowTest`): CSRF, captcha de imagen y texto accesible, limitador de intentos por usuario e IP, rotación de sesión, cabeceras de seguridad, `@RequiereRol` e interceptación de rutas (`/api/admin/**`, `/api/notificaciones/**`, `/api/solicitante/**`).
 - Correo OTP y notificaciones (`CorreoOtpDeliveryTest`, `NotificacionServiceTest`, `NotificacionControllerTest`): activación condicional del bean SMTP, construcción HTML/texto plano segura ante XSS y propagación de `MDC` en envío asíncrono.
 - Reglas de negocio y controladores (`SolicitudAdminServiceTest`, `ConvocatoriaGestionServiceTest`, `ConvocatoriaGestionControllerTest`, `SolicitanteServiceTest`, `ValidadorRespuestasTest`, `TraductorErroresOracleTest`, `RutasUnificadasControllerTest`): traducción de códigos ORA positivos/negativos (`20870`, `20915` -> `404`), cálculo de estado/`activa`, eliminación de rutas duplicadas (`404`) y respuestas de formulario.
 
 ### B. Sintaxis JS y pruebas JSDOM del formulario dinámico (64 verificaciones)
+Requieren **Node.js 16 o superior** y simulan las respuestas del backend sin necesitar Oracle, Docker ni navegador. Cubren preguntas `ABIERTA`, `OPCION_UNICA` y `MIXTA`, validaciones en vivo, envío con token CSRF, manejo de errores (`400`, `401`, `403`, `409`, `500`), solicitud existente, flujo de reenvío (precarga, cambio de tipo, estados no permitidos), aspirantes, aislamiento de roles y protección contra XSS.
+
 ```powershell
 node --check modulo-compartido/js/itt-security.js modulo-administrativo/js/app.js modulo-administrativo/js/convocatorias-admin.js modulo-administrativo/js/convocatorias-crear-editar.js modulo-administrativo/js/historial-convocatorias.js modulo-solicitante/js/app.js modulo-solicitante/js/formulario.js modulo-solicitante/pruebas/formulario.test.js
 
@@ -85,8 +87,9 @@ $env:SAR_AUTH_STUDENT_PASSWORD = $vars['ORACLE_ALUMNO_PASSWORD']
 $env:SAR_AUTH_ADMIN_PASSWORD = $vars['ORACLE_ADMIN_PASSWORD']
 $env:SAR_JDBC_TEST_ADMIN_ID = "SA01"
 
-& "C:\Program Files\NetBeans-20\netbeans\java\maven\bin\mvn.cmd" -o test "-Dtest=AuthenticationIntegrationTest,ApplicantAuthenticationIntegrationTest,SolicitudAdminServiceIntegrationTest"
+mvn -o test "-Dtest=AuthenticationIntegrationTest,ApplicantAuthenticationIntegrationTest,SolicitudAdminServiceIntegrationTest"
 ```
+*(Si `mvn` no está en el `PATH`, sustituye `mvn` por la ruta de tu instalación o la de NetBeans.)*
 Deben pasar **15 de 15** pruebas (`AuthenticationIntegrationTest`, `ApplicantAuthenticationIntegrationTest` y `SolicitudAdminServiceIntegrationTest`).
 
 > **Nota sobre otras pruebas en BD:**
@@ -183,9 +186,9 @@ curl.exe -s -I http://localhost:8081/administrativo/convocatorias-admin.html
   docker exec -i sareduccion-oracle sqlplus -L -s SA_REDUCCION/<ORACLE_APP_PASSWORD>@//localhost:1521/XEPDB1
   ```
   ```sql
-  SELECT id_evento, tipo_evento, perfil, resultado, origen_ip, fecha_registro
+  SELECT id_auditoria, fecha_evento, evento, tipo_perfil, identificador_usuario, direccion_ip, detalle, correlation_id
     FROM SEG_AUDITORIA_ACCESOS
-   ORDER BY id_evento DESC FETCH FIRST 20 ROWS ONLY;
+   ORDER BY fecha_evento DESC FETCH FIRST 20 ROWS ONLY;
   ```
 
 ---
@@ -195,3 +198,12 @@ curl.exe -s -I http://localhost:8081/administrativo/convocatorias-admin.html
 - **Notificaciones por correo a estudiantes:** Aún no existe tabla/servicio institucional de correos para alumnos.
 - **Generación de recibos y sistema de pagos:** El flujo termina en deducción `APLICADO`.
 - **Validación en Oracle 12c y despliegue productivo (TLS/HSTS):** Pendiente de entrega de infraestructura oficial.
+
+---
+
+## Documentación relacionada
+
+- [Guía de ejecución rápida](README.md)
+- [Seguridad e integración](SEGURIDAD.md)
+- [Notificaciones por correo](NOTIFICACIONES.md)
+- [Matriz de requerimientos](REQUERIMIENTOS.md)

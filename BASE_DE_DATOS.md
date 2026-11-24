@@ -4,7 +4,7 @@
 
 La base de datos administra las solicitudes de reducción del monto de inscripción y reinscripción de estudiantes y aspirantes. El modelo utiliza **Oracle XE 21c**, en el esquema `SA_REDUCCION`, y se construye principalmente con [`docker/init-db/02-crear-estructura.sql`](docker/init-db/02-crear-estructura.sql) y [`docker/init-db/05-crear-paquetes-permisos.sql`](docker/init-db/05-crear-paquetes-permisos.sql).
 
-La versión revisada contiene **22 tablas**, con claves primarias, foráneas, restricciones, índices, secuencias y triggers. La identidad de estudiantes, aspirantes y administradores se mantiene en sus tablas correspondientes; no existe una tabla de usuarios intermedia. La lógica de negocio se concentra en cuatro paquetes PL/SQL, uno interno y tres públicos.
+La versión revisada contiene **23 tablas** (22 del modelo de negocio en [`docker/init-db/02-crear-estructura.sql`](docker/init-db/02-crear-estructura.sql) y `SEG_AUDITORIA_ACCESOS` en [`docker/init-db/07-auditoria-seguridad.sql`](docker/init-db/07-auditoria-seguridad.sql)), con claves primarias, foráneas, restricciones, índices, secuencias y triggers. La identidad de estudiantes, aspirantes y administradores se mantiene en sus tablas correspondientes; no existe una tabla de usuarios intermedia. La lógica de negocio y seguridad se concentra en **seis paquetes PL/SQL**: uno interno (`PKG_SOLICITUDES_CORE`) y cinco públicos (`PKG_ESTUDIANTE`, `PKG_ASPIRANTE`, `PKG_ADMINISTRADOR`, `PKG_SEGURIDAD` y `PKG_FORMULARIO`).
 
 ## 2. Instalación y ejecución
 
@@ -17,18 +17,20 @@ La versión revisada contiene **22 tablas**, con claves primarias, foráneas, re
 | Script | Propósito | Usuario |
 | --- | --- | --- |
 | `01-configurar-esquema.sql` | Crea el esquema `SA_REDUCCION` y configura el directorio de respaldos. | SYS |
-| `02-crear-estructura.sql` | Crea tablas, restricciones, índices, secuencias, triggers y catálogos base, incluidos los dos tipos de solicitud y formularios. | `SA_REDUCCION` |
+| `02-crear-estructura.sql` | Crea las 22 tablas de negocio, restricciones, índices, 16 secuencias, triggers y catálogos base, incluidos los dos tipos de solicitud y formularios. | `SA_REDUCCION` |
 | `03-crear-identidades-roles.sql` | Crea identidades Oracle y roles de prueba. | SYS |
 | `04-crear-cuenta-tecnica.sql` | Crea la cuenta `SAR_BACKEND`. | SYS |
-| `05-crear-paquetes-permisos.sql` | Crea los cuatro paquetes PL/SQL y concede a la cuenta técnica ejecución sobre los tres paquetes públicos. | `SA_REDUCCION` |
-| `06-seed-desarrollo.sql` | Carga datos ficticios y escenarios de solicitudes, respuestas, historiales y deducciones. | `SA_REDUCCION` |
-| `init-db.sh` | Orquesta la instalación y comprueba su resultado. | Automático |
+| `05-crear-paquetes-permisos.sql` | Crea los paquetes base (`PKG_SOLICITUDES_CORE`, `PKG_ESTUDIANTE`, `PKG_ASPIRANTE`, `PKG_ADMINISTRADOR`) y concede ejecución a `SAR_BACKEND`. | `SA_REDUCCION` |
+| `07-auditoria-seguridad.sql` | Crea `SEG_AUDITORIA_ACCESOS`, `seq_seg_auditoria_accesos`, `PKG_SEGURIDAD`, `PRC_SEG_DEPURAR_AUDITORIA` y el job diario `JOB_SEG_DEPURAR_AUDITORIA`. | `SA_REDUCCION` |
+| `07-paquete-formulario.sql` | Crea `PKG_FORMULARIO` y concede `EXECUTE` a `SAR_BACKEND`. | `SA_REDUCCION` |
+| `06-seed-desarrollo.sql` | Carga datos ficticios y escenarios de solicitudes, respuestas, historiales y deducciones (se ejecuta al final si `SAR_LOAD_DEV_SEED=true`). | `SA_REDUCCION` |
+| `init-db.sh` | Orquesta la instalación en orden y comprueba su resultado. | Automático |
 
 El seed es **de una sola ejecución por esquema nuevo**. Los catálogos esenciales, los tipos de solicitud y los formularios ya existen desde el script `02`; no deben duplicarse en el `06`. En los datos ficticios, las convocatorias usan identificadores explícitos `900001` y `900002`, mientras que el resto de entidades toma sus identificadores de las secuencias creadas en `02`.
 
 ### 2.2 Verificaciones
 
-`init-db.sh` comprueba al final de la instalación que existan las 22 tablas, los 16 secuencias, los triggers y los cuatro paquetes con estatus `VALID`, sin objetos inválidos. También verifica los privilegios efectivos de `SAR_BACKEND` y de las cuentas individuales, y que la presencia de datos de aplicación corresponda a `SAR_LOAD_DEV_SEED`.
+`init-db.sh` comprueba al final de la instalación que existan las **23 tablas**, los **5 paquetes públicos** (`10` objetos `PACKAGE` y `PACKAGE BODY` con estatus `VALID`, sin objetos inválidos), **5 grants `EXECUTE`** sobre esos paquetes para `SAR_BACKEND`, los triggers y secuencias correspondientes, y el job programado `JOB_SEG_DEPURAR_AUDITORIA` habilitado. También verifica los privilegios efectivos de `SAR_BACKEND` y de las cuentas individuales, y que la presencia de datos de aplicación corresponda a `SAR_LOAD_DEV_SEED`.
 
 Las reglas de negocio se validan ejecutando los paquetes sobre una base nueva: creación y unicidad de solicitudes, retirada y reenvío, autorización, rechazo, cancelación, reautorización, aplicación, fechas de convocatoria, historiales y conservación de montos. Actualmente no existe una suite automatizada de estas reglas fuera de `init-db.sh`.
 
@@ -330,7 +332,24 @@ Conserva estados y fotografías de importes de cada movimiento de la deducción.
 | `monto_final` | `NUMBER(10,2)` | NOT NULL |
 | `fecha_registro` | `DATE` | NOT NULL, DEFAULT |
 
-### 3.7 Reglas de negocio acordadas y su implementación
+### 3.7 Auditoría de seguridad
+
+#### Tabla: `SEG_AUDITORIA_ACCESOS`
+
+Bitácora de intentos de acceso y eventos de sesión creada en [`docker/init-db/07-auditoria-seguridad.sql`](docker/init-db/07-auditoria-seguridad.sql). `SAR_BACKEND` solo inserta mediante `PKG_SEGURIDAD.registrar_evento` y no tiene acceso directo a la tabla.
+
+| Atributo | Tipo | Indicaciones |
+| --- | --- | --- |
+| `id_auditoria` | `NUMBER(19)` | PK (alimentada por `seq_seg_auditoria_accesos`) |
+| `fecha_evento` | `TIMESTAMP(6) WITH TIME ZONE` | NOT NULL, DEFAULT `SYSTIMESTAMP` |
+| `identificador_usuario` | `VARCHAR2(64)` | Cuenta, número de control o ficha (sin CURP, correo ni contraseña) |
+| `tipo_perfil` | `VARCHAR2(15)` | NOT NULL (`ESTUDIANTE`, `ASPIRANTE`, `ADMINISTRADOR`, `DESCONOCIDO`) |
+| `direccion_ip` | `VARCHAR2(45)` | IP resuelta por el backend detrás del proxy autorizado |
+| `evento` | `VARCHAR2(30)` | NOT NULL (`LOGIN_EXITOSO`, `LOGIN_FALLIDO`, `LOGOUT`, `INTENTO_BLOQUEADO`, `SESION_EXPIRADA`, `CAPTCHA_FALLIDO`, `OTP_ENVIADO`, `OTP_FALLIDO`, `ACCESO_DENEGADO`) |
+| `detalle` | `VARCHAR2(400)` | Motivo técnico breve, sin datos sensibles |
+| `correlation_id` | `VARCHAR2(64)` | Mismo identificador que `X-Correlation-ID` y los logs |
+
+### 3.8 Reglas de negocio acordadas y su implementación
 
 | Regla | Implementación en Oracle |
 | --- | --- |
@@ -366,42 +385,27 @@ Solicitudes ── Historial_Solicitudes
 
 ## 5. Secuencias y triggers
 
-El script `02` declara **16 secuencias**, una por tabla con identificador generado. La mayoría arranca en `1`; `seq_tipo_solicitudes` y `seq_formularios` arrancan en `3` y `seq_tipo_preguntas` y `seq_estatus_*` arrancan por encima de los catálogos que el propio script inserta.
+El esquema declara **17 secuencias** en total: **16** en el script `02` (una por tabla de negocio con identificador generado) más `seq_seg_auditoria_accesos` en [`docker/init-db/07-auditoria-seguridad.sql`](docker/init-db/07-auditoria-seguridad.sql) (arranca en `1`). En `02`, `seq_tipo_solicitudes` y `seq_formularios` arrancan en `3` y `seq_tipo_preguntas` y `seq_estatus_*` arrancan por encima de los catálogos que el propio script inserta.
 
 | Secuencia | Valor inicial |
 | --- | ---: |
-
 | `seq_tipo_solicitudes` | 3 |
-
 | `seq_tipo_preguntas` | 4 |
-
 | `seq_estatus_solicitudes` | 6 |
-
 | `seq_estatus_deducciones` | 6 |
-
 | `seq_convocatorias` | 1 |
-
 | `seq_historial_convocatorias` | 1 |
-
 | `seq_formularios` | 3 |
-
 | `seq_preguntas` | 1 |
-
 | `seq_opciones` | 1 |
-
 | `seq_monto_inscripciones` | 1 |
-
 | `seq_monto_reinscripciones` | 1 |
-
 | `seq_solicitudes` | 1 |
-
 | `seq_respuestas` | 1 |
-
 | `seq_historial_solicitudes` | 1 |
-
 | `seq_deducciones_autorizadas` | 1 |
-
 | `seq_historial_deducciones` | 1 |
+| `seq_seg_auditoria_accesos` | 1 |
 
 
 ### 5.1 Triggers
@@ -433,7 +437,9 @@ Los paquetes utilizan `AUTHID DEFINER`, de modo que `SAR_BACKEND` puede operar m
 | `PKG_SOLICITUDES_CORE` | Validaciones compartidas, creación, retirada, reenvío y registro histórico. | Interno; no se concede a `SAR_BACKEND`. |
 | `PKG_ESTUDIANTE` | Perfil, consultas y solicitudes de estudiantes. | Público para `SAR_BACKEND`. |
 | `PKG_ASPIRANTE` | Validación, consultas y solicitudes de aspirantes. | Público para `SAR_BACKEND`. |
-| `PKG_ADMINISTRADOR` | Consultas y decisiones administrativas, fechas y montos. | Público para `SAR_BACKEND`. |
+| `PKG_ADMINISTRADOR` | Consultas y decisiones administrativas, fechas, montos y correo de solicitud. | Público para `SAR_BACKEND`. |
+| `PKG_SEGURIDAD` | Registro autónomo de auditoría de accesos y consulta de correo para OTP. | Público para `SAR_BACKEND`. |
+| `PKG_FORMULARIO` | Convocatorias abiertas, estructura dinámica del formulario, respuestas propias y envío inicial. | Público para `SAR_BACKEND`. |
 
 ### 7.1 `PKG_ESTUDIANTE`
 
@@ -445,27 +451,35 @@ Incluye `validar_aspirante`, `mis_solicitudes`, `mis_deducciones`, `crear_solici
 
 ### 7.3 `PKG_ADMINISTRADOR`
 
-Incluye `listar_estudiantes`, `listar_solicitudes`, `listar_convocatorias`, `listar_respuestas`, `listar_deducciones`, `crear_solicitud_estudiante`, `rechazar_solicitud`, `autorizar_deduccion`, `cancelar_deduccion`, `aplicar_deduccion`, `actualizar_fechas_convocatoria` y `actualizar_monto_oficial`.
+Incluye `listar_estudiantes`, `listar_solicitudes`, `listar_convocatorias`, `listar_respuestas`, `listar_deducciones`, `crear_solicitud_estudiante`, `rechazar_solicitud`, `autorizar_deduccion`, `cancelar_deduccion`, `aplicar_deduccion`, `actualizar_fechas_convocatoria`, `actualizar_monto_oficial` y `consultar_correo_solicitud`.
 
 Las operaciones de autorización y aplicación conservan las reglas de estado y plazo. La aplicación recalcula el monto oficial y registra una nueva fotografía de los importes en `Historial_Deducciones`.
 
-### 7.4 Cobertura por módulo y equipo
+### 7.4 `PKG_SEGURIDAD`
+
+Creado en [`docker/init-db/07-auditoria-seguridad.sql`](docker/init-db/07-auditoria-seguridad.sql). Expone `registrar_evento` (con `PRAGMA AUTONOMOUS_TRANSACTION` para confirmar eventos de seguridad sin interferir con transacciones de negocio) y `correo_aspirante`. El mismo script declara el procedimiento administrativo `PRC_SEG_DEPURAR_AUDITORIA` y el job diario `JOB_SEG_DEPURAR_AUDITORIA`, sin concederlos a `SAR_BACKEND`.
+
+### 7.5 `PKG_FORMULARIO`
+
+Creado en [`docker/init-db/07-paquete-formulario.sql`](docker/init-db/07-paquete-formulario.sql). Expone `convocatorias_abiertas`, `obtener_formulario`, `mis_respuestas` y `crear_solicitud` (envío atómico inicial sobre `PKG_SOLICITUDES_CORE.crear` garantizando el registro histórico inicial `PENDIENTE`).
+
+### 7.6 Cobertura por módulo y equipo
 
 | Equipo | Responsabilidad de integración |
 | --- | --- |
-| 1 — Autenticación y seguridad | Sesiones, permisos, auditoría de accesos y navegación compartida entre vistas. |
+| 1 — Autenticación y seguridad | Sesiones, permisos, auditoría de accesos (`PKG_SEGURIDAD`) y navegación compartida entre vistas. |
 | 2 — Panel administrativo | Consultas, revisión, rechazo, autorización, cancelación y aplicación de deducciones. |
 | 3 — Panel del estudiante y aspirante | Consultas, seguimiento, retirada y reenvío; interfaces adaptadas a teléfonos móviles. |
 | 4 — Convocatorias y montos | Configuración de fechas y montos mediante las reglas de Oracle. |
-| 5 — Formularios | Preguntas y respuestas completas, incluidas opciones que requieren especificación; interfaz adaptable a móviles. |
+| 5 — Formularios | Preguntas y respuestas completas (`PKG_FORMULARIO`), incluidas opciones que requieren especificación; interfaz adaptable a móviles. |
 | 6 — Notificaciones | Correos relacionados con eventos y estados del trámite. |
 | 7 — Base de datos | Revisión e integración oficial de scripts, restricciones, paquetes y pruebas. |
 
-La existencia de un procedimiento Oracle **no implica que su endpoint o su interfaz en Spring Boot ya estén implementados**. Cada equipo debe comprobar la integración real de su funcionalidad.
+Los cinco paquetes públicos y sus endpoints correspondientes en Spring Boot ya se encuentran integrados; la cobertura de notificaciones para estudiantes depende únicamente de confirmar su fuente institucional de correo.
 
 ## 8. Privilegios mínimos de `SAR_BACKEND`
 
-`SAR_BACKEND` dispone de `CREATE SESSION` y `EXECUTE` sobre los tres paquetes públicos: `PKG_ESTUDIANTE`, `PKG_ASPIRANTE` y `PKG_ADMINISTRADOR`. No necesita permisos CRUD directos sobre las tablas ni acceso al paquete interno `PKG_SOLICITUDES_CORE`.
+`SAR_BACKEND` dispone de `CREATE SESSION` y `EXECUTE` únicamente sobre los cinco paquetes públicos: `PKG_ESTUDIANTE`, `PKG_ASPIRANTE`, `PKG_ADMINISTRADOR`, `PKG_SEGURIDAD` y `PKG_FORMULARIO`. No tiene permisos CRUD directos sobre las tablas ni acceso al paquete interno `PKG_SOLICITUDES_CORE`.
 
 La identidad autenticada se determina en el backend. Los paquetes reciben identificadores de usuario como parámetros y validan la existencia y las reglas del registro; por sí solos no sustituyen la comprobación de sesión y autorización por rol en Spring Boot.
 
@@ -769,7 +783,7 @@ La exportación es de esquema, no de la instancia completa. Queda fuera del `.dm
 | --- | --- | --- |
 | Cuentas Oracle (`SA_REDUCCION`, `SAR_BACKEND`, `ALU_21281181`, `SA01`) | Los usuarios se definen a nivel de instancia. | Scripts `03-crear-identidades-roles.sql` y `04-crear-cuenta-tecnica.sql`, con sus contraseñas desde `.env`. |
 | Roles `ROL_SAR_ESTUDIANTE_SIM` y `ROL_SAR_ADMIN_SIM` | Son objetos de instancia. | Mismo script `03`. |
-| Grants de `EXECUTE` a `SAR_BACKEND` | Los privilegios no viajan en la exportación de esquema. | `05-crear-paquetes-permisos.sql`. |
+| Grants de `EXECUTE` a `SAR_BACKEND` | Los privilegios no viajan en la exportación de esquema. | `05-crear-paquetes-permisos.sql`, `07-auditoria-seguridad.sql` y `07-paquete-formulario.sql`. |
 | Directorio `SAR_BACKUP_DIR` y sus grants | Objeto de instancia. | Lo crea `01-configurar-esquema.sql`; una instalación limpia ya lo incluye. |
 | Contraseñas de cualquier cuenta | Nunca se exportan. | Se toman de `.env`. |
 | Datos de otras PDB o del contenedor raíz | Fuera del alcance de `SCHEMAS=SA_REDUCCION`. | No aplica: el proyecto vive solo en `XEPDB1`. |
@@ -784,9 +798,12 @@ En resumen: el `.dmp` recupera los objetos y datos de la aplicación, y los scri
 - [Identidades y roles](docker/init-db/03-crear-identidades-roles.sql)
 - [Cuenta técnica](docker/init-db/04-crear-cuenta-tecnica.sql)
 - [Paquetes PL/SQL y permisos](docker/init-db/05-crear-paquetes-permisos.sql)
+- [Auditoría de seguridad y depuración](docker/init-db/07-auditoria-seguridad.sql)
+- [Paquete de formulario dinámico](docker/init-db/07-paquete-formulario.sql)
 - [Datos de desarrollo](docker/init-db/06-seed-desarrollo.sql)
 - [Orquestador de inicialización](docker/init-db/init-db.sh)
 - [Configuración de Docker Compose](docker-compose.yml)
 - [Plantilla de variables de entorno](.env.example)
 - [Ejecución del proyecto](README.md)
 - [Arquitectura técnica](ARQUITECTURA.md)
+- [Seguridad e integración](SEGURIDAD.md)

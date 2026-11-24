@@ -1,6 +1,6 @@
-# Guía de integración de seguridad (Equipo 1)
+# Seguridad e integración (SAReducción)
 
-Mecanismos comunes de autenticación, autorización, CSRF, auditoría y logs de SAReducción, y cómo los usa cada equipo. Todo vive en el paquete `com.itt.sareduccion.security` y en `modulo-compartido/`.
+Mecanismos comunes de autenticación, autorización, CSRF, auditoría y logs de SAReducción. Todo vive en el paquete `com.itt.sareduccion.security` y en `modulo-compartido/`.
 
 **Resumen para quien tiene prisa**
 
@@ -63,7 +63,7 @@ Lo que el interceptor **no** hace: validar que un dato pertenezca a quien lo pid
 | `/api/estudiante/**` | `STUDENT` |
 | `/api/aspirante/**` | `APPLICANT` |
 | `/api/solicitante/**` | `STUDENT`, `APPLICANT` |
-| `/api/solicitudes/**`, `/api/convocatorias/**`, `/api/montos/**`, `/api/deducciones/**` | `ADMIN` (endpoints administrativos que ya existían) |
+| `/api/solicitudes/**`, `/api/convocatorias/**`, `/api/montos/**`, `/api/deducciones/**`, `/api/notificaciones/**` | `ADMIN` (endpoints administrativos existentes) |
 
 ```java
 @RestController
@@ -166,10 +166,10 @@ Además activa el aviso de inactividad: un minuto antes de que la sesión expire
 Dibuja una barra con el menú «Vistas» (las pantallas del rol en sesión), la identidad y «Cerrar sesión». Es navegable con teclado (`Tab`, `Enter`, `Esc`). Para agregar tus pantallas al menú:
 
 ```js
-ITTSecurity.Navegacion.registrar('ADMIN', { titulo: 'Convocatorias', href: '/administrativo/convocatorias.html' });
+ITTSecurity.Navegacion.registrar('ADMIN', { titulo: 'Convocatorias', href: '/administrativo/convocatorias-admin.html' });
 ```
 
-La barra compartida y la protección de sesión ya están integradas en los paneles de estudiante, aspirante y administrador, y en el formulario de estudiante. Los envoltorios HTTP de ambos módulos usan `ITTSecurity` para las peticiones `GET`, `POST` y `PUT`; así se centralizan CSRF, reintento del token y avisos de autorización. El menú de aspirante solo ofrece su panel mientras no exista un formulario propio para ese perfil.
+La barra compartida y la protección de sesión ya están integradas en las pantallas protegidas de ambos módulos (`panel-estatus.html`, `panel-aspirante.html`, `formulario.html`, `panel-admin.html`, `convocatorias-admin.html`, `convocatorias-crear-editar.html` y `historial-convocatorias.html`). Para `STUDENT` y `APPLICANT` incluye su panel y `/solicitante/formulario.html`; para `ADMIN` incluye las cuatro vistas administrativas. Los envoltorios HTTP de ambos módulos usan `ITTSecurity` para centralizar CSRF, reintento del token y avisos de autorización.
 
 ### Captcha
 
@@ -205,29 +205,11 @@ Orden de controles en cada inicio de sesión: CSRF, bloqueo temporal, captcha y,
 
 **Intentos repetidos.** 5 fallos por usuario (perfil + identificador) o 20 por IP en 15 minutos producen un bloqueo temporal que se libera solo. Se configura con `sar.auth.max-attempts`, `sar.auth.max-attempts-per-origin` y `sar.auth.attempt-window-seconds`. El contador vive en memoria: se reinicia con el backend y no se comparte entre réplicas.
 
-### Código temporal de aspirantes (coordinación con el Equipo 6)
+### Código temporal de aspirantes (OTP)
 
-Está implementado y desactivado por omisión (`SAR_OTP_ENABLED=false`) hasta que exista el envío de correo. Para conectarlo, el Equipo 6 declara un bean:
+Está implementado y desactivado por omisión (`SAR_OTP_ENABLED=false`). Cuando se habilita, `com.itt.sareduccion.security.CorreoOtpDelivery` implementa `OtpDelivery` usando `JavaMailSender` siempre que `SPRING_MAIL_HOST` y `SAR_MAIL_FROM` estén configurados (si falla el envío, el acceso responde `503`). Para configurar el servidor SMTP o Mailpit en desarrollo, consulta [`NOTIFICACIONES.md`](NOTIFICACIONES.md).
 
-```java
-@Component
-public class CorreoOtpDelivery implements OtpDelivery {
-
-    private final JavaMailSender mailSender;
-    // ...
-
-    @Override
-    public void enviar(String correo, String codigo, int minutosVigencia) {
-        SimpleMailMessage mensaje = new SimpleMailMessage();
-        mensaje.setTo(correo);
-        mensaje.setSubject("SAReducción | Código de acceso");
-        mensaje.setText("Tu código es " + codigo + ". Vence en " + minutosVigencia + " minutos.");
-        mailSender.send(mensaje);     // si lanza excepción, el acceso responde 503
-    }
-}
-```
-
-Para probarlo sin correo, en `.env`: `SAR_OTP_ENABLED=true` y `SAR_OTP_LOG_CODE=true`; el código aparece en `docker compose logs backend` como `OTP-DEV`. No usar `SAR_OTP_LOG_CODE` fuera de desarrollo.
+Para probarlo sin servidor de correo, en `.env` define `SAR_OTP_ENABLED=true` y `SAR_OTP_LOG_CODE=true`; el código aparece en `docker compose logs backend` como `OTP-DEV`. No usar `SAR_OTP_LOG_CODE` fuera de desarrollo.
 
 ---
 
@@ -262,8 +244,6 @@ SELECT fecha_evento, evento, tipo_perfil, identificador_usuario, direccion_ip, d
 ```
 
 Retención: `JOB_SEG_DEPURAR_AUDITORIA` (`DBMS_SCHEDULER`) ejecuta automáticamente `PRC_SEG_DEPURAR_AUDITORIA(365)` cada día a las 03:00 (borra lo anterior a 365 días; mínimo permitido 30). También puede invocarse manualmente como `SA_REDUCCION` con `EXEC PRC_SEG_DEPURAR_AUDITORIA(365)`.
-
-> Para el Equipo 7: el script cambia `init-db.sh` (23 tablas esperadas y `PKG_SEGURIDAD` en las verificaciones de paquetes y permisos). Si otro equipo agrega tablas o paquetes, esas constantes deben sumarse al integrar.
 
 ---
 
@@ -336,3 +316,12 @@ docker run --rm -v "${PWD}:/app" -w /app maven:3.8.8-eclipse-temurin-8 mvn -B te
 | `SecurityUnitTest` | Limitador de intentos, captcha, enmascarado de logs, reglas de rol y OTP. |
 
 Las pruebas `*IntegrationTest` existentes siguen requiriendo Oracle levantado y sus variables de entorno.
+
+---
+
+## Documentación relacionada
+
+- [Arquitectura técnica](ARQUITECTURA.md)
+- [Base de datos](BASE_DE_DATOS.md)
+- [Notificaciones por correo](NOTIFICACIONES.md)
+- [Guía de pruebas](PRUEBAS.md)

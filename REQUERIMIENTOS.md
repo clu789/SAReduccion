@@ -6,7 +6,7 @@
 **Propósito:** Gestionar solicitudes de reducción del monto de inscripción y reinscripción para hijos o cónyuges de trabajadores del Tecnológico Nacional de México y personal homologado.  
 **Perfiles principales:** Estudiante, Aspirante y Administrador.  
 **Arquitectura documentada:** Frontend web, backend Spring Boot, base de datos Oracle y despliegue mediante Docker Compose.  
-**Estado de la rama:** Documento elaborado a partir del contenido disponible en la rama `dev`, sin considerar una funcionalidad como implementada únicamente por estar descrita en la arquitectura.
+**Estado del repositorio:** Documento elaborado a partir del contenido disponible en la rama principal (`main`), sin considerar una funcionalidad como implementada únicamente por estar descrita en la arquitectura.
 
 ## 2. Objetivo del documento
 
@@ -34,7 +34,7 @@ Este documento no convierte una capacidad propuesta o un procedimiento existente
 
 | Estado | Significado |
 | --- | --- |
-| Implementado | Existe integración identificada en la rama `dev`, con código o estructura respaldada por el backend, frontend o Oracle. |
+| Implementado | Existe integración identificada en la rama principal (`main`), con código o estructura respaldada por el backend, frontend o Oracle. |
 | Parcial | Existe una implementación base, pero falta completar integración, cobertura o validación. |
 | Pendiente | No se encontró evidencia suficiente de implementación o integración en la revisión. |
 | Acordado | Es una decisión o restricción explícita del proyecto que no requiere una implementación adicional medible. |
@@ -289,3 +289,11 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 6. La verificación de aspirantes por correo y código temporal puede considerarse una ampliación mientras se mantiene la autenticación provisional con ficha y CURP.
 7. No se han acordado métricas numéricas de rendimiento, disponibilidad, recuperación ni tiempo máximo de respuesta.
 8. No se ha establecido un estándar cuantitativo de accesibilidad adicional a los criterios de usabilidad y adaptabilidad documentados.
+
+## Documentación relacionada
+
+- [Arquitectura técnica](ARQUITECTURA.md)
+- [Base de datos](BASE_DE_DATOS.md)
+- [Seguridad e integración](SEGURIDAD.md)
+- [Notificaciones por correo](NOTIFICACIONES.md)
+- [Guía de pruebas](PRUEBAS.md)

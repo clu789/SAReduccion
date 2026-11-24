@@ -1,6 +1,6 @@
 # Arquitectura de SAReduccion
 
-Documento técnico del estado del repositorio. La guía de ejecución está en [README.md](README.md); el detalle de tablas y relaciones está en [BaseDeDatos.md](BaseDeDatos.md).
+Documento técnico del estado del repositorio. La guía de ejecución está en [README.md](README.md); el detalle de tablas y relaciones está en [BASE_DE_DATOS.md](BASE_DE_DATOS.md).
 
 ## Arquitectura general
 
@@ -21,9 +21,28 @@ La aplicación se compone de tres capas desplegadas con Docker Compose:
 | Backend | Spring Boot 2.7.18 sobre Java 8, Spring Web y Spring JDBC | API REST de autenticación, sesión y panel administrativo, y acceso a Oracle. |
 | Datos | Oracle XE 21c (`gvenzl/oracle-xe:21-slim`) | Esquema `SA_REDUCCION`, paquetes PL/SQL y datos. |
 
+### Estructura del repositorio
+
+```text
+SAReduccion/
+├── modulo-solicitante/      Frontend de estudiantes y aspirantes (HTML/CSS/JS + pruebas JSDOM)
+├── modulo-administrativo/   Frontend administrativo y de convocatorias (HTML/CSS/JS)
+├── modulo-compartido/       Cliente común de seguridad, navegación, CSRF y captcha
+├── src/main/java/           Backend Java 8 / Spring Boot 2.7.18
+├── src/main/resources/      application.properties, logback-spring.xml y plantilla HTML de correo
+├── src/test/java/           Pruebas unitarias e integración JDBC
+├── docker/
+│   ├── init-db/             Orquestador init-db.sh y scripts SQL/PLSQL de Oracle
+│   └── nginx/               Configuración de proxy inverso y cabeceras de seguridad (nginx.conf)
+├── backups/oracle/          Respaldos Data Pump (expdp/impdp, excluido de Git)
+├── Dockerfile               Construcción multi-stage del backend
+├── docker-compose.yml       Orquestación de oracle-db, backend y frontend
+└── pom.xml                  Dependencias Maven
+```
+
 ## Módulos y equipos
 
-El desarrollo se organiza por funcionalidades completas (interfaz, backend y base de datos), según `asignacion_Modulos.md`. El equipo 7 revisa e integra los cambios de base de datos; no los programa por defecto.
+El desarrollo se organizó por funcionalidades completas (interfaz, backend y base de datos), según [`ASIGNACION_MODULOS.md`](ASIGNACION_MODULOS.md). El equipo 7 revisa e integra los cambios de base de datos; no los programa por defecto.
 
 | Equipo | Alcance | Dónde vive en el repositorio | Estado |
 | --- | --- | --- | --- |
@@ -33,7 +52,7 @@ El desarrollo se organiza por funcionalidades completas (interfaz, backend y bas
 | 4 | Convocatorias y montos de reducción | `ConvocatoriaGestionController`, `ConvocatoriaGestionService`, `PKG_ADMINISTRADOR`, `convocatorias-*.html` | Operativo: alta, consulta, edición de fechas y montos, e historial de convocatorias. |
 | 5 | Formularios y respuestas | `FormularioSolicitudController`, `FormularioSolicitudService`, `PKG_FORMULARIO`, `formulario.html`, `js/formulario.js` | Operativo: lectura dinámica del formulario, envío atómico y reenvío unificado (`PUT /api/solicitante/solicitudes/{id}/reenvio`). |
 | 6 | Notificaciones por correo | `NotificacionController`, `NotificacionService`, panel administrativo | Operativo para aspirantes (avisos asíncronos y envío manual). Pendiente la fuente institucional de correo para estudiantes. |
-| 7 | Base de datos e integración oficial | `docker/init-db/`, `init-db.sh`, `BaseDeDatos.md`, respaldos | Operativo (5 paquetes PL/SQL inicializados automáticamente, incluido `PKG_FORMULARIO`). |
+| 7 | Base de datos e integración oficial | `docker/init-db/`, `init-db.sh`, `BASE_DE_DATOS.md`, respaldos | Operativo (5 paquetes PL/SQL inicializados automáticamente, incluido `PKG_FORMULARIO`). |
 
 La reducción se configura por convocatoria y por tipo de solicitud, con dos categorías de personal: **Hijo de trabajador** (`Tipo_Solicitudes` `1`) e **Hijo de homologado** (`Tipo_Solicitudes` `2`). Ambos tipos y sus formularios `1` y `2` los carga el script `02`. No se distingue inscripción de reinscripción al asignar el monto; esa diferencia se resuelve al calcular la deducción con el monto base vigente.
 
@@ -51,7 +70,7 @@ Los puertos del anfitrión se configuran únicamente en `.env` mediante `ORACLE_
 
 `oracle-db` no depende del perfil y arranca por sí solo. `backend` y `frontend` pertenecen al perfil `full-stack` y se levantan con `docker compose --profile full-stack up -d`. `backend` espera a que `oracle-db` esté `healthy` (`condition: service_healthy`).
 
-Nginx monta `modulo-solicitante/` y `modulo-administrativo/` como volúmenes de solo lectura. La raíz pública redirige al login de solicitante. El backend conecta al servicio `oracle-db`, no a `localhost`, con `jdbc:oracle:thin:@//oracle-db:1521/XEPDB1`.
+Nginx monta `modulo-solicitante/`, `modulo-administrativo/` y `modulo-compartido/` (`/compartido`) como volúmenes de solo lectura. La raíz pública redirige al login de solicitante. El backend conecta al servicio `oracle-db`, no a `localhost`, con `jdbc:oracle:thin:@//oracle-db:1521/XEPDB1`.
 
 ## Comunicación entre frontend, backend y base de datos
 
@@ -67,9 +86,9 @@ El proxy inverso evita CORS porque el frontend y la API comparten origen. El fro
 
 ## Backend
 
-El proyecto usa Spring Boot `2.7.18` y Java `8`. `pom.xml` declara Spring Web, Spring JDBC, `ojdbc8` en tiempo de ejecución y Spring Boot Test. HikariCP está incluido por Spring Boot JDBC; `application.properties` configura `HikariDataSource` y el pool `SAReduccionOraclePool`. Las credenciales y URL se reciben mediante `DB_URL`, `DB_USER` y `DB_PASSWORD`, que corresponden a la cuenta técnica `SAR_BACKEND`.
+El proyecto usa Spring Boot `2.7.18` y Java `8`. [`pom.xml`](pom.xml) declara `spring-boot-starter-web`, `spring-boot-starter-jdbc`, `spring-boot-starter-mail`, `ojdbc8` en tiempo de ejecución, `lombok` opcional y `spring-boot-starter-test`. HikariCP está incluido por Spring Boot JDBC; [`application.properties`](src/main/resources/application.properties) configura `HikariDataSource` y el pool `SAReduccionOraclePool`. Las credenciales y URL se reciben mediante `DB_URL`, `DB_USER` y `DB_PASSWORD`, que corresponden a la cuenta técnica `SAR_BACKEND`.
 
-La versión de `ojdbc8` no está fijada directamente en el POM: la administra el parent de Spring Boot.
+La versión de `ojdbc8` no está fijada directamente en el POM: la administra el parent de Spring Boot. La imagen de contenedor del backend ([`Dockerfile`](Dockerfile)) se construye en dos etapas: compilación con `maven:3.8.8-eclipse-temurin-8` y ejecución mínima con `eclipse-temurin:8-jre-alpine` (`-Xmx512m`).
 
 Paquetes implementados:
 
@@ -285,7 +304,7 @@ El nombre de cada archivo coincide con su número de orden. Los scripts 01, 03 y
 
 El orquestador es necesario porque la imagen ejecuta los `.sql` de `/container-entrypoint-initdb.d` como SYS y sin variables de sustitución: `01`, `03`, `04` y `05` requieren variables (`ORACLE_APP_USER`, `ORACLE_BACKEND_USER`, contraseñas) que, sin definir, SQL*Plus pediría por teclado y colgaría el arranque. Por eso los SQL se montan en una ruta aparte (`/opt/sareduccion/init-db`) y solo el orquestador va al directorio de auto-inicialización.
 
-Sobre los datos de desarrollo: `06-seed-desarrollo.sql` se carga únicamente cuando `SAR_LOAD_DEV_SEED` vale `true` (valor por defecto en desarrollo). Al fijarlo en `false` la base queda con el esquema completo y los catálogos, pero sin datos de aplicación. La verificación final del orquestador comprueba que la presencia o ausencia de datos corresponda al valor de esa variable. El detalle de los scripts y de su orden está en [BaseDeDatos.md](BaseDeDatos.md).
+Sobre los datos de desarrollo: `06-seed-desarrollo.sql` se carga únicamente cuando `SAR_LOAD_DEV_SEED` vale `true` (valor por defecto en desarrollo). Al fijarlo en `false` la base queda con el esquema completo y los catálogos, pero sin datos de aplicación. La verificación final del orquestador comprueba que la presencia o ausencia de datos corresponda al valor de esa variable. El detalle de los scripts y de su orden está en [BASE_DE_DATOS.md](BASE_DE_DATOS.md).
 
 El catálogo `Tipo_Solicitudes` es cerrado y lo aporta el script `02` con exactamente dos filas: `1` **Hijo de trabajador** y `2` **Hijo de homologado**, cada una con su formulario (`1` y `2`, único por tipo). Cada convocatoria configura un monto de deducción para ambos tipos en `Convocatorias_TipoSolicitudes`; ambas filas deben existir en la convocatoria antes de autorizar una deducción. El seed no vuelve a cargar los catálogos del `02`: solo aporta datos de aplicación (estudiantes, aspirantes, administradores, convocatorias, preguntas, opciones, solicitudes e historiales).
 
@@ -295,7 +314,7 @@ El inicializador comprueba los objetos, los privilegios y el estado de los datos
 
 **La inicialización automática se ejecuta una sola vez**, cuando la imagen crea la base sobre un volumen vacío. Reiniciar o recrear los contenedores sin borrar el volumen no vuelve a ejecutar los scripts, y editar un `.sql` o una variable de `.env` tampoco actualiza una base ya inicializada.
 
-Para aplicar un cambio de estructura o de paquetes sobre una base con información que deba conservarse no existe un mecanismo automático: la recreación desde cero (`docker compose down -v`) es una operación destructiva que borra `sareduccion_oracle_data` y no forma parte del flujo habitual. El procedimiento y sus precauciones están en [BaseDeDatos.md](BaseDeDatos.md).
+Para aplicar un cambio de estructura o de paquetes sobre una base con información que deba conservarse no existe un mecanismo automático: la recreación desde cero (`docker compose down -v`) es una operación destructiva que borra `sareduccion_oracle_data` y no forma parte del flujo habitual. El procedimiento y sus precauciones están en [BASE_DE_DATOS.md](BASE_DE_DATOS.md).
 
 El destino futuro es Oracle 12c, pero ese cambio de versión **no forma parte del alcance de ningún equipo en esta etapa**. El desarrollo corresponde a una versión de prueba; cuando se entreguen los objetos oficiales se evaluarán por separado su compatibilidad, integración y permisos en el entorno de destino. Ni los scripts ni el driver se han validado contra una versión 12c concreta.
 
@@ -359,11 +378,16 @@ Los datos se protegen en dos niveles independientes:
 
 El respaldo lógico escribe en `./backups/oracle` del anfitrión a través del bind mount `/opt/sareduccion/backups`, que corresponde al directorio Oracle `SAR_BACKUP_DIR`; el `.dmp` no requiere `docker cp` y la carpeta está excluida por `.gitignore`. El volumen **no sustituye** al respaldo.
 
-Los comandos de exportación y restauración, la verificación por SHA-256 y el procedimiento de restauración en un entorno aislado están en [BaseDeDatos.md](BaseDeDatos.md).
+Los comandos de exportación y restauración, la verificación por SHA-256 y el procedimiento de restauración en un entorno aislado están en [BASE_DE_DATOS.md](BASE_DE_DATOS.md).
 
 ## Documentación relacionada
 
-- [README de ejecución](README.md)
-- [Modelo detallado de base de datos](BaseDeDatos.md)
-- [README del módulo administrativo](modulo-administrativo/README.md)
-- [README del módulo solicitante](modulo-solicitante/README.md)
+- [Guía de ejecución rápida](README.md)
+- [Modelo detallado de base de datos](BASE_DE_DATOS.md)
+- [Seguridad e integración](SEGURIDAD.md)
+- [Notificaciones por correo](NOTIFICACIONES.md)
+- [Guía de pruebas](PRUEBAS.md)
+- [Matriz de requerimientos](REQUERIMIENTOS.md)
+- [Asignación de módulos y equipos](ASIGNACION_MODULOS.md)
+- [Módulo administrativo](modulo-administrativo/README.md)
+- [Módulo solicitante](modulo-solicitante/README.md)

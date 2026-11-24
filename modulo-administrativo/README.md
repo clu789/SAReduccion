@@ -2,23 +2,31 @@
 
 ## Descripción
 
-Interfaz web exclusiva para el personal de la **Subdirección Académica** del Instituto Tecnológico de Toluca. Permite revisar, aprobar o devolver a corrección las solicitudes de reducción de monto de inscripción.
+Interfaz web exclusiva para el personal de la **Subdirección Académica** del Instituto Tecnológico de Toluca. Permite revisar, aprobar, rechazar, cancelar o aplicar deducciones sobre las solicitudes recibidas y administrar convocatorias y montos oficiales.
 
-Se comunica con el backend (Spring Boot) mediante peticiones `fetch()` a la API REST.
+Se comunica con el backend (Spring Boot) mediante peticiones `fetch()` a la API REST usando [`ITTSecurity`](../SEGURIDAD.md).
 
 ---
 
-## Estructura del proyecto
+## Estructura del módulo
 
-```
+```text
 modulo-administrativo/
-├── login.html          → Acceso restringido para administradores
-├── panel-admin.html    → Bandeja de solicitudes + modal de detalle
+├── login.html                     → Acceso restringido para administradores
+├── panel-admin.html               → Bandeja de solicitudes, detalle, respuestas y deducciones
+├── convocatorias-admin.html       → Listado, detalle y edición rápida de convocatorias
+├── convocatorias-crear-editar.html→ Creación y edición de convocatorias y montos
+├── historial-convocatorias.html   → Consulta del historial de cambios de fechas
 ├── css/
-│   ├── itt-base.css    → Variables, componentes y utilidades base ITT
-│   └── administrativo.css → Estilos específicos del módulo
+│   ├── itt-base.css               → Variables, componentes y utilidades base ITT
+│   ├── administrativo.css         → Estilos del login y panel administrativo
+│   ├── convocatorias.css          → Estilos de gestión de convocatorias
+│   └── historial-convocatorias.css→ Estilos del historial de convocatorias
 ├── js/
-│   └── app.js          → Lógica del módulo (login, bandeja, decisiones)
+│   ├── app.js                     → Lógica de login, bandeja, detalle y decisiones
+│   ├── convocatorias-admin.js     → Listado y edición de convocatorias
+│   ├── convocatorias-crear-editar.js → Alta y validación de convocatorias y montos
+│   └── historial-convocatorias.js → Consulta y filtros de historial de convocatorias
 └── img/
     ├── logo.png
     ├── header.png
@@ -93,46 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ---
 
-## Notas para los equipos
+## Notas técnicas y notificaciones
 
-- El **modal de detalle** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
-- Las estadísticas se cargan automáticamente en `PanelAdmin.cargarEstadisticas()`.
-- El detalle de la solicitud incluye un formulario de aviso por correo. Requiere una sesión de administrador y el token CSRF. La API recibe `idSolicitud` y `mensaje` y devuelve `204` cuando SMTP acepta el aviso.
-- Para probarlo, configura `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` y `SAR_MAIL_FROM` en el `.env` local. Si el servidor de prueba lo requiere, agrega `SMTP_AUTH=true`, `SMTP_STARTTLS_ENABLE=true`, `SPRING_MAIL_USERNAME` y `SPRING_MAIL_PASSWORD`. Usa un servidor SMTP que capture mensajes y una solicitud ficticia de aspirante.
-- Si la base ya fue inicializada, actualiza el paquete `PKG_ADMINISTRADOR` con el script `docker/init-db/05-crear-paquetes-permisos.sql` siguiendo el proceso de integración de Oracle. Docker solo ejecuta los scripts de inicialización sobre una base nueva.
-- La consulta usa el correo de `Aspirantes`. Una solicitud sin correo disponible devuelve `422`. Una falla de SMTP devuelve `503`.
-- Los filtros por chip llaman a `PanelAdmin.cargarSolicitudes(estatus)` con el estatus seleccionado.
-- El comentario es **obligatorio solo al rechazar**; es **opcional** al aprobar, reautorizar y cancelar la deducción. El monto base se selecciona automáticamente: inscripción para aspirantes y reinscripción para estudiantes; si existe más de uno del tipo correspondiente, se usa el ID más alto.
-- El detalle incluye el `historial` de movimientos de la solicitud y de la deducción desde Oracle.
-- Al abrir **Ver respuestas**, el modal debe mostrar todas las preguntas del formulario en su orden, junto con la opción o el texto registrado y la indicación de obligatoria/opcional.
-
-El backend también envía avisos automáticos de forma asíncrona al aprobar (incluida la reautorización), rechazar, cancelar o aplicar una deducción. El cambio de estado se confirma en Oracle antes de programar el envío del correo; las incidencias de correo se registran sin revertir ni bloquear la respuesta administrativa.
-
-## Decisiones y plantillas de correo del equipo 6
-
-Al elegir Aprobar, Reautorizar, Rechazar, Cancelar o Aplicar, el panel prepara
-automáticamente la plantilla correspondiente. Antes de registrar la decisión,
-muestra la vista previa y el botón Confirmar y enviar. Agregar comentario
-permite incluir una observación opcional en el mismo correo. Para rechazar,
-el comentario es obligatorio. Volver permite elegir otra acción.
-
-La plantilla editable está en
-src/main/resources/mail/aviso-tramite.html. El servicio sustituye el estado,
-el número de solicitud, el mensaje del evento y el comentario. Los comentarios
-se escapan como HTML. Cada mensaje también contiene una alternativa de texto
-simple. Al omitir el comentario, su bloque desaparece del correo.
-
-Los avisos de Autorizado, Rechazado, Aplicado y Cancelado se disparan después
-de confirmar la operación en Oracle. El correo de Aplicado admite comentario
-mediante el cuerpo opcional de PUT /api/deducciones/{id}/aplicar. Este comentario
-se envía por correo, pero el procedimiento actual de aplicación no lo almacena
-en el historial de Oracle. Los otros comentarios mantienen el guardado previo.
-
-La vista previa no envía correo ni registra la decisión. Confirmar y enviar
-ejecuta la acción. El envío SMTP conserva su comportamiento de tolerancia a
-fallos: el cambio de estado permanece guardado si falla el aviso automático.
-El mensaje de éxito confirma la decisión administrativa. La recepción del aviso
-se comprueba en Mailpit o en los registros SMTP.
-
-Para validar las plantillas y el endpoint manual:
-mvn -Dtest=NotificacionServiceTest,NotificacionControllerTest test
+- **Seguridad y sesión:** todas las llamadas pasan por `ITTSecurity` (token CSRF automático y manejo de `401`/`403`) y cumplen la política CSP estricta sin scripts ni estilos en línea (ver [`../SEGURIDAD.md`](../SEGURIDAD.md)).
+- **Modal de detalle:** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
+- **Estadísticas y filtros:** las tarjetas se cargan en `PanelAdmin.cargarEstadisticas()` y los chips filtran mediante `PanelAdmin.cargarSolicitudes(estatus)`.
+- **Decisiones y montos:** el comentario es **obligatorio solo al rechazar** y opcional al aprobar, reautorizar o cancelar. El monto base se elige automáticamente por perfil (inscripción para aspirantes, reinscripción para estudiantes; el de ID más alto si hay varios).
+- **Respuestas del formulario:** el modal de respuestas muestra todas las preguntas en orden con su opción seleccionada, especificación mixta u observación (`Sin respuesta` si es opcional y no tiene contenido).
+- **Notificaciones por correo:** al elegir una acción se muestra la vista previa de la plantilla (`src/main/resources/mail/aviso-tramite.html`) antes de confirmar, y también existe envío manual mediante `POST /api/notificaciones`. Los avisos automáticos son asíncronos y un fallo SMTP no revierte la decisión en Oracle. Para configuración SMTP/Mailpit, cobertura y pruebas (`NotificacionServiceTest`, `NotificacionControllerTest`), consulta [`../NOTIFICACIONES.md`](../NOTIFICACIONES.md) y [`../PRUEBAS.md`](../PRUEBAS.md).

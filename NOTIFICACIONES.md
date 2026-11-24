@@ -1,7 +1,6 @@
-# Notificaciones por correo · Equipo 6
+# Notificaciones por correo — SAReducción
 
-Esta guía permite configurar, integrar y probar los avisos del trámite.
-La implementación está en la rama equipo-6/notificaciones.
+Esta guía permite configurar y probar los avisos del trámite.
 
 ## Funcionamiento desde el panel
 
@@ -117,7 +116,7 @@ docker compose --profile full-stack up -d --build backend
 Cambiar el .env y reiniciar el contenedor existente puede conservar su entorno
 anterior. El comando up recrea el servicio cuando detecta la nueva configuración.
 
-## Conexión con Oracle e integración en main
+## Conexión con Oracle
 
 Compose proporciona al backend estas variables.
 
@@ -129,19 +128,12 @@ En una instalación externa, configura DB_URL, DB_USER y DB_PASSWORD con la
 cuenta técnica y el destino correspondientes.
 
 La notificación utiliza el procedimiento
-PKG_ADMINISTRADOR.consultar_correo_solicitud, definido en
-docker/init-db/05-crear-paquetes-permisos.sql. En una base nueva, el inicializador
-del proyecto instala el paquete.
-
-En una base existente, el equipo de integración debe incorporar el procedimiento
-a la versión consolidada de PKG_ADMINISTRADOR y validar su compilación y permisos.
-El script 05 contiene definiciones completas de paquetes. Al combinar ramas,
-consolida primero las modificaciones de todos los equipos para conservar sus
-procedimientos. El arranque habitual de Docker conserva la base existente.
-
-Para integrar en main, incluye el backend, la interfaz y el recurso HTML,
-reconstruye el backend y publica los archivos actualizados del frontend.
-Comprueba el funcionamiento conjunto con los controles de seguridad del equipo 1.
+`PKG_ADMINISTRADOR.consultar_correo_solicitud`, definido en
+[`docker/init-db/05-crear-paquetes-permisos.sql`](docker/init-db/05-crear-paquetes-permisos.sql). En una base nueva, el inicializador
+del proyecto instala automáticamente el paquete. Si se parte de una base Oracle
+ya existente de una versión anterior, debe actualizarse `PKG_ADMINISTRADOR` y
+validar su compilación y permisos para `SAR_BACKEND`, ya que Docker no vuelve a
+ejecutar los scripts de inicialización sobre un volumen existente.
 
 ## Plantilla y archivos principales
 
@@ -227,3 +219,11 @@ Si el aviso carece de destinatario, revisa la relación de la solicitud con
 Aspirantes y su correo. Si falla SMTP, revisa el host, el puerto, el remitente,
 las credenciales y el cifrado. Si Oracle informa que falta el procedimiento,
 revisa la actualización consolidada de PKG_ADMINISTRADOR.
+
+---
+
+## Documentación relacionada
+
+- [Guía de ejecución rápida](README.md)
+- [Seguridad e integración](SEGURIDAD.md)
+- [Guía de pruebas](PRUEBAS.md)

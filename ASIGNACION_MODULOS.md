@@ -1,4 +1,4 @@
-# Asignación de equipos — Sistema SAReduccion
+# Asignación de módulos y equipos — SAReducción
 
 **Proyecto:** Sistema de reducción de pagos de inscripción y reinscripción  
 
@@ -6,7 +6,7 @@
 
 **Alcance:** Módulo de solicitantes, módulo administrativo y servicios compartidos  
 
-**Etapa:** Desarrollo e integración de una versión de prueba
+**Etapa:** Integrado en la rama principal (`main`) para pruebas del sistema completo
 
 ## 1. Distribución general
 
@@ -268,3 +268,15 @@ No se asignan como funcionalidades de esta etapa: cambio, recuperación o desblo
 **Participación transversal del equipo 7:** Durante todo el flujo, revisa y consolida los cambios oficiales de Oracle propuestos por los equipos funcionales. Los paquetes y validaciones existentes deben reutilizarse antes de proponer modificaciones.
 
 **Pendiente de integración:** Coordinar con el sistema institucional el momento de aplicación de una deducción y la generación del comprobante correspondiente. La base de datos ya contempla el procedimiento de aplicación; esta asignación no supone que la integración institucional esté terminada.
+
+---
+
+## Documentación relacionada
+
+- [Guía de ejecución rápida](README.md)
+- [Arquitectura técnica](ARQUITECTURA.md)
+- [Base de datos](BASE_DE_DATOS.md)
+- [Seguridad e integración](SEGURIDAD.md)
+- [Notificaciones por correo](NOTIFICACIONES.md)
+- [Guía de pruebas](PRUEBAS.md)
+- [Matriz de requerimientos](REQUERIMIENTOS.md)

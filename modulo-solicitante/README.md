@@ -8,23 +8,28 @@ Se comunica con el backend (Spring Boot) mediante peticiones `fetch()` a la API 
 
 ---
 
-## Estructura del proyecto
+## Estructura del módulo
 
-```
+```text
 modulo-solicitante/
-├── login.html          → Inicio de sesión (alumno / aspirante)
-├── panel-estatus.html  → Panel y estado de la solicitud (alumno)
-├── panel-aspirante.html→ Panel y estado de la solicitud (aspirante)
-├── formulario.html     → Captura de la solicitud (stepper 3 pasos)
+├── login.html            → Inicio de sesión (alumno / aspirante)
+├── panel-estatus.html    → Panel y seguimiento de la solicitud (alumno)
+├── panel-aspirante.html  → Panel y seguimiento de la solicitud (aspirante)
+├── formulario.html       → Formulario dinámico en 2 pasos (tipo/datos y confirmación)
 ├── css/
-│   ├── itt-base.css    → Variables, componentes y utilidades base ITT
-│   └── solicitante.css → Estilos específicos del módulo
+│   ├── itt-base.css      → Variables, componentes y utilidades base ITT
+│   ├── solicitante.css   → Estilos del login y paneles del solicitante
+│   └── formulario.css    → Estilos del formulario dinámico
 ├── js/
-│   └── app.js          → Lógica del módulo (login, estatus, formulario)
-└── img/
-    ├── logo.png
-    ├── header.png
-    └── footer.png
+│   ├── app.js            → Lógica de login y paneles de estudiante/aspirante
+│   └── formulario.js     → Carga dinámica, validaciones y envío/reenvío atómico
+├── img/
+│   ├── logo.png
+│   ├── header.png
+│   └── footer.png
+└── pruebas/
+    ├── formulario.test.js → Suite JSDOM del formulario dinámico
+    └── package.json      → Dependencias de prueba (jsdom)
 ```
 
 ---
@@ -42,10 +47,10 @@ modulo-solicitante/
 
 ## Tecnologías
 
-- **HTML5** – Estructura semántica
+- **HTML5** – Estructura semántica adaptable a teléfonos móviles y computadoras
 - **CSS3 / Vanilla CSS** – Estilos con variables CSS (sin frameworks adicionales)
-- **JavaScript (ES6+)** – Lógica del navegador con `fetch()` (sin jQuery)
-- **Bootstrap / Font Awesome** – Se puede agregar vía CDN si se requieren componentes extra
+- **JavaScript (ES6+)** – Lógica del navegador con `fetch()` a través de `ITTSecurity` (sin jQuery ni código/estilos en línea, conforme a la CSP estricta descrita en [`../SEGURIDAD.md`](../SEGURIDAD.md))
+- **Font Awesome / Google Fonts** – Iconografía y tipografía permitidas en la política CSP
 - **API REST** – Comunicación con Spring Boot en `/api/...`
 
 ---
@@ -150,8 +155,8 @@ Convocatorias cuyo periodo de recepción incluye hoy. Para aspirantes solo las d
   "idConvocatoria": 900002,
   "periodo": 2, "periodoDescripcion": "Agosto - Diciembre", "anio": 2026,
   "fechaInicio": "2026-11-02", "fechaFin": "2026-11-23",
-  "idTipoSolicitud": 1, "tipoSolicitud": "Reducción por promedio", "tipoDescripcion": "…",
-  "idFormulario": 1, "formulario": "Formulario general",
+  "idTipoSolicitud": 1, "tipoSolicitud": "Hijo de trabajador", "tipoDescripcion": "…",
+  "idFormulario": 1, "formulario": "Formulario Hijo de Trabajador",
   "montoDeduccion": 1500.00,
   "idSolicitudExistente": null,
   "idEstatusSolicitud": null,
@@ -167,7 +172,7 @@ Convocatorias cuyo periodo de recepción incluye hoy. Para aspirantes solo las d
 {
   "idSolicitud": 10, "idConvocatoria": 900002,
   "periodo": 2, "periodoDescripcion": "Agosto - Diciembre", "anio": 2026,
-  "idTipoSolicitud": 1, "tipoSolicitud": "Reducción por promedio",
+  "idTipoSolicitud": 1, "tipoSolicitud": "Hijo de trabajador",
   "idFormulario": 1,
   "idEstatus": 3, "estatus": "RECHAZADO",
   "fechaSolicitud": "…", "fechaActualizacion": "…",
@@ -222,15 +227,30 @@ El panel enlaza a `formulario.html?modo=reenvio&solicitud={id}&convocatoria=…&
 
 ### Sesión en el navegador
 
-- `Http` envía `X-CSRF-TOKEN` en `POST`/`PUT` y, ante un `401` fuera de `/auth/`, muestra el modal de sesión expirada y redirige a `login.html?sesion=expirada`.
-- `SesionInactividad` avisa 5 minutos antes de los 30 minutos de inactividad (el mismo tiempo que la sesión del servidor). «Continuar» renueva la sesión con `GET /api/auth/me`.
+- Todas las peticiones pasan por `ITTSecurity` ([`../SEGURIDAD.md`](../SEGURIDAD.md)) mediante el envoltorio `Http`, que incluye cookies de sesión, envía `X-CSRF-TOKEN` en `POST`/`PUT` y maneja los errores `401` y `403`.
+- Ante un `401` fuera de `/auth/`, se muestra el aviso de sesión expirada y se redirige a `login.html`.
+- `ITTSecurity.Inactividad` avisa antes de los 30 minutos de inactividad (el mismo tiempo que la sesión del servidor) y permite continuar renovando la sesión con `GET /api/auth/me`.
 
 ---
 
-## Notas para los equipos
+## Pruebas del formulario (`pruebas/`)
+
+Las pruebas en [`pruebas/formulario.test.js`](pruebas/formulario.test.js) verifican `formulario.html` y `js/formulario.js` usando JSDOM con respuestas simuladas del backend (sin requerir Oracle, Docker ni navegador). Requieren **Node.js 16 o superior**:
+
+```bash
+cd modulo-solicitante/pruebas
+npm install
+npm test
+```
+
+Cubren preguntas `ABIERTA`, `OPCION_UNICA` y `MIXTA`, validaciones, envío con CSRF, manejo de errores (`400`, `401`, `403`, `409`, `500`), solicitud existente, flujo de reenvío, aspirantes, roles y protección XSS. Para la guía completa de pruebas del proyecto consulta [`../PRUEBAS.md`](../PRUEBAS.md).
+
+---
+
+## Notas técnicas
 
 - Los campos del formulario con clase `form-control-itt` reciben estilos automáticamente.
 - Para mostrar errores de validación: usar `Validacion.marcarError(campo, 'mensaje')`.
-- Para hacer peticiones HTTP: usar `Http.get(endpoint)` o `Http.post(endpoint, body)`.
+- Para hacer peticiones HTTP: usar `Http.get(endpoint)` o `Http.post(endpoint, body)` (con CSRF automático vía `ITTSecurity`).
 - Para mostrar alertas: usar `Alerta.mostrar('id-contenedor', 'tipo', 'mensaje')`.
 - El spinner se muestra/oculta con `Spinner.show()` / `Spinner.hide()`.
