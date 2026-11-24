@@ -149,6 +149,27 @@ Para consultar información más detallada del proyecto:
 - [Guía del proyecto](GUIA_PROYECTO.md): estructura de carpetas, tecnologías y comandos.
 - [Asignación de equipos](asignacion_Modulos.md): responsabilidades por módulo y reglas funcionales acordadas.
 - [Base de datos](BaseDeDatos.md): modelo de datos, tablas, relaciones y configuración de Oracle.
-## Notificaciones del equipo 6
 
-Consulta la [guía de notificaciones](NOTIFICACIONES.md) para configurar SMTP y Mailpit, integrar Oracle y probar las plantillas y comentarios.
+## 6. Notificaciones del equipo 6
+
+El panel administrativo prepara el correo de **Autorizado**, **Rechazado**,
+**Aplicado** o **Cancelado** según la acción elegida. Permite revisar la plantilla,
+agregar un comentario y confirmar la decisión. El motivo del rechazo es obligatorio.
+
+Para el despliegue en AWS, el encargado elige el servidor SMTP y configura
+sus valores en el backend. La rama incluye el perfil `smtp-production` y
+`docker-compose.smtp-production.yml`, con soporte para STARTTLS, TLS implícito,
+validación de configuración y comprobación de conexión al arrancar.
+
+| Necesidad | Sección de la guía |
+| --- | --- |
+| Configurar y arrancar con Compose | [Despliegue con Docker Compose](NOTIFICACIONES.md#despliegue-con-docker-compose) |
+| Configurar el backend en AWS | [Variables en el contenedor de AWS](NOTIFICACIONES.md#variables-en-el-contenedor-de-aws) |
+| Elegir puerto, autenticación y TLS | [Referencia SMTP](NOTIFICACIONES.md#referencia-de-configuración-smtp) |
+| Integrar Oracle, dev y main | [Integración](NOTIFICACIONES.md#oracle-e-integración-con-dev-y-main) |
+| Probar la recepción y resolver errores | [Comprobación de envíos](NOTIFICACIONES.md#comprobación-de-los-envíos) y [diagnóstico](NOTIFICACIONES.md#diagnóstico) |
+| Probar localmente con Mailpit | [Prueba local](NOTIFICACIONES.md#pruebas-locales-con-mailpit) |
+
+La cobertura actual del destinatario corresponde a aspirantes. La entrega
+con el SMTP elegido para AWS se verifica en la puesta en marcha. La guía
+detalla las dependencias y los pendientes de integración.

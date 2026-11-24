@@ -1,125 +1,330 @@
-# Notificaciones por correo · Equipo 6
+# Guía de notificaciones del equipo 6
 
-Esta guía permite configurar, integrar y probar los avisos del trámite.
-La implementación está en la rama equipo-6/notificaciones.
+Configuración, operación e integración del correo de SAReducción para el encargado
+del despliegue y los equipos de desarrollo.
 
-## Funcionamiento desde el panel
+La implementación se mantiene en la rama `equipo-6/notificaciones`. El proveedor
+SMTP y sus credenciales los define el encargado. El backend utiliza esos valores
+desde el entorno del contenedor.
 
-1. El administrador abre el detalle de una solicitud y elige Aprobar,
-   Reautorizar, Rechazar, Cancelar deducción o Aplicar deducción.
-2. El panel selecciona la plantilla del resultado y muestra su vista previa.
-3. Agregar comentario permite incluir una observación. El motivo del rechazo
-   es obligatorio. En las demás acciones se puede usar directamente la plantilla.
-4. Confirmar y enviar ejecuta la decisión. Volver permite elegir otra acción.
-5. El backend confirma el cambio de estado en Oracle, consulta el destinatario
-   y solicita el envío al servidor SMTP.
+## Índice
 
-El correo contiene el número de solicitud, su resultado y el comentario cuando
-se haya escrito. Incluye HTML y una alternativa de texto simple. Las plantillas
-cubren Autorizado, Rechazado, Aplicado y Cancelado.
+- [Flujo y cobertura](#flujo-y-cobertura)
+- [Preparación para AWS](#preparación-para-aws)
+- [Despliegue con Docker Compose](#despliegue-con-docker-compose)
+- [Variables en el contenedor de AWS](#variables-en-el-contenedor-de-aws)
+- [Referencia de configuración SMTP](#referencia-de-configuración-smtp)
+- [Oracle e integración con dev y main](#oracle-e-integración-con-dev-y-main)
+- [Comprobación de los envíos](#comprobación-de-los-envíos)
+- [Pruebas locales con Mailpit](#pruebas-locales-con-mailpit)
+- [API y archivos de mantenimiento](#api-y-archivos-de-mantenimiento)
+- [Diagnóstico](#diagnóstico)
+- [Pendientes de integración](#pendientes-de-integración)
 
-La consulta del destinatario usa Aspirantes, relacionando ficha, periodo y año
-con la solicitud. La cobertura actual corresponde a aspirantes. Una solicitud
-de estudiante puede carecer de destinatario en esta implementación.
+## Flujo y cobertura
 
-También existe el envío manual independiente mediante Aviso por correo.
+1. El administrador abre el detalle de una solicitud y elige una acción.
+2. El panel selecciona la plantilla correspondiente y muestra su vista previa.
+3. **Agregar comentario** permite incluir una observación en el correo.
+   El motivo del rechazo es obligatorio.
+4. **Confirmar y enviar** registra la decisión e inicia el intento de envío.
+   **Volver** permite regresar a las acciones.
+5. Oracle confirma la operación. El backend consulta el destinatario y entrega
+   el aviso al servidor SMTP.
 
-## Correo en AWS y contenedores de producción
-
-Activa el perfil adicional smtp-production junto a los perfiles propios del
-despliegue. El perfil valida la configuración efectiva antes de aceptar tráfico
-y, por defecto, comprueba la conexión SMTP al arrancar. Las credenciales de
-producción se suministran en las variables del contenedor, mediante la
-configuración de secretos del despliegue en AWS.
-
-El proveedor lo elige el encargado. La conexión admite usuario y contraseña
-o relay autorizado sin autenticación. Para proveedores que exijan OAuth2
-o una API HTTP se necesita una integración adicional.
-
-| Variable | Valor para STARTTLS | Valor para TLS implícito |
+| Acción | Resultado comunicado | Comentario |
 | --- | --- | --- |
-| SPRING_PROFILES_ACTIVE | prod,smtp-production | prod,smtp-production |
-| SPRING_MAIL_HOST | Host del proveedor | Host del proveedor |
-| SPRING_MAIL_PORT | Puerto del proveedor, normalmente 587 | Puerto del proveedor, normalmente 465 |
-| SPRING_MAIL_USERNAME | Usuario SMTP | Usuario SMTP |
-| SPRING_MAIL_PASSWORD | Credencial SMTP | Credencial SMTP |
-| SAR_MAIL_FROM | Remitente autorizado | Remitente autorizado |
-| SMTP_AUTH | true | true |
-| SMTP_STARTTLS_ENABLE | true | false |
-| SMTP_STARTTLS_REQUIRED | true | false |
-| SMTP_SSL_ENABLE | false | true |
-| SMTP_TEST_CONNECTION | true | true |
+| Aprobar o reautorizar | Autorizado | Opcional |
+| Rechazar | Rechazado | Obligatorio |
+| Aplicar deducción | Aplicado | Opcional |
+| Cancelar deducción | Cancelado | Opcional |
 
-Para relay sin autenticación, configura SMTP_AUTH=false y deja usuario y
-contraseña vacíos. La identidad TLS del servidor se verifica con los
-certificados de confianza del JRE. Un certificado privado requiere instalar
-su CA en el almacén de confianza del contenedor.
+La plantilla incluye el número de solicitud, el resultado, el mensaje del evento
+y el comentario cuando existe. El envío contiene HTML y una alternativa de texto
+simple. La vista previa se actualiza antes de confirmar la acción.
 
-Los tiempos de conexión, lectura y escritura se controlan con
-SMTP_CONNECTION_TIMEOUT_MS, SMTP_READ_TIMEOUT_MS y SMTP_WRITE_TIMEOUT_MS.
-El valor predeterminado de cada uno es 5000 milisegundos.
+El destinatario se obtiene de `Aspirantes`, relacionando ficha, periodo y año con
+la solicitud. La cobertura actual corresponde a aspirantes. El correo institucional
+de estudiantes requiere acordar e integrar su fuente de datos.
 
-Si el encargado usa Compose, puede combinar su configuración con el complemento
-de esta rama. Las variables de su entorno deben contener el host y remitente
-reales. El complemento agrega smtp-production a SPRING_PROFILES_ACTIVE.
+El formulario **Aviso por correo** permite enviar un mensaje manual independiente
+de las decisiones administrativas.
+
+La aceptación por SMTP indica que el servidor recibió el mensaje para su envío.
+La entrega final se verifica en el buzón de destino. El éxito de una decisión
+administrativa confirma el cambio en Oracle aunque falle la notificación.
+
+## Preparación para AWS
+
+El encargado necesita disponer de estos datos antes de configurar el backend.
+
+| Dato | Quién lo proporciona |
+| --- | --- |
+| Host, puerto y modo de cifrado SMTP | Proveedor o administrador del correo |
+| Usuario y credencial SMTP, cuando se exija autenticación | Proveedor o administrador del correo |
+| Remitente o dominio autorizado | Proveedor o administrador del correo |
+| Acceso de red desde el backend hasta el destino SMTP | Encargado de AWS |
+| Cuenta técnica y destino Oracle del entorno | Encargado de base de datos |
+
+La conexión admite SMTP con usuario y contraseña o un relay autorizado. Un proveedor
+que exija OAuth2 o una API HTTP requiere una adaptación.
+
+El perfil adicional `smtp-production` valida host, puerto, remitente, autenticación
+y cifrado al arrancar. STARTTLS y TLS implícito son las dos opciones habituales.
+El encargado utiliza el modo y el puerto indicados por su proveedor.
+
+En producción, configura `SAR_LOAD_DEV_SEED=false` para una base nueva. Las cuentas
+Oracle de ejemplo de `.env.example` deben sustituirse por las del entorno.
+El encargado coordina HTTPS, cookies, publicación de puertos y acceso a Oracle
+con el proyecto integrado.
+
+## Despliegue con Docker Compose
+
+Todos los comandos de esta sección se ejecutan desde la raíz del repositorio.
+Necesitas Docker con Compose y acceso al código que incorpora esta rama.
+
+### 1. Preparar el archivo del entorno
+
+Si el despliegue utiliza un archivo local de variables, crea una copia de la
+plantilla y completa los datos Oracle y de correo.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.smtp-production.yml \
-  --profile full-stack config --quiet
-docker compose -f docker-compose.yml -f docker-compose.smtp-production.yml \
-  --profile full-stack up -d --build
+cp .env.example .env.production
 ```
 
-Para ECS u otro orquestador, agrega las variables directamente al contenedor
-backend y publica la imagen reconstruida con los recursos de esta rama.
-El complemento configura el correo. La red, Oracle, HTTPS, cookies y el seed
-del despliegue se coordinan con el encargado del proyecto. En el entorno real
-establece SAR_LOAD_DEV_SEED=false.
+`.env.production` está excluido de Git. Si ya existe, edita ese archivo conservando
+los valores del entorno. El ejemplo siguiente muestra los valores de correo y
+producción que debes ajustar en la copia. Sustituye los dominios y las credenciales
+de ejemplo por los del proveedor.
 
-La verificación de conexión al arranque usa SMTP_TEST_CONNECTION=true.
-Si falla, revisa host, puerto, salida de red desde AWS, credenciales y cifrado.
-SMTP_TEST_CONNECTION=false permite arrancar sin comprobar la conectividad
-en ese momento. La validación local de los campos sigue activa.
-La comprobación de conexión no envía mensajes y no garantiza entrega final.
+```dotenv
+SPRING_PROFILES_ACTIVE=prod
+SAR_LOAD_DEV_SEED=false
 
-Para permitir SMTP sin cifrado en un relay interno que lo requiera, el encargado
-debe establecer SMTP_ALLOW_PLAINTEXT=true. La configuración normal usa TLS.
-Para el proveedor elegido, confirma el remitente o dominio autorizado, las
-restricciones de destinatarios de prueba y los límites de envío. Comprueba
-un mensaje real desde el contenedor antes de aprobar el despliegue.
+SPRING_MAIL_HOST=smtp.proveedor.example
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=usuario-del-proveedor
+SPRING_MAIL_PASSWORD=credencial-del-proveedor
+SAR_MAIL_FROM=avisos@dominio.example
+SMTP_AUTH=true
 
-Prueba la configuración y los avisos antes de integrar.
+SMTP_STARTTLS_ENABLE=true
+SMTP_STARTTLS_REQUIRED=true
+SMTP_SSL_ENABLE=false
+SMTP_TEST_CONNECTION=true
+SMTP_ALLOW_PLAINTEXT=false
+
+SMTP_CONNECTION_TIMEOUT_MS=5000
+SMTP_READ_TIMEOUT_MS=5000
+SMTP_WRITE_TIMEOUT_MS=5000
+```
+
+El complemento de correo añade `smtp-production` a `SPRING_PROFILES_ACTIVE`.
+`prod` representa el perfil base del entorno. En la integración conserva los
+perfiles que haya definido el encargado.
+
+La plantilla de desarrollo establece `SMTP_TEST_CONNECTION=false`. Cambia su valor
+a `true` en producción para comprobar la conexión durante el arranque.
+
+### 2. Elegir el modo de cifrado
+
+Para **STARTTLS**, usa el ejemplo anterior con el puerto del proveedor, habitualmente
+587. El complemento exige que la negociación STARTTLS sea obligatoria.
+
+Para **TLS implícito**, cambia estas cuatro variables. El puerto habitual es 465.
+
+```dotenv
+SPRING_MAIL_PORT=465
+SMTP_STARTTLS_ENABLE=false
+SMTP_STARTTLS_REQUIRED=false
+SMTP_SSL_ENABLE=true
+```
+
+Para un relay que autorice el envío sin autenticación, establece `SMTP_AUTH=false`
+y deja vacíos `SPRING_MAIL_USERNAME` y `SPRING_MAIL_PASSWORD`. La configuración
+normal de producción usa una conexión cifrada. Un relay interno que requiera
+texto sin cifrar necesita `SMTP_ALLOW_PLAINTEXT=true` explícito y ambas opciones
+de cifrado desactivadas.
+
+### 3. Validar y arrancar
+
+```bash
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.smtp-production.yml \
+  --profile full-stack config --quiet
+
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.smtp-production.yml \
+  --profile full-stack up -d --build
+
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.smtp-production.yml \
+  --profile full-stack ps
+```
+
+`config --quiet` valida la combinación de archivos y variables. Después del arranque,
+consulta los registros del backend.
+
+```bash
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.smtp-production.yml \
+  --profile full-stack logs --tail=100 backend
+```
+
+Usa ambos archivos y el mismo `--env-file` en las siguientes operaciones del
+despliegue. Después de cambiar las credenciales o el servidor, aplica la nueva
+configuración recreando el backend.
+
+```bash
+docker compose --env-file .env.production \
+  -f docker-compose.yml -f docker-compose.smtp-production.yml \
+  --profile full-stack up -d --build backend
+```
+
+El archivo principal de Compose levanta Oracle, backend y frontend. Si el encargado
+ya tiene una configuración propia del proyecto integrado, debe incorporar las
+variables SMTP al servicio backend de ese despliegue.
+
+## Variables en el contenedor de AWS
+
+Si el encargado utiliza una definición de contenedores en AWS, configura las
+variables en el entorno del **backend** e incorpora las credenciales mediante
+el mecanismo de secretos elegido para el despliegue.
+
+1. Publica una imagen reconstruida que incluya los recursos y las clases de correo.
+2. Establece `SPRING_PROFILES_ACTIVE=prod,smtp-production`, adaptando `prod` al
+   perfil base de su aplicación.
+3. Configura todas las variables SMTP del ejemplo de STARTTLS o TLS implícito.
+4. Mantén las variables de conexión `DB_URL`, `DB_USER` y `DB_PASSWORD` de Oracle.
+5. Verifica la salida de red hacia el host y puerto SMTP del proveedor.
+6. Arranca una nueva versión del contenedor y realiza la comprobación de entrega
+   descrita más adelante.
+
+En este caso, el perfil `smtp-production` debe figurar en la lista de perfiles
+del backend. El complemento de Compose lo agrega cuando se usa Compose.
+Los valores `SMTP_*` de la referencia siguiente se leen desde las propiedades
+de la aplicación y funcionan como variables del contenedor.
+
+## Referencia de configuración SMTP
+
+| Variable | Uso |
+| --- | --- |
+| `SPRING_PROFILES_ACTIVE` | Perfiles activos del backend. Incluir `smtp-production` para validar el correo real. |
+| `SPRING_MAIL_HOST` | Nombre DNS o dirección del servidor SMTP. |
+| `SPRING_MAIL_PORT` | Puerto indicado por el proveedor. |
+| `SPRING_MAIL_USERNAME` | Usuario SMTP cuando la autenticación está habilitada. |
+| `SPRING_MAIL_PASSWORD` | Credencial SMTP del usuario. |
+| `SAR_MAIL_FROM` | Dirección de remitente autorizada por el proveedor. |
+| `SMTP_AUTH` | `true` exige usuario y contraseña. `false` permite relay sin autenticación. |
+| `SMTP_STARTTLS_ENABLE` | Habilita STARTTLS. Desactivar al usar TLS implícito. |
+| `SMTP_STARTTLS_REQUIRED` | Exige STARTTLS en el Compose principal. El complemento de producción lo ajusta a `SMTP_STARTTLS_ENABLE`. |
+| `SMTP_SSL_ENABLE` | Habilita TLS implícito desde la conexión. |
+| `SMTP_TEST_CONNECTION` | Comprueba la conexión al arrancar con el perfil de producción. Usar `true` para la puesta en marcha. |
+| `SMTP_ALLOW_PLAINTEXT` | Excepción explícita para un relay interno sin cifrado. Valor normal `false`. |
+| `SMTP_CONNECTION_TIMEOUT_MS` | Espera de conexión, en milisegundos. Predeterminado `5000`. |
+| `SMTP_READ_TIMEOUT_MS` | Espera de lectura. Predeterminado `5000`. |
+| `SMTP_WRITE_TIMEOUT_MS` | Espera de escritura. Predeterminado `5000`. |
+
+La aplicación verifica la identidad TLS del servidor con los certificados de
+confianza del JRE. Un servidor con CA privada requiere instalar su CA en el
+almacén de confianza del contenedor.
+
+Con `smtp-production` activo, el arranque falla ante configuración inválida.
+Con `SMTP_TEST_CONNECTION=true`, también falla si la comprobación de conexión SMTP
+reporta un error. Esta comprobación abre la conexión y comprueba autenticación
+cuando se exige. La primera entrega se verifica mediante un correo de prueba.
+
+`SMTP_TEST_CONNECTION=false` permite omitir la comprobación de red durante el
+arranque. La validación de los valores de configuración sigue activa.
+
+Compose permite que las variables exportadas por la terminal prevalezcan sobre
+el archivo de entorno. Usa una única fuente de valores para cada despliegue.
+Evita mezclar valores contradictorios de `SMTP_*` con propiedades directas
+`SPRING_MAIL_PROPERTIES_MAIL_SMTP_*` en la definición del contenedor.
+
+## Oracle e integración con dev y main
+
+La consulta del destinatario utiliza
+`PKG_ADMINISTRADOR.consultar_correo_solicitud`, definido en
+[docker/init-db/05-crear-paquetes-permisos.sql](docker/init-db/05-crear-paquetes-permisos.sql).
+
+| Conexión | Compose del repositorio | Contenedor con Oracle externo |
+| --- | --- | --- |
+| Destino | `oracle-db` y el PDB definido en `ORACLE_DATABASE` | `DB_URL` del entorno |
+| Usuario técnico | `ORACLE_BACKEND_USER` | `DB_USER` |
+| Credencial | `ORACLE_BACKEND_PASSWORD` | `DB_PASSWORD` |
+
+Para una base nueva, el inicializador del proyecto instala el paquete. En una base
+existente, el equipo responsable de Oracle incorpora el procedimiento a su versión
+consolidada y valida compilación y permisos de la cuenta técnica. El script 05
+contiene definiciones completas de paquetes que deben conservar los procedimientos
+de todos los equipos.
+
+El responsable de integración debe completar estos pasos.
+
+1. Incorporar esta rama a la versión integrada de `dev`.
+2. Resolver las diferencias de `docker-compose.yml`, `.env.example`,
+   `application.properties` y la documentación, conservando las funciones
+   de los demás equipos.
+3. Conservar en `dev` su implementación de notificaciones en segundo plano.
+4. Incluir las clases de configuración y
+   `application-smtp-production.properties` del equipo 6.
+5. Validar el flujo con sesión, permisos y CSRF del equipo 1.
+6. Comprobar la consulta de correo en Oracle y los envíos con el SMTP elegido.
+7. Integrar la versión comprobada en `main`, reconstruir la imagen del backend
+   y publicar el frontend actualizado.
+
+La guía del equipo 6 cubre la configuración SMTP. La aceptación del despliegue
+completo requiere la prueba conjunta del proyecto integrado.
+
+## Comprobación de los envíos
+
+Usa registros ficticios de aspirantes y buzones del equipo autorizados para la
+prueba. Elige solicitudes con estados compatibles con cada acción.
+
+| Prueba | Resultado esperado |
+| --- | --- |
+| Aprobar o reautorizar sin comentario | Estado Autorizado y correo con plantilla, sin bloque de comentario. |
+| Aprobar o reautorizar con comentario | El texto aparece en el correo y el estado queda guardado. |
+| Rechazar sin motivo | El panel exige el comentario antes de confirmar. |
+| Rechazar con motivo | Estado Rechazado y correo que incluye el motivo. |
+| Aplicar una deducción autorizada | Solicitud y deducción Aplicado y correo correspondiente. |
+| Cancelar una deducción autorizada | Estado Cancelado y aviso de cancelación. |
+| Envío manual | El mensaje escrito aparece en el buzón del destinatario esperado. |
+| Fallo SMTP después del arranque | La decisión se conserva y el backend registra el fallo del aviso. |
+
+Para probar la tolerancia a fallos, usa el entorno de pruebas después de arrancar
+con una conexión SMTP disponible. Si el servidor ya está inaccesible al arrancar
+y `SMTP_TEST_CONNECTION=true`, el arranque se detendrá en esa comprobación.
+
+Cada decisión modifica el estado guardado. Aplicado es definitivo. Prepara
+solicitudes distintas o usa las transiciones de reenvío permitidas para repetir
+los escenarios.
+
+Las pruebas automatizadas se ejecutan con Maven y Java compatibles con el proyecto.
 
 ```bash
 mvn -Dtest=SmtpProductionConfigurationTest,NotificacionServiceTest,NotificacionControllerTest test
 ```
 
-Las notificaciones automáticas actuales conservan el cambio administrativo si
-falla el correo. No existe reintento persistente que sobreviva a reinicios.
-Al integrar con dev, conserva su implementación de envío en segundo plano.
-La cobertura de correo institucional de estudiantes y el historial del
-comentario de Aplicado requieren coordinación con el equipo responsable de
-los datos.
+Se comprobaron 15 pruebas de estas clases. Cubren la configuración, los modos de
+cifrado, los errores de arranque, las plantillas con y sin comentario, el escape
+HTML, la alternativa de texto y el endpoint manual. La validación de configuración
+de Compose se realiza con `config --quiet`. Las pruebas con dobles de envío
+se complementan con la entrega al proveedor elegido.
 
-## Configuración del entorno
+Antes de aprobar el despliegue, el encargado debe registrar el commit o la imagen
+probados, el modo SMTP, los resultados de los casos anteriores y la recepción
+en los buzones de prueba. Las credenciales se conservan en la configuración
+del entorno.
 
-Se necesita Docker Desktop o Docker Engine con Compose. Desde la raíz del
-repositorio, crea el archivo local de configuración.
+## Pruebas locales con Mailpit
 
-```bash
-cp .env.example .env
-```
+Mailpit captura los correos durante el desarrollo local. Para un entorno nuevo,
+crea `.env` desde `.env.example`, completa Oracle y activa los datos ficticios
+con `SAR_LOAD_DEV_SEED=true`.
 
-Completa las variables Oracle de esa plantilla. Para una base nueva de pruebas,
-SAR_LOAD_DEV_SEED=true permite cargar los datos ficticios.
-
-El archivo .env queda en tu equipo. Las credenciales reales se configuran en el
-entorno del despliegue.
-
-### Prueba local con Mailpit
-
-Mailpit captura los mensajes que envía la aplicación. Crea compose.mailpit.yml
-junto a docker-compose.yml con este contenido.
+Crea `compose.mailpit.yml` junto al Compose principal.
 
 ```yaml
 services:
@@ -129,115 +334,41 @@ services:
       - "127.0.0.1:8025:8025"
 ```
 
-Agrega estas variables al .env.
+En `.env`, establece todos estos valores de correo para sustituir la configuración
+de cifrado de desarrollo anterior.
 
 ```dotenv
+SPRING_PROFILES_ACTIVE=dev
 SPRING_MAIL_HOST=mailpit
 SPRING_MAIL_PORT=1025
+SPRING_MAIL_USERNAME=
+SPRING_MAIL_PASSWORD=
 SAR_MAIL_FROM=sar@example.test
 SMTP_AUTH=false
 SMTP_STARTTLS_ENABLE=false
+SMTP_STARTTLS_REQUIRED=false
+SMTP_SSL_ENABLE=false
+SMTP_TEST_CONNECTION=false
 ```
 
-El backend usa mailpit como nombre del servicio dentro de la red de Compose.
-El puerto 1025 corresponde a SMTP y el 8025 a la interfaz del buzón.
-
-Inicia la aplicación y el buzón con ambos archivos.
-
 ```bash
-docker compose -f docker-compose.yml -f compose.mailpit.yml \
+docker compose --env-file .env \
+  -f docker-compose.yml -f compose.mailpit.yml \
   --profile full-stack up -d --build
-docker compose -f docker-compose.yml -f compose.mailpit.yml \
-  --profile full-stack ps
 ```
 
-Espera a que Oracle esté saludable y el backend haya iniciado. Abre
-http://localhost:8081/administrativo/login.html y http://localhost:8025/.
-Si FRONTEND_PORT cambia en .env, usa ese puerto para el panel.
+Abre el [panel administrativo](http://localhost:8081/administrativo/login.html)
+y el [buzón de pruebas](http://localhost:8025/). El puerto del panel corresponde a
+`FRONTEND_PORT`. El backend usa `mailpit:1025` dentro de la red de Compose.
 
-En Apple Silicon, las imágenes Oracle XE y Java 8 Alpine del proyecto pueden
-requerir platform: linux/amd64 en los servicios oracle-db y backend del archivo
-adicional de Compose. El arranque con emulación puede tardar varios minutos.
+En Apple Silicon, las imágenes seleccionadas por el proyecto pueden requerir
+`platform: linux/amd64` en `oracle-db` y `backend` del archivo adicional.
+La emulación puede aumentar el tiempo de arranque.
 
-### Conexión con el correo institucional
+## API y archivos de mantenimiento
 
-Solicita al responsable del correo el host, puerto, modalidad de cifrado,
-usuario y contraseña o credencial de aplicación, y los remitentes permitidos.
-Para un servidor que admita STARTTLS y autenticación en el puerto 587, la
-configuración tiene esta forma. Sustituye los valores de ejemplo por los
-proporcionados por la institución.
-
-```dotenv
-SPRING_MAIL_HOST=smtp.institucion.example
-SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=cuenta-de-envio
-SPRING_MAIL_PASSWORD=credencial-del-servidor
-SAR_MAIL_FROM=avisos@institucion.example
-SMTP_AUTH=true
-SMTP_STARTTLS_ENABLE=true
-```
-
-El remitente debe estar autorizado por el servidor. Si el proveedor exige
-OAuth2 u otro mecanismo, se requiere adaptar la integración. Para TLS
-implícito, el backend admite la propiedad de Spring
-SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE=true, que debe agregarse al bloque
-environment del servicio backend en Compose. Usa el puerto indicado por el
-proveedor y ajusta STARTTLS según su configuración.
-
-Después de editar las variables, recrea el backend usando los mismos archivos
-de Compose del despliegue. Para el archivo principal, ejecuta lo siguiente.
-
-```bash
-docker compose --profile full-stack up -d --build backend
-```
-
-Cambiar el .env y reiniciar el contenedor existente puede conservar su entorno
-anterior. El comando up recrea el servicio cuando detecta la nueva configuración.
-
-## Conexión con Oracle e integración en main
-
-Compose proporciona al backend estas variables.
-
-- DB_URL apunta al servicio oracle-db y al PDB definido en ORACLE_DATABASE.
-- DB_USER toma ORACLE_BACKEND_USER.
-- DB_PASSWORD toma ORACLE_BACKEND_PASSWORD.
-
-En una instalación externa, configura DB_URL, DB_USER y DB_PASSWORD con la
-cuenta técnica y el destino correspondientes.
-
-La notificación utiliza el procedimiento
-PKG_ADMINISTRADOR.consultar_correo_solicitud, definido en
-docker/init-db/05-crear-paquetes-permisos.sql. En una base nueva, el inicializador
-del proyecto instala el paquete.
-
-En una base existente, el equipo de integración debe incorporar el procedimiento
-a la versión consolidada de PKG_ADMINISTRADOR y validar su compilación y permisos.
-El script 05 contiene definiciones completas de paquetes. Al combinar ramas,
-consolida primero las modificaciones de todos los equipos para conservar sus
-procedimientos. El arranque habitual de Docker conserva la base existente.
-
-Para integrar en main, incluye el backend, la interfaz y el recurso HTML,
-reconstruye el backend y publica los archivos actualizados del frontend.
-Comprueba el funcionamiento conjunto con los controles de seguridad del equipo 1.
-
-## Plantilla y archivos principales
-
-- src/main/resources/mail/aviso-tramite.html contiene el diseño HTML editable.
-  Mantén los marcadores {{solicitud}}, {{estado}}, {{color}}, {{mensaje}} y
-  {{comentario}}. El servicio sustituye sus valores al enviar.
-- NotificacionService.java selecciona el resultado, escapa el comentario y envía
-  HTML y texto simple con JavaMailSender.
-- SolicitudAdminService.java dispara el aviso después de registrar la decisión.
-- SolicitudAdminController.java recibe el comentario opcional al aplicar.
-- AdministradorRepository.java consulta el correo mediante el paquete Oracle.
-- modulo-administrativo/panel-admin.html y js/app.js muestran las acciones,
-  la opción de comentario y la vista previa.
-
-Al editar el recurso HTML, reconstruye el backend para incluirlo en el JAR.
-
-## API y resultados del envío
-
-POST /api/notificaciones recibe este cuerpo para un aviso manual.
+El envío manual usa `POST /api/notificaciones`, con sesión de administrador
+y la cabecera `X-CSRF-TOKEN` de esa sesión.
 
 ```json
 {
@@ -246,61 +377,65 @@ POST /api/notificaciones recibe este cuerpo para un aviso manual.
 }
 ```
 
-Requiere sesión de administrador y X-CSRF-TOKEN válido. Las decisiones usan sus
-endpoints administrativos existentes. PUT /api/deducciones/{id}/aplicar acepta
-un cuerpo opcional con comentario.
-
-| Resultado del aviso manual | HTTP |
+| Resultado del envío manual | HTTP |
 | --- | --- |
-| SMTP acepta el aviso | 204 |
+| SMTP acepta el mensaje | 204 |
 | Falta sesión | 401 |
 | Rol o CSRF inválido | 403 |
 | Identificador o mensaje inválidos | 400 |
 | Solicitud sin correo disponible | 422 |
-| SMTP falla o falta configuración de envío | 503 |
+| Falla SMTP o falta configuración de envío | 503 |
 
-En un aviso automático, el éxito de la decisión confirma la operación en Oracle.
-Un fallo SMTP queda registrado y la decisión permanece guardada. La aplicación
-actual no mantiene una cola de reintentos. La aceptación por SMTP se verifica
-en Mailpit o en los registros del servidor de correo. La entrega final depende
-del servidor y del buzón de destino.
+Las decisiones utilizan sus endpoints administrativos. Al aplicar una deducción,
+`PUT /api/deducciones/{id}/aplicar` acepta este cuerpo opcional.
 
-El comentario de Aplicado viaja en el correo. El procedimiento actual de
-aplicación no lo guarda en el historial Oracle. Las otras acciones conservan
-su almacenamiento previo de comentarios.
-
-## Comprobación antes de presentar o integrar
-
-1. Entra como administrador con las credenciales de prueba definidas en .env.
-2. Usa una solicitud ficticia de aspirante con estado compatible con la acción.
-3. Prueba Autorizar con y sin comentario y verifica el mensaje en Mailpit.
-4. Prueba Rechazar y comprueba que exija el motivo y lo incluya en el correo.
-5. Aplica una deducción autorizada y comprueba la plantilla Aplicado.
-6. Vuelve a consultar las solicitudes para confirmar los estados.
-7. Detén Mailpit durante una prueba y confirma que se registre el fallo SMTP.
-
-Cada decisión cambia el estado guardado. Usa solicitudes ficticias diferentes
-o las transiciones de reenvío permitidas para repetir los escenarios.
-Aplicado es un estado definitivo.
-
-Pruebas automatizadas de las plantillas y del envío manual, con Maven y Java
-compatibles con el proyecto.
-
-```bash
-mvn -Dtest=NotificacionServiceTest,NotificacionControllerTest test
+```json
+{
+  "comentario": "Su deducción fue aplicada."
+}
 ```
 
-Los casos comprueban las plantillas con y sin comentario, HTML escapado,
-alternativa de texto simple y las respuestas del endpoint manual.
+| Archivo | Función |
+| --- | --- |
+| [NotificacionService.java](src/main/java/com/itt/sareduccion/service/NotificacionService.java) | Prepara el mensaje y solicita el envío SMTP. |
+| [SmtpProductionConfiguration.java](src/main/java/com/itt/sareduccion/config/SmtpProductionConfiguration.java) | Valida la configuración real del backend. |
+| [aviso-tramite.html](src/main/resources/mail/aviso-tramite.html) | Diseño editable del correo automático. |
+| [application-smtp-production.properties](src/main/resources/application-smtp-production.properties) | Perfil adicional de correo. |
+| [docker-compose.smtp-production.yml](docker-compose.smtp-production.yml) | Variables de producción para Compose. |
+| [SolicitudAdminService.java](src/main/java/com/itt/sareduccion/service/SolicitudAdminService.java) | Inicia el aviso después de confirmar la decisión en Oracle. |
+| [AdministradorRepository.java](src/main/java/com/itt/sareduccion/repository/AdministradorRepository.java) | Consulta el destinatario con el paquete Oracle. |
+| [panel-admin.html](modulo-administrativo/panel-admin.html) y [app.js](modulo-administrativo/js/app.js) | Acciones, comentario opcional y vista previa. |
 
-Para diagnosticar errores en la instalación principal, consulta los registros.
+Al editar la plantilla, conserva `{{solicitud}}`, `{{estado}}`, `{{color}}`,
+`{{mensaje}}` y `{{comentario}}`. El servicio sustituye estos marcadores.
+Reconstruye el backend después de cambiar el recurso HTML. Los comentarios
+se escapan como HTML y el bloque se omite cuando el comentario está vacío.
 
-```bash
-docker compose logs --tail=100 backend
-docker compose logs --tail=100 oracle-db
-```
+## Diagnóstico
 
-Si el aviso carece de destinatario, revisa la relación de la solicitud con
-Aspirantes y su correo. Si falla SMTP, revisa el host, el puerto, el remitente,
-las credenciales y el cifrado. Si Oracle informa que falta el procedimiento,
-revisa la actualización consolidada de PKG_ADMINISTRADOR.
+Para Compose de producción, utiliza el mismo comando de registros de la sección
+de despliegue. Estos son los casos que debe revisar el encargado.
+
+| Síntoma | Comprobación |
+| --- | --- |
+| Falta host o remitente al validar Compose | Completar `SPRING_MAIL_HOST` y `SAR_MAIL_FROM` en la fuente de variables del despliegue. |
+| El backend falla al arrancar con `smtp-production` | Revisar el error de configuración y los campos obligatorios. |
+| La comprobación SMTP falla | Revisar DNS, puerto, salida de red, credenciales, certificado y modalidad TLS. |
+| STARTTLS y TLS implícito están activos juntos | Elegir el modo indicado por el proveedor. |
+| El envío manual devuelve 422 | Revisar la solicitud y su relación con `Aspirantes`, incluyendo periodo, año y correo. |
+| El envío manual devuelve 503 | Revisar configuración de envío y respuesta del servidor SMTP. |
+| SMTP acepta el mensaje y el buzón no lo muestra | Revisar remitente autorizado, destinatario, carpeta de correo no deseado y diagnóstico del proveedor. |
+| Oracle reporta un procedimiento inexistente | Verificar la versión consolidada de `PKG_ADMINISTRADOR` y los permisos de la cuenta técnica. |
+| El contenedor usa valores anteriores | Aplicar `up -d` con los mismos archivos y variables para recrear el backend. |
+| Falta la plantilla en el arranque | Reconstruir la imagen incluyendo `src/main/resources/mail/aviso-tramite.html`. |
+
+## Pendientes de integración
+
+- Elegir el proveedor SMTP y comprobar la entrega desde AWS con sus credenciales.
+- Integrar la configuración de producción con la versión conjunta de `dev`
+  y comprobar sesión, permisos y CSRF antes de promover a `main`.
+- Acordar e integrar la fuente de correo institucional de estudiantes.
+- El comentario de Aplicado se incluye en el correo. Su guardado en el historial
+  Oracle requiere ampliar la operación correspondiente.
+- El servicio conserva la decisión cuando falla el envío. Los reintentos
+  persistentes requieren un mecanismo de almacenamiento y recuperación.
