@@ -24,6 +24,83 @@ de estudiante puede carecer de destinatario en esta implementación.
 
 También existe el envío manual independiente mediante Aviso por correo.
 
+## Correo en AWS y contenedores de producción
+
+Activa el perfil adicional smtp-production junto a los perfiles propios del
+despliegue. El perfil valida la configuración efectiva antes de aceptar tráfico
+y, por defecto, comprueba la conexión SMTP al arrancar. Las credenciales de
+producción se suministran en las variables del contenedor, mediante la
+configuración de secretos del despliegue en AWS.
+
+El proveedor lo elige el encargado. La conexión admite usuario y contraseña
+o relay autorizado sin autenticación. Para proveedores que exijan OAuth2
+o una API HTTP se necesita una integración adicional.
+
+| Variable | Valor para STARTTLS | Valor para TLS implícito |
+| --- | --- | --- |
+| SPRING_PROFILES_ACTIVE | prod,smtp-production | prod,smtp-production |
+| SPRING_MAIL_HOST | Host del proveedor | Host del proveedor |
+| SPRING_MAIL_PORT | Puerto del proveedor, normalmente 587 | Puerto del proveedor, normalmente 465 |
+| SPRING_MAIL_USERNAME | Usuario SMTP | Usuario SMTP |
+| SPRING_MAIL_PASSWORD | Credencial SMTP | Credencial SMTP |
+| SAR_MAIL_FROM | Remitente autorizado | Remitente autorizado |
+| SMTP_AUTH | true | true |
+| SMTP_STARTTLS_ENABLE | true | false |
+| SMTP_STARTTLS_REQUIRED | true | false |
+| SMTP_SSL_ENABLE | false | true |
+| SMTP_TEST_CONNECTION | true | true |
+
+Para relay sin autenticación, configura SMTP_AUTH=false y deja usuario y
+contraseña vacíos. La identidad TLS del servidor se verifica con los
+certificados de confianza del JRE. Un certificado privado requiere instalar
+su CA en el almacén de confianza del contenedor.
+
+Los tiempos de conexión, lectura y escritura se controlan con
+SMTP_CONNECTION_TIMEOUT_MS, SMTP_READ_TIMEOUT_MS y SMTP_WRITE_TIMEOUT_MS.
+El valor predeterminado de cada uno es 5000 milisegundos.
+
+Si el encargado usa Compose, puede combinar su configuración con el complemento
+de esta rama. Las variables de su entorno deben contener el host y remitente
+reales. El complemento agrega smtp-production a SPRING_PROFILES_ACTIVE.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.smtp-production.yml \
+  --profile full-stack config --quiet
+docker compose -f docker-compose.yml -f docker-compose.smtp-production.yml \
+  --profile full-stack up -d --build
+```
+
+Para ECS u otro orquestador, agrega las variables directamente al contenedor
+backend y publica la imagen reconstruida con los recursos de esta rama.
+El complemento configura el correo. La red, Oracle, HTTPS, cookies y el seed
+del despliegue se coordinan con el encargado del proyecto. En el entorno real
+establece SAR_LOAD_DEV_SEED=false.
+
+La verificación de conexión al arranque usa SMTP_TEST_CONNECTION=true.
+Si falla, revisa host, puerto, salida de red desde AWS, credenciales y cifrado.
+SMTP_TEST_CONNECTION=false permite arrancar sin comprobar la conectividad
+en ese momento. La validación local de los campos sigue activa.
+La comprobación de conexión no envía mensajes y no garantiza entrega final.
+
+Para permitir SMTP sin cifrado en un relay interno que lo requiera, el encargado
+debe establecer SMTP_ALLOW_PLAINTEXT=true. La configuración normal usa TLS.
+Para el proveedor elegido, confirma el remitente o dominio autorizado, las
+restricciones de destinatarios de prueba y los límites de envío. Comprueba
+un mensaje real desde el contenedor antes de aprobar el despliegue.
+
+Prueba la configuración y los avisos antes de integrar.
+
+```bash
+mvn -Dtest=SmtpProductionConfigurationTest,NotificacionServiceTest,NotificacionControllerTest test
+```
+
+Las notificaciones automáticas actuales conservan el cambio administrativo si
+falla el correo. No existe reintento persistente que sobreviva a reinicios.
+Al integrar con dev, conserva su implementación de envío en segundo plano.
+La cobertura de correo institucional de estudiantes y el historial del
+comentario de Aplicado requieren coordinación con el equipo responsable de
+los datos.
+
 ## Configuración del entorno
 
 Se necesita Docker Desktop o Docker Engine con Compose. Desde la raíz del
