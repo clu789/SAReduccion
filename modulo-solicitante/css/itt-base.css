@@ -6,9 +6,10 @@
 
 /* ── Variables de color ITT ── */
 :root {
-  --itt-azul:        #1a3a6b;   /* Azul institucional oscuro  */
-  --itt-azul-medio:  #2a5298;   /* Azul medio                 */
-  --itt-azul-claro:  #4a90d9;   /* Azul claro / acento        */
+  --itt-azul:        #337ab7;   /* Azul institucional (SII)   */
+  --itt-azul-medio:  #337ab7;   /* Azul medio                 */
+  --itt-azul-claro:  #337ab7;   /* Azul claro / acento        */
+  --itt-azul-oscuro: #286090;   /* Azul para hover            */
   --itt-rojo:        #b73c39;   /* Rojo institucional         */
   --itt-naranja:     #e5673a;   /* Naranja (editar)           */
   --itt-verde:       #55b77a;   /* Verde (agregar/éxito)      */
@@ -45,24 +46,24 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 a { color: var(--itt-azul-claro); text-decoration: none; }
-a:hover { text-decoration: underline; color: var(--itt-azul); }
+a:hover { text-decoration: underline; color: var(--itt-azul-oscuro); }
 
 /* ──────────────────────────────────────────
    HEADER / NAVBAR
+   Logos sobre el fondo de la página y barra redondeada del ancho del contenido.
 ────────────────────────────────────────── */
 .itt-header {
-  background-color: var(--itt-blanco);
-  border-bottom: 3px solid var(--itt-azul);
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
-  padding: 0;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
 .itt-header-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 24px;
-  border-bottom: 1px solid var(--itt-gris-borde);
+  justify-content: center;
+  padding: 10px 0;
 }
 
 .itt-header-top img.logo-header {
@@ -92,12 +93,13 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 }
 
 .itt-navbar {
-  background: linear-gradient(135deg, var(--itt-azul) 0%, var(--itt-azul-medio) 100%);
-  padding: 0 24px;
+  background: var(--itt-azul);
+  border-radius: 4px;
+  padding: 0 15px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 44px;
+  min-height: 50px;
 }
 
 .itt-navbar-links {
@@ -126,7 +128,7 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 }
 
 .itt-navbar-links li a.activo {
-  border-bottom: 2px solid var(--itt-azul-claro);
+  border-bottom: 2px solid rgba(255,255,255,.7);
 }
 
 .itt-navbar-user {
@@ -140,16 +142,17 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 .itt-navbar-user i { font-size: 1.1rem; }
 
 .btn-cerrar-sesion {
-  background: rgba(255,255,255,.15);
-  border: 1px solid rgba(255,255,255,.35);
-  color: var(--itt-blanco);
-  padding: 5px 12px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.9);
+  padding: 8px 10px;
   border-radius: var(--radio-btn);
-  font-size: .8rem;
+  font: inherit;
+  font-size: .875rem;
   cursor: pointer;
-  transition: background var(--transition);
+  transition: background var(--transition), color var(--transition);
 }
-.btn-cerrar-sesion:hover { background: rgba(255,255,255,.28); }
+.btn-cerrar-sesion:hover { background: rgba(255,255,255,.15); color: var(--itt-blanco); }
 
 /* ──────────────────────────────────────────
    MAIN CONTENT
@@ -261,7 +264,7 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 .btn-itt:active { transform: translateY(0); }
 
 .btn-primario  { background-color: var(--itt-azul-medio); color: var(--itt-blanco); }
-.btn-primario:hover  { background-color: var(--itt-azul); }
+.btn-primario:hover  { background-color: var(--itt-azul-oscuro); }
 
 .btn-agregar   { background-color: var(--itt-verde);       color: var(--itt-blanco); }
 .btn-agregar:hover   { background-color: #44a066; }
@@ -529,7 +532,8 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
    RESPONSIVE
 ────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .itt-header-top { flex-direction: column; gap: 8px; text-align: center; padding: 12px 16px; }
+  .itt-header { padding: 0 16px; }
+  .itt-header-top { flex-direction: column; gap: 8px; text-align: center; padding: 8px 0; }
   .itt-navbar { flex-direction: column; align-items: flex-start; padding: 8px 16px; gap: 6px; }
   .itt-navbar-links { flex-wrap: wrap; }
   .itt-main { padding: 20px 16px; }

@@ -5,11 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel del Aspirante | SAReducción ITT</title>
   <meta name="description" content="Panel de aspirantes del Sistema de Reducción de Monto de Inscripción del Instituto Tecnológico de Toluca: perfil, convocatorias y seguimiento de solicitudes." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
-  <link rel="stylesheet" href="css/itt-base.css?v=20261111h" />
-  <link rel="stylesheet" href="css/solicitante.css?v=20261111h" />
+  <link rel="stylesheet" href="css/itt-base.css?v=20261124k" />
+  <link rel="stylesheet" href="css/solicitante.css?v=20261124k" />
 </head>
 <body id="pagina-panel-aspirante" class="panel-solicitante">
 
@@ -23,28 +21,14 @@
     <div class="itt-header-top">
       <img src="img/header.png" alt="Tecnológico Nacional de México – Instituto Tecnológico de Toluca" class="logo-header" />
     </div>
-    <nav class="itt-navbar" aria-label="Navegación principal">
-      <ul class="itt-navbar-links">
-        <li><a href="#solicitudes" data-vista="solicitudes" class="activo" aria-current="page"><i class="fa fa-list-alt"></i> Mis Solicitudes</a></li>
-        <li><a href="#convocatorias" data-vista="convocatorias"><i class="fa fa-bullhorn"></i> Convocatorias</a></li>
-      </ul>
-      <div class="itt-navbar-user menu-usuario">
-        <button type="button" class="menu-usuario-boton" id="btn-menu-usuario"
-                aria-haspopup="true" aria-expanded="false" aria-controls="menu-usuario-lista">
-          <i class="fa fa-user-circle"></i>
-          <span id="nombre-usuario-nav">Aspirante</span>
-          <i class="fa fa-caret-down menu-usuario-flecha"></i>
+    <div class="itt-navbar">
+      <span class="itt-navbar-sistema"><span>Reducción de Monto de Inscripción</span></span>
+      <div class="itt-navbar-user">
+        <button class="btn-cerrar-sesion" data-auth-logout type="button">
+          <i class="fa fa-sign-out"></i> Salir
         </button>
-        <ul class="menu-usuario-lista" id="menu-usuario-lista" role="menu" hidden>
-          <li role="none">
-            <button type="button" role="menuitem" data-abrir-perfil><i class="fa fa-id-card"></i> Mi perfil</button>
-          </li>
-          <li role="none">
-            <button type="button" role="menuitem" data-auth-logout><i class="fa fa-sign-out"></i> Salir</button>
-          </li>
-        </ul>
       </div>
-    </nav>
+    </div>
   </header>
 
   <!-- ═══ CONTENIDO PRINCIPAL ═══ -->
@@ -52,49 +36,69 @@
     <!-- Alertas -->
     <div id="alerta-panel" aria-live="polite"></div>
 
-    <!-- Vista: solicitudes y seguimiento (predeterminada) -->
-    <section class="vista" id="seccion-solicitudes" data-vista="solicitudes">
-      <h2 class="titulo-seccion"><i class="fa fa-list-alt" style="color:var(--itt-azul-claro);"></i> Mis Solicitudes</h2>
-      <div id="lista-solicitudes">
-        <div class="card-itt"><div class="card-itt-body">
-          <div class="alerta alerta-info mb-0"><i class="fa fa-spinner fa-spin"></i><span>Cargando solicitudes...</span></div>
-        </div></div>
+    <!-- Información personal del usuario -->
+    <section class="panel-sii panel-sii-primario" aria-labelledby="titulo-info-personal">
+      <h2 class="panel-sii-encabezado" id="titulo-info-personal">Información Personal</h2>
+      <div class="panel-sii-cuerpo info-personal">
+        <div class="info-personal-identidad">
+          <div class="info-personal-ficha">
+            <div class="info-personal-foto" aria-hidden="true"><i class="fa fa-user"></i></div>
+            <div class="info-personal-nombre" id="perfil-nombre">Cargando...</div>
+          </div>
+          <div class="info-personal-tipo">
+            <i class="fa fa-graduation-cap"></i> <strong>Tipo de usuario:</strong> <span id="perfil-tipo">Aspirante de nuevo ingreso</span>
+          </div>
+        </div>
+        <div class="info-personal-detalle">
+          <ul class="info-personal-lista" id="perfil-datos"></ul>
+          <fieldset class="grupo-accesos">
+            <legend>Reducción de Inscripción</legend>
+            <a href="#solicitudes" data-vista="solicitudes" class="acceso-circular" title="Mis solicitudes" aria-label="Mis solicitudes"><i class="fa fa-list-alt"></i></a>
+            <a href="#convocatorias" data-vista="convocatorias" class="acceso-circular" title="Convocatorias" aria-label="Convocatorias"><i class="fa fa-bullhorn"></i></a>
+            <a href="docs/convocatoria-actual.pdf" target="_blank" rel="noopener" class="acceso-circular acceso-documento" title="Ver convocatoria vigente (PDF)" aria-label="Ver convocatoria vigente en PDF, se abre en una pestaña nueva"><i class="fa fa-file-pdf-o"></i></a>
+          </fieldset>
+        </div>
       </div>
     </section>
 
-    <!-- Vista: convocatorias disponibles -->
-    <section class="vista" id="seccion-convocatorias" data-vista="convocatorias" hidden>
-      <h2 class="titulo-seccion"><i class="fa fa-bullhorn" style="color:var(--itt-azul-claro);"></i> Convocatorias</h2>
-      <div class="card-itt">
-        <div class="card-itt-header">
-          <i class="fa fa-bullhorn"></i> Convocatorias Disponibles
-        </div>
-        <div class="card-itt-body" id="lista-convocatorias">
-          <div class="alerta alerta-info mb-0"><i class="fa fa-spinner fa-spin"></i><span>Cargando convocatorias...</span></div>
+    <!-- Pestañas: solicitudes y convocatorias -->
+    <section class="panel-sii">
+      <div class="panel-sii-cuerpo">
+        <ul class="pestanas-sii" role="tablist">
+          <li role="presentation"><a href="#solicitudes" id="tab-solicitudes" role="tab" data-vista="solicitudes" aria-controls="seccion-solicitudes" class="activo" aria-selected="true">Mis Solicitudes <span class="pestana-contador" id="contador-solicitudes" hidden></span></a></li>
+          <li role="presentation"><a href="#convocatorias" id="tab-convocatorias" role="tab" data-vista="convocatorias" aria-controls="seccion-convocatorias" aria-selected="false">Convocatorias <span class="pestana-contador" id="contador-convocatorias" hidden></span></a></li>
+        </ul>
+        <div class="pestanas-contenido">
+          <!-- Vista: solicitudes y seguimiento (predeterminada) -->
+          <section class="vista" id="seccion-solicitudes" data-vista="solicitudes" role="tabpanel" aria-labelledby="tab-solicitudes">
+            <p class="vista-ayuda"><i class="fa fa-info-circle"></i> Consulte en qué etapa va su solicitud y qué necesita hacer.</p>
+            <div id="lista-solicitudes">
+              <div class="alerta alerta-info mb-0"><i class="fa fa-spinner fa-spin"></i><span>Cargando solicitudes...</span></div>
+            </div>
+          </section>
+
+          <!-- Vista: convocatorias disponibles -->
+          <section class="vista" id="seccion-convocatorias" data-vista="convocatorias" role="tabpanel" aria-labelledby="tab-convocatorias" hidden>
+            <p class="vista-ayuda"><i class="fa fa-info-circle"></i> Elija la convocatoria y el tipo de reducción que le corresponde para iniciar su solicitud. Consulte los requisitos en la <a href="docs/convocatoria-actual.pdf" target="_blank" rel="noopener">convocatoria vigente (PDF)</a>.</p>
+            <div id="lista-convocatorias">
+              <div class="alerta alerta-info mb-0"><i class="fa fa-spinner fa-spin"></i><span>Cargando convocatorias...</span></div>
+            </div>
+          </section>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- ═══ MODAL: MI PERFIL ═══ -->
-  <div id="modal-perfil" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="titulo-perfil">
-    <div class="modal-box">
+  <!-- ═══ MODAL: DETALLE DE SOLICITUD ═══ -->
+  <div id="modal-detalle" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="titulo-detalle">
+    <div class="modal-box modal-box-amplio">
       <div class="modal-header">
-        <h3 id="titulo-perfil"><i class="fa fa-id-card"></i> Mi perfil</h3>
-        <button type="button" class="modal-cerrar" data-modal-cerrar="modal-perfil" aria-label="Cerrar">&times;</button>
+        <h3 id="titulo-detalle"><i class="fa fa-file-text-o"></i> Solicitud con folio <span id="detalle-folio">—</span></h3>
+        <button type="button" class="modal-cerrar" data-modal-cerrar="modal-detalle" aria-label="Cerrar">&times;</button>
       </div>
-      <div class="modal-body">
-        <div class="perfil-encabezado">
-          <div class="info-avatar"><i class="fa fa-user"></i></div>
-          <div>
-            <div class="info-nombre" id="perfil-nombre">Cargando...</div>
-            <div class="texto-claro" id="perfil-tipo">Aspirante de nuevo ingreso</div>
-          </div>
-        </div>
-        <div class="grid-datos" id="perfil-datos"></div>
-      </div>
+      <div class="modal-body" id="detalle-contenido"></div>
       <div class="modal-footer">
-        <button type="button" class="btn-itt btn-secundario" data-modal-cerrar="modal-perfil">Cerrar</button>
+        <button type="button" class="btn-itt btn-secundario" data-modal-cerrar="modal-detalle">Cerrar</button>
       </div>
     </div>
   </div>
@@ -125,6 +129,6 @@
   </footer>
 
   <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
-  <script src="js/app.js?v=20261111h"></script>
+  <script src="js/app.js?v=20261124k"></script>
 </body>
 </html>
