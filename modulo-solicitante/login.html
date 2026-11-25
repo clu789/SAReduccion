@@ -13,6 +13,8 @@
   <!-- Estilos ITT -->
   <link rel="stylesheet" href="css/itt-base.css" />
   <link rel="stylesheet" href="css/solicitante.css" />
+  <!-- Componentes comunes de seguridad (Equipo 1) -->
+  <link rel="stylesheet" href="/compartido/css/itt-security.css" />
 </head>
 <body id="pagina-login-estudiante">
 
@@ -53,6 +55,7 @@
       <!-- Formulario de login -->
       <form id="form-login-estudiante" novalidate>
 
+        <div id="paso-credenciales">
         <!-- Campos alumno -->
         <div id="campos-alumno">
           <div class="form-group">
@@ -83,17 +86,16 @@
         </div>
 
         <!-- Campos aspirante (nuevo ingreso) -->
-        <div id="campos-aspirante" style="display:none;">
+        <div id="campos-aspirante" hidden>
           <div class="form-group">
             <label for="curp-aspirante">CURP <span class="requerido">*</span></label>
             <input
               type="text"
               id="curp-aspirante"
               name="curp-aspirante"
-              class="form-control-itt"
+              class="form-control-itt input-mayusculas"
               placeholder="Ej. LOML920101HDFPZS09"
               maxlength="18"
-              style="text-transform:uppercase;"
             />
             <span class="mensaje-error" id="curp-aspirante-error"></span>
           </div>
@@ -110,17 +112,45 @@
           </div>
         </div>
 
-        <button type="submit" id="btn-login" class="btn-itt btn-primario w-100" style="margin-top:8px;justify-content:center;">
+        <!-- Captcha con alternativa accesible (Equipo 1) -->
+        <div id="captcha-login" data-itt-captcha></div>
+        </div>
+
+        <!-- Segundo paso del aspirante: código temporal enviado por correo (Equipo 1) -->
+        <div id="paso-otp" hidden>
+          <p class="itt-otp__ayuda">
+            Enviamos un código de 6 dígitos a <strong id="otp-destino"></strong>. Escríbalo para terminar de ingresar.
+          </p>
+          <div class="form-group">
+            <label for="codigo-otp">Código de verificación <span class="requerido">*</span></label>
+            <input
+              type="text"
+              id="codigo-otp"
+              name="codigo-otp"
+              class="form-control-itt itt-otp__campo"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+            />
+          </div>
+          <div class="itt-captcha__acciones">
+            <button type="button" id="btn-otp-reenviar" class="itt-captcha__boton">Reenviar código</button>
+            <button type="button" id="btn-otp-cancelar" class="itt-captcha__boton">Volver al inicio de sesión</button>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-login" class="btn-itt btn-primario w-100 btn-login-submit">
           <i class="fa fa-sign-in"></i> Ingresar al Sistema
         </button>
       </form>
 
-      <p style="text-align:center;margin-top:18px;font-size:.78rem;color:var(--itt-texto-claro);">
+      <p class="login-ayuda">
         ¿Problemas para acceder? Contacte a la <strong>Subdirección Académica</strong>.
       </p>
     </div>
   </div>
 
+  <script src="/compartido/js/itt-security.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

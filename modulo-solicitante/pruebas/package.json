@@ -1,0 +1,8 @@
+{
+  "name": "pruebas-formulario-equipo5",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pruebas del formulario dinamico de solicitud (Equipo 5) con jsdom",
+  "scripts": { "test": "node formulario.test.js" },
+  "devDependencies": { "jsdom": "^22.1.0" }
+}

@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.mail.Part;
 import javax.mail.Multipart;
 import javax.mail.Session;
 import javax.mail.internet.MimeMessage;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mail.javamail.JavaMailSender;
 import com.itt.sareduccion.repository.AdministradorRepository;
@@ -17,10 +19,8 @@ class NotificacionServiceTest {
     @Test
     void plantillasIncluyenEstadoYComentarioSeguroConTextoAlternativo() throws Exception {
         JavaMailSender sender = mock(JavaMailSender.class);
-        ObjectProvider<JavaMailSender> provider = mock(ObjectProvider.class);
-        when(provider.getIfAvailable()).thenReturn(sender);
         NotificacionService service = new NotificacionService(
-                mock(AdministradorRepository.class), provider, "sar@example.test");
+                mock(AdministradorRepository.class), providerDe(sender), "sar@example.test");
         for (NotificacionService.Evento evento : NotificacionService.Evento.values()) {
             for (String comentario : new String[] {null, "Revisar <script>ejemplo</script>\nGracias"}) {
                 MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
@@ -45,6 +45,34 @@ class NotificacionServiceTest {
         }
     }
 
+    @Test
+    void avisarCambioPropagaMdcEnEjecutorAsincronoYNoLanzaExcepcionSiFallaRepositorio() {
+        AdministradorRepository repo = mock(AdministradorRepository.class);
+        JavaMailSender sender = mock(JavaMailSender.class);
+        MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
+        when(sender.createMimeMessage()).thenReturn(message);
+
+        AtomicReference<String> correlationCapturado = new AtomicReference<String>();
+        when(repo.consultarCorreoSolicitud("SA01", 77L)).thenAnswer(inv -> {
+            correlationCapturado.set(MDC.get("correlationId"));
+            return "aspirante@example.test";
+        });
+
+        NotificacionService service = new NotificacionService(repo, providerDe(sender), "sar@example.test", Runnable::run);
+        MDC.put("correlationId", "req-notif-123");
+        try {
+            service.avisarCambio("SA01", 77L, NotificacionService.Evento.APROBACION, "Listo");
+        } finally {
+            MDC.clear();
+        }
+        assertEquals("req-notif-123", correlationCapturado.get());
+        verify(sender).send(message);
+
+        doThrow(new org.springframework.dao.DataAccessResourceFailureException("db caida"))
+                .when(repo).consultarCorreoSolicitud("SA01", 78L);
+        assertDoesNotThrow(() -> service.avisarCambio("SA01", 78L, NotificacionService.Evento.RECHAZO, "Motivo"));
+    }
+
     private String content(Part part, String type) throws Exception {
         if (part.isMimeType(type)) return part.getContent().toString();
         if (part.isMimeType("multipart/*")) {
@@ -55,5 +83,29 @@ class NotificacionServiceTest {
             }
         }
         return "";
+    }
+
+    private ObjectProvider<JavaMailSender> providerDe(final JavaMailSender sender) {
+        return new ObjectProvider<JavaMailSender>() {
+            @Override
+            public JavaMailSender getObject() {
+                return sender;
+            }
+
+            @Override
+            public JavaMailSender getObject(Object... args) {
+                return sender;
+            }
+
+            @Override
+            public JavaMailSender getIfAvailable() {
+                return sender;
+            }
+
+            @Override
+            public JavaMailSender getIfUnique() {
+                return sender;
+            }
+        };
     }
 }

@@ -1,0 +1,137 @@
+/* ============================================================
+   formulario.css - Formulario dinamico de solicitud (Equipo 5)
+   Complementa itt-base.css y solicitante.css sin modificarlos.
+   ============================================================ */
+
+/* Etiqueta de una pregunta de seleccion (misma apariencia que un label) */
+.etiqueta-pregunta {
+  display: block;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--itt-azul);
+  margin-bottom: 8px;
+}
+.etiqueta-pregunta .requerido { color: var(--itt-rojo); margin-left: 2px; }
+
+/* Texto libre: crece con el contenido */
+.pregunta textarea.form-control-itt {
+  resize: vertical;
+  min-height: 40px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+/* Opciones de seleccion */
+.opcion-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--itt-gris-borde);
+  border-radius: 6px;
+  background: var(--itt-blanco);
+  margin-bottom: 6px;
+}
+.opcion-radio:hover { border-color: var(--itt-azul-claro); }
+.opcion-radio input[type="radio"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--itt-azul-medio);
+}
+.opcion-radio label {
+  display: block;
+  margin: 0;
+  font-weight: 400;
+  font-size: .92rem;
+  color: var(--itt-texto);
+  cursor: pointer;
+  flex: 1;
+}
+
+/* Especificacion de una pregunta MIXTA */
+.especificacion {
+  margin: 4px 0 6px 24px;
+  padding-left: 12px;
+  border-left: 3px solid var(--itt-azul-claro);
+}
+
+/* Errores de validacion */
+.grupo-error .opcion-radio { border-color: var(--itt-rojo); }
+.pregunta .mensaje-error { margin-top: 4px; }
+
+/* Instrucciones del formulario (conservan los saltos de linea) */
+.instrucciones-texto { white-space: pre-line; flex: 1; }
+
+/* Aviso de reenvio */
+.banner-reenvio {
+  background: #fff8e1;
+  border: 1px solid #f0b429;
+  border-left: 4px solid #f0b429;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  color: #5a4000;
+  font-size: .9rem;
+}
+.banner-reenvio strong { color: #3d2b00; }
+.banner-reenvio .comentario-admin {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #fffdf3;
+  border-radius: 4px;
+  font-style: italic;
+  white-space: pre-line;
+}
+
+/* Botones dentro de una alerta */
+.acciones-alerta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; width: 100%; }
+.alerta { flex-wrap: wrap; }
+.btn-itt { text-decoration: none; }
+
+/* Resumen de confirmacion */
+.resumen-solicitud { margin: 14px 0 0; }
+.resumen-solicitud dt {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--itt-texto-claro);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-top: 12px;
+}
+.resumen-solicitud dd {
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid var(--itt-gris-borde);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.resumen-solicitud dd.sin-respuesta { color: var(--itt-texto-claro); font-style: italic; }
+
+/* Pantalla de exito */
+.exito-card { text-align: center; padding: 28px 16px; }
+.exito-card .exito-icono { font-size: 3rem; color: var(--itt-verde); }
+.exito-card h3 { margin: 10px 0 4px; color: var(--itt-azul); }
+.exito-card .exito-folio { font-size: 1.1rem; font-weight: 700; margin: 12px 0; }
+.exito-card .exito-acciones { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+
+/* Barra de pasos con dos pasos */
+.stepper.dos-pasos { max-width: 520px; margin-left: auto; margin-right: auto; }
+
+/* Telefonos */
+@media (max-width: 600px) {
+  .opcion-radio { padding: 10px; }
+  .especificacion { margin-left: 8px; }
+  #barra-botones { flex-direction: column-reverse; }
+  #barra-botones > div { margin-left: 0 !important; width: 100%; flex-direction: column; }
+  #barra-botones .btn-itt { width: 100%; justify-content: center; }
+}
+
+/* Clases de apoyo sin estilos en linea (RNF-66) */
+.logo-header--formulario { max-height: 54px; }
+.confirmacion-bloque { margin-top: 16px; }
+.confirmacion-label { display: flex; align-items: flex-start; gap: 10px; font-weight: 500; cursor: pointer; }
+.confirmacion-check { margin-top: 3px; }
+.barra-botones-formulario { margin-top: 16px; flex-wrap: wrap; gap: 10px; }
+.barra-botones-acciones { margin-left: auto; display: flex; gap: 10px; }

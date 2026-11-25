@@ -190,6 +190,21 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   padding: 0 16px;
 }
 
+#pagina-panel-admin .itt-nav {
+  color: var(--adm-navbar-text, #777777);
+}
+
+#pagina-panel-admin .itt-nav__boton,
+#pagina-panel-admin .itt-nav__salir {
+  color: var(--adm-navbar-text, #777777);
+  border-color: rgba(51, 122, 183, 0.3);
+}
+
+#pagina-panel-admin .itt-nav__boton:hover,
+#pagina-panel-admin .itt-nav__salir:hover {
+  background: rgba(51, 122, 183, 0.08);
+}
+
 .itt-navbar-links {
   display: flex;
   list-style: none;

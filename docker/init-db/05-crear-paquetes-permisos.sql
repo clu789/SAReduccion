@@ -41,6 +41,15 @@ CREATE OR REPLACE PACKAGE PKG_SOLICITUDES_CORE AUTHID DEFINER AS
  PROCEDURE retirar(p_solicitud NUMBER,p_control VARCHAR2,p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER);
  PROCEDURE reenviar(p_solicitud NUMBER,p_control VARCHAR2,p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
    p_tipo NUMBER,p_form NUMBER,p_respuestas CLOB);
+ -- Consultas del panel del solicitante (equipo 3). Exactamente uno de
+ -- p_control o p_ficha llega informado; los cursores solo devuelven
+ -- registros de ese solicitante.
+ PROCEDURE abrir_solicitudes(p_control VARCHAR2,p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
+   p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE abrir_historial(p_control VARCHAR2,p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
+   p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE abrir_convocatorias(p_control VARCHAR2,p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
+   p_resultado OUT SYS_REFCURSOR);
 END PKG_SOLICITUDES_CORE;
 /
 CREATE OR REPLACE PACKAGE BODY PKG_SOLICITUDES_CORE AS
@@ -191,6 +200,66 @@ CREATE OR REPLACE PACKAGE BODY PKG_SOLICITUDES_CORE AS
   registrar_solicitud(p_solicitud);
  EXCEPTION WHEN OTHERS THEN ROLLBACK TO sp_reenviar_solicitud; RAISE;
  END;
+ -- Las seis primeras columnas conservan el contrato original de mis_solicitudes.
+ PROCEDURE abrir_solicitudes(p_control VARCHAR2,p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
+   p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  OPEN p_resultado FOR
+   SELECT s.id_solicitud,s.id_convocatoria,s.id_tipo_solicitud,s.id_estatus_solicitud,
+    s.fecha_solicitud,s.fecha_actualizacion,
+    es.nombre AS estatus_nombre,t.nombre AS tipo_nombre,s.id_formulario,
+    c.id_periodo,pe.descripcion AS periodo_descripcion,c.anio,
+    c.fecha_inicio_solicitudes,c.fecha_fin_solicitudes,
+    CASE WHEN TRUNC(SYSDATE) BETWEEN TRUNC(c.fecha_inicio_solicitudes) AND TRUNC(c.fecha_fin_solicitudes)
+         THEN 'S' ELSE 'N' END AS recepcion_abierta
+   FROM Solicitudes s
+    JOIN Estatus_Solicitudes es ON es.id_estatus_solicitud=s.id_estatus_solicitud
+    JOIN Tipo_Solicitudes t ON t.id_tipo_solicitud=s.id_tipo_solicitud
+    JOIN Convocatorias c ON c.id_convocatoria=s.id_convocatoria
+    JOIN Periodos pe ON pe.id_periodo=c.id_periodo
+   WHERE (p_control IS NOT NULL AND s.num_control=p_control)
+      OR (p_ficha IS NOT NULL AND s.ficha=p_ficha AND s.periodo=p_periodo AND s.anio=p_anio)
+   ORDER BY c.anio DESC,c.id_periodo DESC,s.id_solicitud DESC;
+ END;
+ -- No expone la identidad del administrador: solo si el movimiento fue
+ -- administrativo y el comentario registrado.
+ PROCEDURE abrir_historial(p_control VARCHAR2,p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
+   p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  OPEN p_resultado FOR
+   SELECT h.id_historial,h.id_solicitud,h.id_estatus,es.nombre AS estatus_nombre,h.comentario,
+    h.fecha_registro,CASE WHEN h.id_administrador IS NULL THEN 'N' ELSE 'S' END AS administrativo
+   FROM Historial_Solicitudes h
+    JOIN Solicitudes s ON s.id_solicitud=h.id_solicitud
+    JOIN Estatus_Solicitudes es ON es.id_estatus_solicitud=h.id_estatus
+   WHERE (p_control IS NOT NULL AND s.num_control=p_control)
+      OR (p_ficha IS NOT NULL AND s.ficha=p_ficha AND s.periodo=p_periodo AND s.anio=p_anio)
+   ORDER BY h.id_solicitud,h.fecha_registro,h.id_historial;
+ END;
+ -- Convocatorias en recepcion con sus tipos configurados. El aspirante solo
+ -- ve la convocatoria de su periodo y anio academico.
+ PROCEDURE abrir_convocatorias(p_control VARCHAR2,p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
+   p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  OPEN p_resultado FOR
+   SELECT c.id_convocatoria,c.id_periodo,pe.descripcion AS periodo_descripcion,c.anio,
+    c.fecha_inicio_solicitudes,c.fecha_fin_solicitudes,
+    ct.id_tipo_solicitud,t.nombre AS tipo_nombre,t.descripcion AS tipo_descripcion,
+    f.id_formulario,f.nombre AS formulario_nombre,ct.monto_deduccion,
+    (SELECT s.id_solicitud FROM Solicitudes s
+      WHERE s.id_convocatoria=c.id_convocatoria
+        AND ((p_control IS NOT NULL AND s.num_control=p_control)
+          OR (p_ficha IS NOT NULL AND s.ficha=p_ficha AND s.periodo=p_periodo AND s.anio=p_anio))
+    ) AS id_solicitud_existente
+   FROM Convocatorias c
+    JOIN Periodos pe ON pe.id_periodo=c.id_periodo
+    JOIN Convocatorias_TipoSolicitudes ct ON ct.id_convocatoria=c.id_convocatoria
+    JOIN Tipo_Solicitudes t ON t.id_tipo_solicitud=ct.id_tipo_solicitud
+    JOIN Formularios f ON f.id_tipo_solicitud=ct.id_tipo_solicitud
+   WHERE TRUNC(SYSDATE) BETWEEN TRUNC(c.fecha_inicio_solicitudes) AND TRUNC(c.fecha_fin_solicitudes)
+     AND (p_ficha IS NULL OR (c.id_periodo=p_periodo AND c.anio=p_anio))
+   ORDER BY c.fecha_inicio_solicitudes,ct.id_tipo_solicitud;
+ END;
 END PKG_SOLICITUDES_CORE;
 /
 
@@ -204,6 +273,8 @@ CREATE OR REPLACE PACKAGE PKG_ESTUDIANTE AUTHID DEFINER AS
  PROCEDURE crear_solicitud(p_numero_control IN VARCHAR2,p_convocatoria NUMBER,p_tipo NUMBER,p_formulario NUMBER,p_respuestas CLOB,p_id OUT NUMBER);
  PROCEDURE retirar_solicitud(p_numero_control VARCHAR2,p_solicitud NUMBER);
  PROCEDURE reenviar_solicitud(p_numero_control VARCHAR2,p_solicitud NUMBER,p_tipo NUMBER,p_formulario NUMBER,p_respuestas CLOB);
+ PROCEDURE mi_historial(p_numero_control IN VARCHAR2,p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE convocatorias_disponibles(p_numero_control IN VARCHAR2,p_resultado OUT SYS_REFCURSOR);
 END PKG_ESTUDIANTE;
 /
 CREATE OR REPLACE PACKAGE BODY PKG_ESTUDIANTE AS
@@ -216,8 +287,17 @@ CREATE OR REPLACE PACKAGE BODY PKG_ESTUDIANTE AS
  PROCEDURE mis_solicitudes(p_numero_control IN VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
   PKG_SOLICITUDES_CORE.validar_estudiante(p_numero_control);
-  OPEN p_resultado FOR SELECT id_solicitud,id_convocatoria,id_tipo_solicitud,id_estatus_solicitud,fecha_solicitud,fecha_actualizacion
-   FROM Solicitudes WHERE num_control=p_numero_control;
+  PKG_SOLICITUDES_CORE.abrir_solicitudes(p_numero_control,NULL,NULL,NULL,p_resultado);
+ END;
+ PROCEDURE mi_historial(p_numero_control IN VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_estudiante(p_numero_control);
+  PKG_SOLICITUDES_CORE.abrir_historial(p_numero_control,NULL,NULL,NULL,p_resultado);
+ END;
+ PROCEDURE convocatorias_disponibles(p_numero_control IN VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_estudiante(p_numero_control);
+  PKG_SOLICITUDES_CORE.abrir_convocatorias(p_numero_control,NULL,NULL,NULL,p_resultado);
  END;
  PROCEDURE mis_deducciones(p_numero_control IN VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
@@ -258,6 +338,10 @@ CREATE OR REPLACE PACKAGE PKG_ASPIRANTE AUTHID DEFINER AS
  PROCEDURE retirar_solicitud(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_solicitud NUMBER);
  PROCEDURE reenviar_solicitud(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_solicitud NUMBER,
    p_tipo NUMBER,p_formulario NUMBER,p_respuestas CLOB);
+ -- Perfil sin CURP ni correo: solo los datos que muestra el panel.
+ PROCEDURE mis_datos(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE mi_historial(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_resultado OUT SYS_REFCURSOR);
+ PROCEDURE convocatorias_disponibles(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_resultado OUT SYS_REFCURSOR);
 END PKG_ASPIRANTE;
 /
 CREATE OR REPLACE PACKAGE BODY PKG_ASPIRANTE AS
@@ -279,8 +363,25 @@ CREATE OR REPLACE PACKAGE BODY PKG_ASPIRANTE AS
  PROCEDURE mis_solicitudes(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
   PKG_SOLICITUDES_CORE.validar_aspirante_identidad(p_ficha,p_periodo,p_anio);
-  OPEN p_resultado FOR SELECT id_solicitud,id_convocatoria,id_tipo_solicitud,id_estatus_solicitud,fecha_solicitud,fecha_actualizacion
-   FROM Solicitudes WHERE ficha=p_ficha AND periodo=p_periodo AND anio=p_anio;
+  PKG_SOLICITUDES_CORE.abrir_solicitudes(NULL,p_ficha,p_periodo,p_anio,p_resultado);
+ END;
+ PROCEDURE mis_datos(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_aspirante_identidad(p_ficha,p_periodo,p_anio);
+  OPEN p_resultado FOR SELECT a.ficha,a.nombre,a.primer_apellido,a.segundo_apellido,a.semestre,
+    a.periodo,pe.descripcion AS periodo_descripcion,a.anio
+   FROM Aspirantes a JOIN Periodos pe ON pe.id_periodo=a.periodo
+   WHERE a.ficha=p_ficha AND a.periodo=p_periodo AND a.anio=p_anio;
+ END;
+ PROCEDURE mi_historial(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_aspirante_identidad(p_ficha,p_periodo,p_anio);
+  PKG_SOLICITUDES_CORE.abrir_historial(NULL,p_ficha,p_periodo,p_anio,p_resultado);
+ END;
+ PROCEDURE convocatorias_disponibles(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_resultado OUT SYS_REFCURSOR) IS
+ BEGIN
+  PKG_SOLICITUDES_CORE.validar_aspirante_identidad(p_ficha,p_periodo,p_anio);
+  PKG_SOLICITUDES_CORE.abrir_convocatorias(NULL,p_ficha,p_periodo,p_anio,p_resultado);
  END;
  PROCEDURE mis_deducciones(p_ficha VARCHAR2,p_periodo NUMBER,p_anio NUMBER,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
@@ -334,8 +435,48 @@ CREATE OR REPLACE PACKAGE PKG_ADMINISTRADOR AUTHID DEFINER AS
  PROCEDURE actualizar_fechas_convocatoria(p_id_administrador VARCHAR2,p_convocatoria NUMBER,
    p_inicio DATE,p_fin DATE,p_limite_autorizacion DATE,p_limite_aplicacion DATE);
  PROCEDURE actualizar_monto_oficial(p_id_administrador VARCHAR2,p_convocatoria NUMBER,p_tipo NUMBER,p_monto NUMBER);
+  -- Equipo 4: gestion de convocatorias
+  PROCEDURE crear_convocatoria(
+    p_id_administrador VARCHAR2,
+    p_periodo NUMBER,
+    p_anio NUMBER,
+    p_inicio DATE,
+    p_fin DATE,
+    p_limite_autorizacion DATE,
+    p_limite_aplicacion DATE,
+    p_monto_trabajador NUMBER,
+    p_monto_homologado NUMBER,
+    p_id OUT NUMBER
+  );
+
+  PROCEDURE consultar_montos_convocatoria(
+    p_id_administrador VARCHAR2,
+    p_convocatoria NUMBER,
+    p_resultado OUT SYS_REFCURSOR
+  );
+
+  PROCEDURE listar_historial_convocatoria(
+    p_id_administrador VARCHAR2,
+    p_convocatoria NUMBER,
+    p_resultado OUT SYS_REFCURSOR
+  );
+
+  PROCEDURE actualizar_convocatoria(
+    p_id_administrador VARCHAR2,
+    p_convocatoria NUMBER,
+    p_inicio DATE,
+    p_fin DATE,
+    p_limite_autorizacion DATE,
+    p_limite_aplicacion DATE,
+    p_monto_trabajador NUMBER,
+    p_monto_homologado NUMBER,
+    p_fechas_mod OUT NUMBER,
+    p_trabajador_mod OUT NUMBER,
+    p_homologado_mod OUT NUMBER
+  );
 END PKG_ADMINISTRADOR;
 /
+
 CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
  PROCEDURE consultar_correo_solicitud(p_id_administrador VARCHAR2,p_solicitud NUMBER,p_correo OUT VARCHAR2) IS
  BEGIN
@@ -398,7 +539,18 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
  PROCEDURE listar_respuestas(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
   PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
-  OPEN p_resultado FOR SELECT id_respuesta,id_solicitud,id_pregunta,id_opcion,texto_respuesta FROM Respuestas;
+  OPEN p_resultado FOR
+   SELECT s.id_solicitud,p.id_pregunta,p.texto_pregunta,p.obligatoria,
+          tp.nombre AS tipo_pregunta,fp.orden,
+          r.id_respuesta,r.id_opcion,o.texto_opcion,r.texto_respuesta
+     FROM Solicitudes s
+     JOIN Formularios f ON f.id_formulario=s.id_formulario
+     JOIN Formulario_Preguntas fp ON fp.id_formulario=f.id_formulario
+     JOIN Preguntas p ON p.id_pregunta=fp.id_pregunta
+     JOIN Tipo_Preguntas tp ON tp.id_tipo_pregunta=p.tipo_pregunta
+     LEFT JOIN Respuestas r ON r.id_solicitud=s.id_solicitud AND r.id_pregunta=p.id_pregunta
+     LEFT JOIN Opciones o ON o.id_opcion=r.id_opcion
+    ORDER BY s.id_solicitud,fp.orden;
  END;
  PROCEDURE listar_deducciones(p_id_administrador VARCHAR2,p_resultado OUT SYS_REFCURSOR) IS
  BEGIN
@@ -596,11 +748,155 @@ CREATE OR REPLACE PACKAGE BODY PKG_ADMINISTRADOR AS
   PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
   comprobar_plazo(p_convocatoria,'AUTORIZAR');
   IF p_monto IS NULL OR p_monto<0 THEN RAISE_APPLICATION_ERROR(-20886,'Monto invalido'); END IF;
-  UPDATE Convocatorias_TipoSolicitudes SET monto_deduccion=p_monto
-   WHERE id_convocatoria=p_convocatoria AND id_tipo_solicitud=p_tipo;
+  UPDATE Convocatorias_TipoSolicitudes
+     SET monto_deduccion = p_monto,
+         fecha_asignacion_montos = SYSDATE
+   WHERE id_convocatoria = p_convocatoria
+     AND id_tipo_solicitud = p_tipo;
   IF SQL%ROWCOUNT<>1 THEN RAISE_APPLICATION_ERROR(-20887,'Tipo no configurado en convocatoria'); END IF;
  EXCEPTION WHEN OTHERS THEN ROLLBACK TO sp_monto; RAISE;
  END;
+
+ PROCEDURE crear_convocatoria(p_id_administrador VARCHAR2,p_periodo NUMBER,p_anio NUMBER,
+    p_inicio DATE,p_fin DATE,p_limite_autorizacion DATE,p_limite_aplicacion DATE,
+    p_monto_trabajador NUMBER,p_monto_homologado NUMBER,p_id OUT NUMBER) IS
+    v_n NUMBER;
+  BEGIN
+    SAVEPOINT sp_crear_conv_e4;
+    PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+    IF p_periodo IS NULL OR p_anio IS NULL OR p_anio<>TRUNC(p_anio)
+       OR p_anio NOT BETWEEN 2000 AND 2200 THEN
+      RAISE_APPLICATION_ERROR(-20910,'Periodo o anio invalido');
+    END IF;
+    SELECT COUNT(*) INTO v_n FROM Periodos WHERE id_periodo=p_periodo;
+    IF v_n<>1 THEN RAISE_APPLICATION_ERROR(-20910,'Periodo no registrado'); END IF;
+    IF p_inicio IS NULL OR p_fin IS NULL OR p_limite_autorizacion IS NULL
+       OR p_limite_aplicacion IS NULL OR
+       TRUNC(p_inicio)>TRUNC(p_fin) OR
+       TRUNC(p_fin)>TRUNC(p_limite_autorizacion) OR
+       TRUNC(p_limite_autorizacion)>TRUNC(p_limite_aplicacion) THEN
+      RAISE_APPLICATION_ERROR(-20911,'Fechas de convocatoria invalidas');
+    END IF;
+    -- No crear convocatorias cuya configuracion de montos ya este cerrada.
+    IF TRUNC(p_limite_autorizacion)<TRUNC(SYSDATE) THEN
+      RAISE_APPLICATION_ERROR(-20912,'Plazo de autorizacion ya vencido');
+    END IF;
+    IF p_monto_trabajador IS NULL OR p_monto_homologado IS NULL
+       OR p_monto_trabajador<0 OR p_monto_homologado<0
+       OR p_monto_trabajador<>ROUND(p_monto_trabajador,2)
+       OR p_monto_homologado<>ROUND(p_monto_homologado,2)
+       OR p_monto_trabajador>=100000000 OR p_monto_homologado>=100000000 THEN
+      RAISE_APPLICATION_ERROR(-20913,'Montos de deduccion invalidos');
+    END IF;
+    SELECT COUNT(*) INTO v_n FROM Tipo_Solicitudes WHERE id_tipo_solicitud IN (1,2);
+    IF v_n<>2 THEN RAISE_APPLICATION_ERROR(-20914,'Catalogo de tipos incompleto'); END IF;
+    -- Validaciones preventivas; restricciones y trigger siguen protegiendo
+    -- frente a operaciones concurrentes.
+    SELECT COUNT(*) INTO v_n FROM Convocatorias
+     WHERE id_periodo=p_periodo AND anio=p_anio;
+    IF v_n>0 THEN RAISE_APPLICATION_ERROR(-20916,'Ya existe convocatoria para ese periodo y anio'); END IF;
+    -- Regla de solapamiento inclusivo equivalente a trg_convocatorias_intervalo.
+    SELECT COUNT(*) INTO v_n FROM Convocatorias
+     WHERE TRUNC(p_inicio)<=TRUNC(fecha_limite_aplicacion)
+       AND TRUNC(p_limite_aplicacion)>=TRUNC(fecha_inicio_solicitudes);
+    IF v_n>0 THEN RAISE_APPLICATION_ERROR(-20917,'Se superpone con otra convocatoria'); END IF;
+    INSERT INTO Convocatorias(fecha_inicio_solicitudes,fecha_fin_solicitudes,
+      fecha_limite_autorizacion,fecha_limite_aplicacion,id_periodo,anio)
+    VALUES(p_inicio,p_fin,p_limite_autorizacion,p_limite_aplicacion,p_periodo,p_anio)
+    RETURNING id_convocatoria INTO p_id;
+    INSERT INTO Convocatorias_TipoSolicitudes(id_convocatoria,id_tipo_solicitud,monto_deduccion)
+      VALUES(p_id,1,p_monto_trabajador);
+    INSERT INTO Convocatorias_TipoSolicitudes(id_convocatoria,id_tipo_solicitud,monto_deduccion)
+      VALUES(p_id,2,p_monto_homologado);
+  EXCEPTION WHEN OTHERS THEN
+    ROLLBACK TO sp_crear_conv_e4;
+    RAISE;
+  END;
+
+  PROCEDURE consultar_montos_convocatoria(p_id_administrador VARCHAR2,p_convocatoria NUMBER,
+    p_resultado OUT SYS_REFCURSOR) IS
+    v_n NUMBER;
+  BEGIN
+    PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+    SELECT COUNT(*) INTO v_n FROM Convocatorias WHERE id_convocatoria=p_convocatoria;
+    IF v_n<>1 THEN RAISE_APPLICATION_ERROR(-20915,'Convocatoria no registrada'); END IF;
+    OPEN p_resultado FOR
+      SELECT ct.id_convocatoria,ct.id_tipo_solicitud,t.nombre,
+             ct.monto_deduccion,ct.fecha_asignacion_montos
+      FROM Convocatorias_TipoSolicitudes ct
+      JOIN Tipo_Solicitudes t ON t.id_tipo_solicitud=ct.id_tipo_solicitud
+      WHERE ct.id_convocatoria=p_convocatoria
+      ORDER BY ct.id_tipo_solicitud;
+  END;
+
+  PROCEDURE listar_historial_convocatoria(p_id_administrador VARCHAR2,p_convocatoria NUMBER,
+    p_resultado OUT SYS_REFCURSOR) IS
+    v_n NUMBER;
+  BEGIN
+    PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+    SELECT COUNT(*) INTO v_n FROM Convocatorias WHERE id_convocatoria=p_convocatoria;
+    IF v_n<>1 THEN RAISE_APPLICATION_ERROR(-20915,'Convocatoria no registrada'); END IF;
+    OPEN p_resultado FOR
+      SELECT h.id_historial_convocatoria,h.id_convocatoria,h.id_administrador,
+        h.fecha_registro,h.inicio_anterior,h.fin_anterior,
+        h.autorizacion_anterior,h.aplicacion_anterior,
+        h.inicio_nuevo,h.fin_nuevo,h.autorizacion_nueva,h.aplicacion_nueva
+      FROM Historial_Convocatorias h
+      WHERE h.id_convocatoria=p_convocatoria
+      ORDER BY h.fecha_registro DESC,h.id_historial_convocatoria DESC;
+  END;
+
+  PROCEDURE actualizar_convocatoria(p_id_administrador VARCHAR2,p_convocatoria NUMBER,
+    p_inicio DATE,p_fin DATE,p_limite_autorizacion DATE,p_limite_aplicacion DATE,
+    p_monto_trabajador NUMBER,p_monto_homologado NUMBER,
+    p_fechas_mod OUT NUMBER,p_trabajador_mod OUT NUMBER,p_homologado_mod OUT NUMBER) IS
+    c Convocatorias%ROWTYPE;
+    v_trab_actual NUMBER;
+    v_hom_actual NUMBER;
+  BEGIN
+    SAVEPOINT sp_act_conv_e4;
+    PKG_SOLICITUDES_CORE.validar_administrador(p_id_administrador);
+    BEGIN
+      SELECT * INTO c FROM Convocatorias WHERE id_convocatoria=p_convocatoria FOR UPDATE;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20915,'Convocatoria no registrada');
+    END;
+    BEGIN
+      SELECT monto_deduccion INTO v_trab_actual
+        FROM Convocatorias_TipoSolicitudes
+       WHERE id_convocatoria=p_convocatoria AND id_tipo_solicitud=1 FOR UPDATE;
+      SELECT monto_deduccion INTO v_hom_actual
+        FROM Convocatorias_TipoSolicitudes
+       WHERE id_convocatoria=p_convocatoria AND id_tipo_solicitud=2 FOR UPDATE;
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20887,'Tipo no configurado en convocatoria');
+    END;
+    p_fechas_mod:=0;
+    p_trabajador_mod:=0;
+    p_homologado_mod:=0;
+    IF TRUNC(p_inicio)<>TRUNC(c.fecha_inicio_solicitudes)
+       OR TRUNC(p_fin)<>TRUNC(c.fecha_fin_solicitudes)
+       OR TRUNC(p_limite_autorizacion)<>TRUNC(c.fecha_limite_autorizacion)
+       OR TRUNC(p_limite_aplicacion)<>TRUNC(c.fecha_limite_aplicacion) THEN
+      actualizar_fechas_convocatoria(p_id_administrador,p_convocatoria,
+        p_inicio,p_fin,p_limite_autorizacion,p_limite_aplicacion);
+      p_fechas_mod:=1;
+    END IF;
+    IF v_trab_actual<>p_monto_trabajador THEN
+      actualizar_monto_oficial(p_id_administrador,p_convocatoria,1,p_monto_trabajador);
+      p_trabajador_mod:=1;
+    END IF;
+    IF v_hom_actual<>p_monto_homologado THEN
+      actualizar_monto_oficial(p_id_administrador,p_convocatoria,2,p_monto_homologado);
+      p_homologado_mod:=1;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      ROLLBACK TO sp_act_conv_e4;
+      RAISE;
+  END;
 END PKG_ADMINISTRADOR;
 /
 

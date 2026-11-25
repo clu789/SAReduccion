@@ -33,18 +33,19 @@ import org.springframework.test.web.servlet.MvcResult;
  * {@code database/tests/07-probar-aspirantes.sql}: aspirante de anio anterior
  * y coincidencia ambigua entre periodos.
  */
-@SpringBootTest
+// El captcha tiene sus propias pruebas (SecurityFlowTest); aqui se desactiva.
+@SpringBootTest(properties = "sar.security.captcha.enabled=false")
 @AutoConfigureMockMvc
 class ApplicantAuthenticationIntegrationTest {
 
     private static final String CSRF_HEADER = "X-CSRF-TOKEN";
 
-    // Aspirante ficticio del seed, periodo 2.
+    // Aspirante ficticio del seed en periodo 2 (registrado ademas en periodo 1 cerrado).
     private static final String FICHA_PERIODO_2 = "F2026A001";
     private static final String CURP_PERIODO_2 = "MOPA080512MDFRNN01";
-    // Aspirante ficticio del seed, periodo 1.
-    private static final String FICHA_PERIODO_1 = "F2026B004";
-    private static final String CURP_PERIODO_1 = "FULD080617HDFRRG04";
+    // Segundo aspirante ficticio del seed en el periodo abierto (2).
+    private static final String FICHA_OTRO_ASPIRANTE = "F2026B004";
+    private static final String CURP_OTRO_ASPIRANTE = "FULD080617HDFRRG04";
 
     @Autowired
     private MockMvc mockMvc;
@@ -57,8 +58,8 @@ class ApplicantAuthenticationIntegrationTest {
     }
 
     @Test
-    void applicantOfPeriodOneCanLogin() throws Exception {
-        exerciseLogin(FICHA_PERIODO_1, CURP_PERIODO_1, 1);
+    void secondApplicantOfOpenPeriodCanLogin() throws Exception {
+        exerciseLogin(FICHA_OTRO_ASPIRANTE, CURP_OTRO_ASPIRANTE, 2);
     }
 
     @Test

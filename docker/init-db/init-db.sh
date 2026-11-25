@@ -31,9 +31,10 @@ set +x
 
 readonly init_dir=/opt/sareduccion/init-db
 readonly oracle_pdb=${SAR_ORACLE_DATABASE:-XEPDB1}
-# Numero de tablas creadas por 02-crear-estructura.sql. Si se agrega o quita
+# Numero de tablas creadas por 02-crear-estructura.sql (22) mas la bitacora
+# SEG_AUDITORIA_ACCESOS de 07-auditoria-seguridad.sql (1). Si se agrega o quita
 # una tabla, actualizar esta constante y el inventario del script 02.
-readonly expected_tables=22
+readonly expected_tables=23
 
 required_variables=(
   ORACLE_PASSWORD
@@ -133,6 +134,8 @@ run_as_app 02-crear-estructura.sql
 run_as_sys 03-crear-identidades-roles.sql
 run_as_sys 04-crear-cuenta-tecnica.sql
 run_as_app 05-crear-paquetes-permisos.sql
+run_as_app 07-auditoria-seguridad.sql
+run_as_app 07-paquete-formulario.sql
 
 if [[ "$sar_seed_activo" == true ]]; then
   printf 'Cargando datos de desarrollo (SAR_LOAD_DEV_SEED activo).\n'
@@ -176,10 +179,10 @@ BEGIN
 
   SELECT COUNT(*) INTO n FROM DBA_OBJECTS
    WHERE OWNER = '${ORACLE_APP_USER}'
-     AND OBJECT_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE')
+     AND OBJECT_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD', 'PKG_FORMULARIO')
      AND OBJECT_TYPE IN ('PACKAGE', 'PACKAGE BODY')
      AND STATUS = 'VALID';
-  assert_count(n, 6, 'paquetes validos');
+  assert_count(n, 10, 'paquetes validos');
 
   SELECT COUNT(*) INTO n FROM DBA_USERS
     WHERE USERNAME IN ('${ORACLE_ALUMNO_USER}', '${ORACLE_ADMIN_USER}', '${ORACLE_BACKEND_USER}');
@@ -203,25 +206,33 @@ BEGIN
 
   SELECT COUNT(*) INTO n FROM DBA_TAB_PRIVS
    WHERE GRANTEE = '${ORACLE_BACKEND_USER}' AND OWNER = '${ORACLE_APP_USER}'
-     AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE') AND PRIVILEGE = 'EXECUTE';
-  assert_count(n, 3, 'EXECUTE solo sobre los paquetes autorizados');
+     AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD', 'PKG_FORMULARIO')
+     AND PRIVILEGE = 'EXECUTE';
+  assert_count(n, 5, 'EXECUTE solo sobre los paquetes autorizados');
 
   SELECT COUNT(*) INTO n FROM DBA_TAB_PRIVS
    WHERE GRANTEE = '${ORACLE_BACKEND_USER}'
      AND NOT (OWNER = '${ORACLE_APP_USER}'
-              AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE')
+              AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD', 'PKG_FORMULARIO')
               AND PRIVILEGE = 'EXECUTE');
   assert_count(n, 0, 'sin grants de objetos adicionales para la cuenta tecnica');
 
   SELECT COUNT(*) INTO n FROM DBA_TAB_PRIVS
    WHERE GRANTEE IN ('ROL_SAR_ESTUDIANTE_SIM', 'ROL_SAR_ADMIN_SIM')
-     AND OWNER = '${ORACLE_APP_USER}' AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE')
+     AND OWNER = '${ORACLE_APP_USER}'
+     AND TABLE_NAME IN ('PKG_ESTUDIANTE', 'PKG_ADMINISTRADOR', 'PKG_ASPIRANTE', 'PKG_SEGURIDAD', 'PKG_FORMULARIO')
      AND PRIVILEGE = 'EXECUTE';
   assert_count(n, 0, 'sin EXECUTE de paquetes para usuarios individuales');
 
   SELECT COUNT(*) INTO n FROM DBA_ROLE_PRIVS
    WHERE GRANTEE = '${ORACLE_APP_USER}' AND GRANTED_ROLE = 'DBA';
   assert_count(n, 0, 'SA_REDUCCION sin rol DBA');
+
+  SELECT COUNT(*) INTO n FROM DBA_SCHEDULER_JOBS
+   WHERE OWNER = '${ORACLE_APP_USER}'
+     AND JOB_NAME = 'JOB_SEG_DEPURAR_AUDITORIA'
+     AND ENABLED = 'TRUE';
+  assert_count(n, 1, 'job programado de depuracion de auditoria activo');
 
   -- Datos de aplicacion: deben existir solo si el seed de desarrollo esta activo.
   SELECT COUNT(*) INTO n FROM ${ORACLE_APP_USER}.Estudiantes;

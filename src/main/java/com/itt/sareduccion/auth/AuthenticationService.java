@@ -107,6 +107,16 @@ public class AuthenticationService {
         }
     }
 
+    /** Correo registrado del aspirante para el envio del codigo temporal. */
+    public String correoAspirante(ApplicantPrincipal principal) {
+        try {
+            return applicantRepository.correoRegistrado(principal.getFicha(), principal.getPeriodoValue(),
+                    principal.getAnioValue());
+        } catch (DataAccessException exception) {
+            throw new AuthenticationUnavailableException();
+        }
+    }
+
     private boolean hasOracleError(Throwable throwable, int expectedCode) {
         for (Throwable current = throwable; current != null; current = current.getCause()) {
             if (current instanceof SQLException && ((SQLException) current).getErrorCode() == expectedCode) {

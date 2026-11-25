@@ -23,6 +23,9 @@ const Http = {
   csrfToken: null,
 
   async get(endpoint) {
+    if (window.ITTSecurity) {
+      return window.ITTSecurity.json(Config.apiBase + endpoint, { method: 'GET' });
+    }
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
@@ -40,11 +43,16 @@ const Http = {
   },
 
   async post(endpoint, body) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (endpoint === '/auth/login' || endpoint === '/auth/logout' || endpoint === '/notificaciones') {
-      if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
-      headers['X-CSRF-TOKEN'] = this.csrfToken;
+    if (window.ITTSecurity) {
+      return window.ITTSecurity.json(Config.apiBase + endpoint, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
     }
+    const headers = { 'Content-Type': 'application/json' };
+    if (!this.csrfToken) await this.authSession();
+    if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
+    headers['X-CSRF-TOKEN'] = this.csrfToken;
     const resp = await fetch(Config.apiBase + endpoint, {
       method: 'POST',
       headers,
@@ -63,6 +71,13 @@ const Http = {
   },
 
   async authSession() {
+    // Equipo 1: con el cliente común cargado se comparte una sola consulta de
+    // sesión, para que el token CSRF y el captcha pertenezcan a la misma sesión.
+    if (window.ITTSecurity) {
+      const session = await window.ITTSecurity.sesion();
+      if (session.csrfToken) this.csrfToken = session.csrfToken;
+      return session;
+    }
     try {
       return await this.get('/auth/me');
     } catch (error) {
@@ -72,6 +87,12 @@ const Http = {
   },
 
   async put(endpoint, body) {
+    if (window.ITTSecurity) {
+      return window.ITTSecurity.json(Config.apiBase + endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      });
+    }
     const headers = { 'Content-Type': 'application/json' };
     if (!this.csrfToken) throw new Error('Recargue la página para renovar la sesión.');
     headers['X-CSRF-TOKEN'] = this.csrfToken;
@@ -84,7 +105,7 @@ const Http = {
     const data = resp.status === 204 ? null : await resp.json().catch(() => ({}));
     if (data?.csrfToken) this.csrfToken = data.csrfToken;
     if (!resp.ok) {
-      const error = new Error(data?.error || 'No se pudo completar la solicitud.');
+      const error = new Error(data?.message || data?.error || 'No se pudo completar la solicitud.');
       error.status = resp.status;
       error.payload = data;
       throw error;
@@ -95,6 +116,10 @@ const Http = {
 
 const AuthSession = {
   async requireRole(expectedRole, loginPath, otherProfileLoginPath) {
+    if (window.ITTSecurity) {
+      const session = await window.ITTSecurity.protegerPagina(expectedRole, { login: loginPath });
+      return Boolean(session);
+    }
     try {
       const session = await Http.authSession();
       if (!session.authenticated) {
@@ -145,6 +170,8 @@ const AuthSession = {
 };
 
 function mensajeLogin(error) {
+  if (error.payload?.error === 'CAPTCHA_INVALID') return 'La verificación de seguridad no es correcta. Intente de nuevo.';
+  if (error.status === 429) return 'Demasiados intentos. Espere unos minutos e intente de nuevo.';
   if (error.status === 503) return 'El servicio de autenticación no está disponible. Intente más tarde.';
   if (error.status === 403) return 'La sesión de seguridad expiró. Recargue la página e intente de nuevo.';
   return 'Credenciales o perfil no válidos.';
@@ -165,8 +192,19 @@ const Spinner = {
 };
 
 /* ─────────────────────────────────────────
-   ALERTAS EN-PÁGINA
+   ESCAPE HTML Y ALERTAS EN-PÁGINA
 ───────────────────────────────────────── */
+const Html = {
+  escapar(valor) {
+    return String(valor ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+};
+
 const Alerta = {
   mostrar(contenedorId, tipo, mensaje, duracion = 0) {
     const contenedor = document.getElementById(contenedorId);
@@ -180,8 +218,14 @@ const Alerta = {
     }[tipo] || 'fa-info-circle';
 
     const div = document.createElement('div');
-    div.className = `alerta alerta-${tipo}`;
-    div.innerHTML = `<i class="fa ${icono}"></i><span>${mensaje}</span>`;
+    div.className = `alerta alerta-${Html.escapar(tipo)}`;
+    const iconEl = document.createElement('i');
+    iconEl.className = `fa ${icono}`;
+    iconEl.setAttribute('aria-hidden', 'true');
+    const spanEl = document.createElement('span');
+    spanEl.textContent = mensaje == null ? '' : String(mensaje);
+    div.appendChild(iconEl);
+    div.appendChild(spanEl);
     contenedor.innerHTML = '';
     contenedor.appendChild(div);
 
@@ -200,6 +244,7 @@ const Alerta = {
 ───────────────────────────────────────── */
 const Modal = {
   _confirmResolve: null,
+  _cierreIniciado: false,
 
   abrir(modalId) {
     const el = document.getElementById(modalId);
@@ -217,10 +262,18 @@ const Modal = {
     }
   },
   iniciarCierre() {
+    if (this._cierreIniciado) return;
+    this._cierreIniciado = true;
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) this.cerrar(overlay.id);
       });
+    });
+    document.querySelectorAll('[data-modal-cerrar]').forEach(btn => {
+      btn.addEventListener('click', () => this.cerrar(btn.dataset.modalCerrar));
+    });
+    document.querySelectorAll('[data-confirmar-valor]').forEach(btn => {
+      btn.addEventListener('click', () => this.resolverConfirmar(btn.dataset.confirmarValor === 'true'));
     });
   },
 
@@ -230,8 +283,13 @@ const Modal = {
     return new Promise((resolve) => {
       const tituloEl = document.getElementById('confirmar-titulo');
       const textoEl = document.getElementById('confirmar-texto');
-      if (tituloEl) tituloEl.innerHTML = `<i class="fa fa-question-circle"></i> ${titulo}`;
-      if (textoEl) textoEl.textContent = mensaje;
+      if (tituloEl) {
+        const iconEl = document.createElement('i');
+        iconEl.className = 'fa fa-question-circle';
+        iconEl.setAttribute('aria-hidden', 'true');
+        tituloEl.replaceChildren(iconEl, document.createTextNode(` ${titulo == null ? 'Confirmar acción' : String(titulo)}`));
+      }
+      if (textoEl) textoEl.textContent = mensaje == null ? '' : String(mensaje);
       this._confirmResolve = resolve;
       this.abrir('modal-confirmar');
     });
@@ -278,9 +336,12 @@ const LoginAdmin = {
       try {
         await Http.authSession();
         const username = usuario.value.trim().toUpperCase();
+        const captcha = window.ITTSecurity ? window.ITTSecurity.captchaDe('#captcha-login-admin') : null;
         const session = await Http.post('/auth/login', {
           username,
           password: password.value,
+          perfil: 'ADMINISTRADOR',
+          captcha: captcha?.valor() || '',
         });
         if (session.role !== 'ADMIN' || session.identity !== username) {
           await Http.post('/auth/logout', {});
@@ -290,6 +351,8 @@ const LoginAdmin = {
         window.location.href = 'panel-admin.html';
       } catch (err) {
         Alerta.mostrar('alerta-login-admin', 'error', mensajeLogin(err));
+        // El captcha es de un solo uso: cada intento necesita un desafío nuevo.
+        window.ITTSecurity?.captchaDe('#captcha-login-admin')?.recargar();
       } finally {
         password.value = '';
         Spinner.hide();
@@ -322,7 +385,6 @@ const ESTATUS_ICONO = {
 
 const PanelAdmin = {
   solicitudes: [],      // Datos cargados desde la API
-  montos: [],            // Catálogo de montos (inscripción + reinscripción)
   filtroActual: 'todos',
   filtroConvocatoria: '',
   filtroSolicitante: '',
@@ -338,41 +400,30 @@ const PanelAdmin = {
     AuthSession.bindLogout('login.html', 'alerta-admin');
 
     await this.cargarConvocatorias();
-    await Promise.all([this.cargarEstadisticas(), this.cargarSolicitudes(), this.cargarMontos()]);
+    await Promise.all([this.cargarEstadisticas(), this.cargarSolicitudes()]);
     this.iniciarFiltros();
     this.iniciarBuscador();
     this.iniciarOrdenamiento();
-    Modal.iniciarCierre();
-  },
-
-  /* ── Catálogo de montos base (inscripción/reinscripción) ── */
-  async cargarMontos() {
-    try {
-      this.montos = await Http.get('/montos');
-    } catch (err) {
-      this.montos = [];
-      console.warn('No se pudieron cargar los montos:', err.message);
+    this.iniciarEventosModales();
+    const tbody = bandeja.querySelector('tbody');
+    if (tbody) {
+      tbody.addEventListener('click', (e) => {
+        const boton = e.target.closest('button[data-accion][data-id]');
+        if (!boton) return;
+        const id = Number(boton.dataset.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return;
+        if (boton.dataset.accion === 'detalle') this.verDetalle(id);
+        else if (boton.dataset.accion === 'respuestas') this.verRespuestas(id);
+      });
     }
-  },
-
-  /* ── Llena el <select> de monto según el tipo de solicitante ── */
-  poblarSelectMonto(tipoSolicitante) {
-    const select = document.getElementById('select-monto');
-    if (!select) return;
-    const tipoMonto = tipoSolicitante === 'ESTUDIANTE' ? 'REINSCRIPCION' : 'INSCRIPCION';
-    const opciones = (this.montos || []).filter(m => m.tipoMonto === tipoMonto);
-
-    select.innerHTML = '<option value="">Seleccione un monto…</option>' + opciones.map(m => {
-      const monto = Number(m.montoPago).toLocaleString('es-MX', { minimumFractionDigits: 2 });
-      return `<option value="${m.idMonto}">${m.idMonto} — $${monto}</option>`;
-    }).join('');
+    Modal.iniciarCierre();
   },
 
   /* ── Catálogo de convocatorias y selección inicial ── */
   async cargarConvocatorias() {
     const select = document.getElementById('filtro-convocatoria');
     try {
-      const convocatorias = await Http.get('/convocatorias');
+      const convocatorias = await ConvocatoriasAdmin.listar();
       const lista = Array.isArray(convocatorias) ? convocatorias : [];
       if (!select) return;
 
@@ -529,28 +580,30 @@ const PanelAdmin = {
       const motivo = this.hayFiltroConvocatoria
         ? 'No hay solicitudes para la convocatoria seleccionada.'
         : 'No hay solicitudes que mostrar.';
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding:24px;color:var(--itt-texto-claro)">
-        <i class="fa fa-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center tabla-estado-vacia">
+        <i class="fa fa-inbox tabla-vacia-icono"></i>
         ${motivo}</td></tr>`;
       return;
     }
 
     tbody.innerHTML = solicitudes.map(s => {
-      const badgeClass = ESTATUS_BADGE[s.estatus] || 'badge-revision';
-      const actualizado = this.formatearFecha(s.fechaActualizacion ?? s.fecha_actualizacion);
+      const id = Number(s.idSolicitud);
+      const badgeClass = Html.escapar(ESTATUS_BADGE[s.estatus] || 'badge-revision');
+      const actualizado = Html.escapar(this.formatearFecha(s.fechaActualizacion ?? s.fecha_actualizacion));
+      const idEsc = Number.isSafeInteger(id) ? id : Html.escapar(s.idSolicitud);
 
       return `<tr>
-        <td>${s.idSolicitud}</td>
-        <td>${s.nombreSolicitante || s.solicitante || '—'}</td>
-        <td>${s.tipoSolicitante   || '—'}</td>
-        <td>${s.tipoSolicitud      || '—'}</td>
+        <td>${idEsc}</td>
+        <td>${Html.escapar(s.nombreSolicitante || s.solicitante || '—')}</td>
+        <td>${Html.escapar(s.tipoSolicitante   || '—')}</td>
+        <td>${Html.escapar(s.tipoSolicitud      || '—')}</td>
         <td>${actualizado}</td>
-        <td><span class="badge-estatus ${badgeClass}">${s.estatus}</span></td>
+        <td><span class="badge-estatus ${badgeClass}">${Html.escapar(s.estatus)}</span></td>
         <td class="acciones-celda">
-          <button class="btn-itt btn-primario btn-accion-icono" onclick="PanelAdmin.verDetalle(${s.idSolicitud})" title="Ver detalle">
+          <button class="btn-itt btn-primario btn-accion-icono" data-accion="detalle" data-id="${idEsc}" title="Ver detalle">
             <i class="fa fa-eye"></i>
           </button>
-          <button class="btn-itt btn-secundario btn-accion-icono" onclick="PanelAdmin.verRespuestas(${s.idSolicitud})" title="Ver respuestas del formulario">
+          <button class="btn-itt btn-secundario btn-accion-icono" data-accion="respuestas" data-id="${idEsc}" title="Ver respuestas del formulario">
             <i class="fa fa-list-alt"></i>
           </button>
         </td>
@@ -641,15 +694,30 @@ const PanelAdmin = {
     const lista = document.getElementById('lista-respuestas');
     if (!lista) return;
     if (solicitud.respuestas && solicitud.respuestas.length) {
-      lista.innerHTML = solicitud.respuestas.map(r =>
-        `<div class="detalle-campo">
-          <label>Pregunta #${r.idPregunta}</label>
-          <div class="valor">${r.respuesta || '—'}</div>
-        </div>`
-      ).join('');
+      const filas = [...solicitud.respuestas].sort((a, b) => {
+        const ordenA = Number.isFinite(a.orden) ? a.orden : Number.MAX_SAFE_INTEGER;
+        const ordenB = Number.isFinite(b.orden) ? b.orden : Number.MAX_SAFE_INTEGER;
+        return ordenA - ordenB;
+      });
+      lista.innerHTML = filas.map(r => {
+        let respuesta = '';
+        if (r.tipoPregunta === 'OPCION_UNICA' || r.tipoPregunta === 'MIXTA') {
+          respuesta = r.opcion || 'Sin opción registrada';
+          if (r.tipoPregunta === 'MIXTA' && r.respuesta) {
+            respuesta += ` — ${r.respuesta}`;
+          }
+        } else {
+          respuesta = r.respuesta || 'Sin respuesta';
+        }
+        const etiqueta = r.obligatoria === 'S' ? 'Obligatoria' : 'Opcional';
+        const pregunta = r.pregunta || `Pregunta #${r.idPregunta || '—'}`;
+        return `<div class="detalle-campo">
+          <label>${Html.escapar(pregunta)} · ${etiqueta}</label>
+          <div class="valor">${Html.escapar(respuesta)}</div>
+        </div>`;
+      }).join('');
     } else {
-      lista.innerHTML =
-        '<p style="color:var(--itt-texto-claro);font-style:italic;">Sin respuestas registradas.</p>';
+      lista.innerHTML = '<p class="texto-vacio-italica">Sin respuestas registradas.</p>';
     }
   },
 
@@ -693,21 +761,20 @@ const PanelAdmin = {
         historialEl.innerHTML = solicitud.historial.map(h => {
           const { clase, icon } = ESTATUS_ICONO[h.estatus] || { clase: 'pendiente', icon: 'fa-info' };
           const comentarioHtml = h.comentario
-            ? `<div class="hist-comentario"><i class="fa fa-quote-left"></i> ${h.comentario}</div>`
+            ? `<div class="hist-comentario"><i class="fa fa-quote-left"></i> ${Html.escapar(h.comentario)}</div>`
             : '';
           return `
             <li class="historial-item">
-              <div class="historial-icono ${clase}"><i class="fa ${icon}"></i></div>
+              <div class="historial-icono ${Html.escapar(clase)}"><i class="fa ${Html.escapar(icon)}"></i></div>
               <div class="historial-info">
-                <div class="hist-titulo">${h.estatusNombre || h.estatus}</div>
-                <div class="hist-meta">${this.formatearFecha(h.fecha)} · ${h.administrador || 'Alumno'}</div>
+                <div class="hist-titulo">${Html.escapar(h.estatusNombre || h.estatus)}</div>
+                <div class="hist-meta">${Html.escapar(this.formatearFecha(h.fecha))} · ${Html.escapar(h.administrador || 'Alumno')}</div>
                 ${comentarioHtml}
               </div>
             </li>`;
         }).join('');
       } else {
-        historialEl.innerHTML =
-          '<li style="color:var(--itt-texto-claro);font-style:italic;padding:8px 0;">Sin historial registrado.</li>';
+        historialEl.innerHTML = '<li class="historial-vacio">Sin historial registrado.</li>';
       }
     }
 
@@ -721,10 +788,10 @@ const PanelAdmin = {
     if (!bloque || !contenido) return;
 
     if (!deduccion) {
-      bloque.style.display = 'none';
+      bloque.hidden = true;
       return;
     }
-    bloque.style.display = '';
+    bloque.hidden = false;
 
     const monto = (valor) => valor == null ? '—' : `$${Number(valor).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
     contenido.innerHTML = `
@@ -742,8 +809,25 @@ const PanelAdmin = {
       </div>
       <div class="detalle-campo">
         <label>Estatus deducción</label>
-        <div class="valor">${deduccion.estatus || '—'}</div>
+        <div class="valor">${Html.escapar(deduccion.estatus || '—')}</div>
       </div>`;
+  },
+
+  /* ── Eventos de botones y formularios dentro de modales (sin inline handlers) ── */
+  iniciarEventosModales() {
+    document.querySelectorAll('[data-cerrar-detalle]').forEach(btn => {
+      btn.addEventListener('click', () => this.cerrarDetalle());
+    });
+    document.getElementById('btn-aprobar')?.addEventListener('click', () => this.aprobar());
+    document.getElementById('btn-rechazar')?.addEventListener('click', () => this.solicitarCorreccion());
+    document.getElementById('btn-reautorizar')?.addEventListener('click', () => this.reautorizar());
+    document.getElementById('btn-cancelar-deduccion')?.addEventListener('click', () => this.cancelarDeduccion());
+    document.getElementById('btn-aplicar-deduccion')?.addEventListener('click', () => this.aplicarDeduccion());
+    document.getElementById('agregar-comentario')?.addEventListener('change', () => this.alternarComentario());
+    document.getElementById('comentario-correccion')?.addEventListener('input', () => this.actualizarVistaCorreo());
+    document.getElementById('confirmar-decision-correo')?.addEventListener('click', () => this.confirmarDecisionCorreo());
+    document.getElementById('btn-volver-decision-correo')?.addEventListener('click', () => this.cerrarEditorCorreo());
+    document.getElementById('form-notificacion')?.addEventListener('submit', (e) => Notificaciones.enviarManual(e));
   },
 
   /* ── Muestra u oculta botones según el estatus de la solicitud ── */
@@ -830,7 +914,6 @@ const PanelAdmin = {
       aplicar:     document.getElementById('btn-aplicar-deduccion'),
     };
     const grupoComentario = document.getElementById('grupo-comentario');
-    const grupoMonto = document.getElementById('grupo-monto');
     const areaDecision = document.getElementById('area-decision');
 
     this.cerrarEditorCorreo();
@@ -840,13 +923,7 @@ const PanelAdmin = {
 
     Object.values(botones).forEach(b => { if (b) b.style.display = 'none'; });
     if (grupoComentario) grupoComentario.style.display = 'none';
-    if (grupoMonto) grupoMonto.style.display = 'none';
     if (areaDecision) areaDecision.style.display = (esPendiente || esCancelado || esAutorizado) ? '' : 'none';
-
-    if (esPendiente || esCancelado) {
-      this.poblarSelectMonto(solicitud.tipoSolicitante);
-      if (grupoMonto) grupoMonto.style.display = '';
-    }
 
     if (esPendiente) {
       if (botones.aprobar)  botones.aprobar.style.display = '';
@@ -870,8 +947,6 @@ const PanelAdmin = {
     this._solicitudActual = null;
     const comentario = document.getElementById('comentario-correccion');
     if (comentario) comentario.value = '';
-    const selectMonto = document.getElementById('select-monto');
-    if (selectMonto) selectMonto.value = '';
     Alerta.limpiar('alerta-decision');
   },
 
@@ -895,22 +970,10 @@ const PanelAdmin = {
 
   async _autorizarComun(mensajeConfirm, mensajeExito) {
     if (!this._solicitudActual) return;
-    const idMonto = document.getElementById('select-monto')?.value;
-    if (!idMonto) {
-      Alerta.mostrar('alerta-decision', 'advertencia', 'Seleccione el monto base a utilizar.');
-      return;
-    }
     // El comentario es opcional al aprobar o reautorizar; solo rechazar lo exige.
     const comentario = document.getElementById('comentario-correccion')?.value?.trim() || null;
-
-
     const idActual = this._solicitudActual.idSolicitud;
-    const esEstudiante = this._solicitudActual.tipoSolicitante === 'ESTUDIANTE';
-    const body = {
-      comentario,
-      idMontoInscripcion: esEstudiante ? null : Number(idMonto),
-      idMontoReinscripcion: esEstudiante ? Number(idMonto) : null,
-    };
+    const body = { comentario };
     Spinner.show();
     try {
       await Http.put(`/solicitudes/${idActual}/aprobar`, body);
@@ -1029,6 +1092,28 @@ const Notificaciones = {
 };
 
 /* ─────────────────────────────────────────
+   MÓDULO: GESTIÓN DE CONVOCATORIAS
+   Equipo 4
+───────────────────────────────────────── */
+const ConvocatoriasAdmin = {
+  async listar() {
+    const respuesta = await Http.get('/admin/convocatorias');
+    if (!Array.isArray(respuesta.convocatorias)) {
+      throw new Error('La respuesta del listado de convocatorias no es válida.');
+    }
+    return respuesta.convocatorias;
+  },
+
+  async consultar(idConvocatoria) {
+    const id = Number(idConvocatoria);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new Error('Seleccione un identificador de convocatoria válido.');
+    }
+    return Http.get(`/admin/convocatorias/${id}`);
+  },
+};
+
+/* ─────────────────────────────────────────
    INICIALIZACIÓN AUTOMÁTICA
 ───────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1038,5 +1123,24 @@ document.addEventListener('DOMContentLoaded', () => {
   switch (pagina) {
     case 'pagina-login-admin':  LoginAdmin.init();  break;
     case 'pagina-panel-admin':  PanelAdmin.init();  break;
+    case 'pagina-convocatorias-admin':
+      (async () => {
+        const btnGuardar = document.getElementById('btnGuardarConvocatoria');
+        if (btnGuardar) {
+          btnGuardar.disabled = true;
+          btnGuardar.textContent = 'Verificando sesión...';
+        }
+        const autorizado = await AuthSession.requireRole('ADMIN', 'login.html', '/solicitante/login.html');
+        if (!autorizado) return;
+        AuthSession.bindLogout('login.html', 'alertaValidacion');
+        if (btnGuardar) {
+          btnGuardar.disabled = false;
+          const iconEl = document.createElement('i');
+          iconEl.className = 'fa-solid fa-floppy-disk';
+          iconEl.setAttribute('aria-hidden', 'true');
+          btnGuardar.replaceChildren(iconEl, document.createTextNode(' Guardar convocatoria'));
+        }
+      })();
+      break;
   }
 });

@@ -9,6 +9,7 @@ import com.itt.sareduccion.auth.AuthRole;
 import com.itt.sareduccion.auth.SessionAttributes;
 import com.itt.sareduccion.auth.SessionPrincipal;
 import com.itt.sareduccion.repository.AdministradorRepository;
+import com.itt.sareduccion.security.RequiereRol;
 import com.itt.sareduccion.service.NotificacionService;
 
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequiereRol(AuthRole.ADMIN)
 public class NotificacionController {
 
     private final AdministradorRepository administradorRepository;

@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.itt.sareduccion.auth.AuthRole;
 import com.itt.sareduccion.auth.SessionAttributes;
 import com.itt.sareduccion.auth.SessionPrincipal;
-import com.itt.sareduccion.model.ConvocatoriaAdmin;
 import com.itt.sareduccion.model.DeduccionAdmin;
 import com.itt.sareduccion.model.HistorialDeduccionAdmin;
 import com.itt.sareduccion.model.HistorialSolicitudAdmin;
@@ -80,30 +79,6 @@ public class SolicitudAdminController {
         return ResponseEntity.ok(solicitudAdminService.estadisticas(principal.getIdentity(), convocatoria));
     }
 
-    @GetMapping("/convocatorias")
-    public ResponseEntity<?> convocatorias(HttpServletRequest request) {
-        SessionPrincipal principal = administrador(request);
-        if (principal == null) {
-            return noAutorizado();
-        }
-        List<ConvocatoriaAdmin> convocatorias = solicitudAdminService
-                .listarConvocatorias(principal.getIdentity());
-        List<Map<String, Object>> respuesta = new ArrayList<Map<String, Object>>();
-        for (ConvocatoriaAdmin convocatoria : convocatorias) {
-            Map<String, Object> fila = new LinkedHashMap<String, Object>();
-            fila.put("idConvocatoria", convocatoria.getIdConvocatoria());
-            fila.put("fechaInicio", convocatoria.getFechaInicio());
-            fila.put("fechaFin", convocatoria.getFechaFin());
-            fila.put("fechaLimiteAutorizacion", convocatoria.getFechaLimiteAutorizacion());
-            fila.put("fechaLimiteAplicacion", convocatoria.getFechaLimiteAplicacion());
-            fila.put("periodo", convocatoria.getPeriodo());
-            fila.put("anio", convocatoria.getAnio());
-            fila.put("activa", convocatoria.isActiva());
-            respuesta.add(fila);
-        }
-        return ResponseEntity.ok(respuesta);
-    }
-
     @GetMapping("/solicitudes/{id}")
     public ResponseEntity<?> detalle(@PathVariable("id") long id, HttpServletRequest request) {
         SessionPrincipal principal = administrador(request);
@@ -131,7 +106,12 @@ public class SolicitudAdminController {
         for (RespuestaSolicitud item : detalle.getRespuestas()) {
             Map<String, Object> fila = new LinkedHashMap<String, Object>();
             fila.put("idPregunta", item.getIdPregunta());
+            fila.put("pregunta", item.getTextoPregunta());
+            fila.put("obligatoria", item.getObligatoria());
+            fila.put("tipoPregunta", item.getTipoPregunta());
+            fila.put("orden", item.getOrden());
             fila.put("idOpcion", item.getIdOpcion());
+            fila.put("opcion", item.getTextoOpcion());
             fila.put("respuesta", item.getTextoRespuesta());
             respuestas.add(fila);
         }
@@ -219,21 +199,6 @@ public class SolicitudAdminController {
 
     @PutMapping("/solicitudes/{id}/rechazar")
     public ResponseEntity<?> rechazar(@PathVariable("id") long id,
-            @RequestBody(required = false) ComentarioRequest body,
-            @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
-            HttpServletRequest request) {
-        return resolverRechazo(id, body, csrfHeader, request);
-    }
-
-    // TODO(#8 - decidir con el equipo de BD): /correccion es un alias literal de
-    // /rechazar (resolverRechazo); la BD solo tiene una transicion a RECHAZADO(3),
-    // no existe un estatus de "correccion" distinto. El frontend actual solo
-    // invoca /rechazar, nunca /correccion. Opciones:
-    //   a) Mantenerlo como alias documentado (sin cambios de comportamiento).
-    //   b) Retirar el endpoint ya que nadie lo usa hoy.
-    // Pendiente de acuerdo con el equipo de BD/producto; no se decide aqui.
-    @PutMapping("/solicitudes/{id}/correccion")
-    public ResponseEntity<?> correccion(@PathVariable("id") long id,
             @RequestBody(required = false) ComentarioRequest body,
             @RequestHeader(value = CSRF_HEADER, required = false) String csrfHeader,
             HttpServletRequest request) {

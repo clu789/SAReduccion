@@ -64,7 +64,8 @@ class SolicitudAdminServiceIntegrationTest {
                 + ((Number) estadisticas.get("autorizado")).intValue()
                 + ((Number) estadisticas.get("rechazado")).intValue()
                 + ((Number) estadisticas.get("cancelado")).intValue()
-                + ((Number) estadisticas.get("aplicado")).intValue();
+                + ((Number) estadisticas.get("aplicado")).intValue()
+                + ((Number) estadisticas.get("retirado")).intValue();
         assertEquals(((Number) estadisticas.get("total")).intValue(), suma);
     }
 

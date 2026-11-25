@@ -1,0 +1,398 @@
+.hc-subtitulo {
+  margin: -6px 0 18px;
+  font-size: 0.88rem;
+  color: var(--itt-texto-claro);
+}
+
+/* ── Filtros ── */
+.hc-filtros {
+  align-items: flex-end;
+}
+
+.hc-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+#filtro-administrador {
+  max-width: 210px;
+}
+
+.hc-filtro label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--itt-texto-claro);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hc-filtro .form-control-itt {
+  height: 34px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.hc-filtro:first-child {
+  min-width: 230px;
+}
+
+.hc-btn-limpiar {
+  height: 34px;
+  margin-left: auto;
+}
+
+/* ── Resumen de convocatoria ── */
+.hc-resumen .card-itt-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hc-estado-conv {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.hc-estado-conv.activa {
+  background: #d4edda;
+  color: #155724;
+}
+.hc-estado-conv.cerrada {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.hc-fechas-vigentes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 800px) {
+  .hc-fechas-vigentes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.hc-fecha-card {
+  border: 1px solid var(--itt-gris-borde);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  position: relative;
+}
+
+.hc-fecha-card .hc-fecha-paso {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--itt-azul);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hc-fecha-card .hc-fecha-nombre {
+  font-size: 0.78rem;
+  color: var(--itt-texto-claro);
+  margin: 2px 0 4px;
+}
+
+.hc-fecha-card .hc-fecha-valor {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--itt-texto);
+}
+
+.hc-fecha-card .hc-fecha-cambios {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--itt-naranja);
+}
+
+.hc-resumen-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  font-size: 0.85rem;
+  color: var(--itt-texto-claro);
+}
+
+.hc-resumen-meta i {
+  margin-right: 4px;
+}
+
+/* ── Tabla ── */
+.hc-contador {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.hc-tabla-scroll {
+  min-height: 220px;
+}
+
+#tabla-historial tbody td {
+  vertical-align: middle;
+}
+
+.hc-admin-id {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--itt-texto-claro);
+}
+
+.hc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  background: #fff0e0;
+  color: #8a3e00;
+  border: 1px solid #f3b98c;
+  white-space: nowrap;
+}
+
+.hc-chip .hc-chip-dif {
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.hc-vacio {
+  padding: 36px 16px !important;
+  text-align: center !important;
+  color: var(--itt-texto-claro);
+}
+
+.hc-vacio i {
+  display: block;
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+
+/* ── Modal comparativa ── */
+.hc-tabla-comparativa {
+  width: 100%;
+  border: 1px solid #dddddd;
+}
+
+#pagina-historial-convocatorias .hc-tabla-comparativa thead th {
+  background: #d9edf7;
+  color: #333;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 700;
+}
+
+.hc-tabla-comparativa td {
+  padding: 8px 10px;
+}
+
+.hc-tabla-comparativa tr.hc-sin-cambio td {
+  color: #9a9a9a;
+}
+
+.hc-tabla-comparativa tr.hc-con-cambio {
+  background: #fffaf3 !important;
+}
+
+.hc-tabla-comparativa tr.hc-con-cambio td:first-child {
+  font-weight: 700;
+}
+
+.hc-valor-anterior {
+  text-decoration: line-through;
+  color: #b73c39;
+}
+
+.hc-valor-nuevo {
+  font-weight: 700;
+  color: #1e7a3c;
+}
+
+.hc-flecha {
+  text-align: center;
+  color: var(--itt-texto-claro);
+  width: 30px;
+}
+
+.hc-dif-dias {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--itt-naranja);
+}
+
+/* Integración con el diseño de convocatorias */
+#pagina-historial-convocatorias .hc-estado-conv {
+  margin-left: auto;
+}
+#pagina-historial-convocatorias .hc-estado-conv.proxima {
+  background: #fff3cd;
+  color: #664d03;
+}
+#pagina-historial-convocatorias .hc-estado-conv.sin_definir {
+  background: #e9ecef;
+  color: #495057;
+}
+#pagina-historial-convocatorias .hc-estado-conv.activa {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+#pagina-historial-convocatorias .hc-estado-conv.cerrada {
+  background: #e2e3e5;
+  color: #41464b;
+}
+#pagina-historial-convocatorias .hc-fechas-vigentes {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+#pagina-historial-convocatorias .hc-fecha-card {
+  min-width: 0;
+}
+#pagina-historial-convocatorias .hc-fecha-valor {
+  overflow-wrap: anywhere;
+}
+#pagina-historial-convocatorias #tabla-historial th {
+  background: #eaf4fc;
+  color: #333;
+}
+#pagina-historial-convocatorias .hc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+#pagina-historial-convocatorias .hc-modal-overlay.activo {
+  display: flex;
+}
+#pagina-historial-convocatorias .hc-modal-box {
+  background: #fff;
+  border-radius: 9px;
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 12px 45px #0003;
+}
+#pagina-historial-convocatorias .hc-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  background: #337ab7;
+  color: #fff;
+}
+#pagina-historial-convocatorias .hc-modal-header h3 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+#pagina-historial-convocatorias .hc-modal-close {
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+#pagina-historial-convocatorias .hc-modal-body {
+  padding: 20px;
+}
+#pagina-historial-convocatorias .hc-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid #ddd;
+}
+#pagina-historial-convocatorias .hc-detalle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+#pagina-historial-convocatorias .hc-detalle-grid strong {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+}
+#pagina-historial-convocatorias .hc-chip {
+  background: #eaf4fc;
+  color: #286090;
+  border-color: #b6d7ef;
+}
+#pagina-historial-convocatorias .hc-vacio {
+  padding: 32px !important;
+  text-align: center;
+}
+#pagina-historial-convocatorias .hc-tabla-comparativa tr.hc-con-cambio {
+  background: #f5faff;
+}
+#pagina-historial-convocatorias .hc-valor-anterior {
+  text-decoration: line-through;
+  color: #b73c39;
+}
+#pagina-historial-convocatorias .hc-valor-nuevo {
+  color: #1e7a3c;
+  font-weight: 700;
+}
+#pagina-historial-convocatorias .spinner-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1040;
+  background: #ffffff99;
+  align-items: center;
+  justify-content: center;
+}
+#pagina-historial-convocatorias .spinner-overlay.activo {
+  display: flex;
+}
+#pagina-historial-convocatorias .spinner-ring {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #cde3f5;
+  border-top-color: #337ab7;
+  border-radius: 50%;
+  animation: hc-spin 0.8s linear infinite;
+}
+@keyframes hc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 800px) {
+  #pagina-historial-convocatorias .hc-fechas-vigentes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 480px) {
+  #pagina-historial-convocatorias .hc-fechas-vigentes,
+  #pagina-historial-convocatorias .hc-detalle-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hc-sin-diferencias { color: #999; }

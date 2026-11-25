@@ -2,23 +2,31 @@
 
 ## Descripción
 
-Interfaz web exclusiva para el personal de la **Subdirección Académica** del Instituto Tecnológico de Toluca. Permite revisar, aprobar o devolver a corrección las solicitudes de reducción de monto de inscripción.
+Interfaz web exclusiva para el personal de la **Subdirección Académica** del Instituto Tecnológico de Toluca. Permite revisar, aprobar, rechazar, cancelar o aplicar deducciones sobre las solicitudes recibidas y administrar convocatorias y montos oficiales.
 
-Se comunica con el backend (Spring Boot) mediante peticiones `fetch()` a la API REST.
+Se comunica con el backend (Spring Boot) mediante peticiones `fetch()` a la API REST usando [`ITTSecurity`](../SEGURIDAD.md).
 
 ---
 
-## Estructura del proyecto
+## Estructura del módulo
 
-```
+```text
 modulo-administrativo/
-├── login.html          → Acceso restringido para administradores
-├── panel-admin.html    → Bandeja de solicitudes + modal de detalle
+├── login.html                     → Acceso restringido para administradores
+├── panel-admin.html               → Bandeja de solicitudes, detalle, respuestas y deducciones
+├── convocatorias-admin.html       → Listado, detalle y edición rápida de convocatorias
+├── convocatorias-crear-editar.html→ Creación y edición de convocatorias y montos
+├── historial-convocatorias.html   → Consulta del historial de cambios de fechas
 ├── css/
-│   ├── itt-base.css    → Variables, componentes y utilidades base ITT
-│   └── administrativo.css → Estilos específicos del módulo
+│   ├── itt-base.css               → Variables, componentes y utilidades base ITT
+│   ├── administrativo.css         → Estilos del login y panel administrativo
+│   ├── convocatorias.css          → Estilos de gestión de convocatorias
+│   └── historial-convocatorias.css→ Estilos del historial de convocatorias
 ├── js/
-│   └── app.js          → Lógica del módulo (login, bandeja, decisiones)
+│   ├── app.js                     → Lógica de login, bandeja, detalle y decisiones
+│   ├── convocatorias-admin.js     → Listado y edición de convocatorias
+│   ├── convocatorias-crear-editar.js → Alta y validación de convocatorias y montos
+│   └── historial-convocatorias.js → Consulta y filtros de historial de convocatorias
 └── img/
     ├── logo.png
     ├── header.png
@@ -33,6 +41,7 @@ modulo-administrativo/
 |---|---|---|
 | `login.html` | Autenticación exclusiva de administradores | **Equipo 1** |
 | `panel-admin.html` | Bandeja, detalle y resolución de solicitudes y deducciones | **Equipo 2** |
+| `convocatorias-admin.html`, `convocatorias-crear-editar.html`, `historial-convocatorias.html` | Gestión, edición de montos/fechas e historial de convocatorias | **Equipo 4** |
 | Notificaciones (backend) | Envío de avisos al cambiar estatus | **Equipo 6** |
 
 ---
@@ -78,30 +87,28 @@ document.addEventListener('DOMContentLoaded', () => {
 | `GET`  | `/api/solicitudes` | Listar solicitudes; filtros opcionales `estatus`, `convocatoria` y `solicitante` |
 | `GET`  | `/api/solicitudes/estadisticas` | Contadores por estatus |
 | `GET`  | `/api/solicitudes/{id}` | Detalle + respuestas + deducción |
-| `GET`  | `/api/convocatorias` | Convocatorias disponibles para los filtros |
 | `GET`  | `/api/deducciones` | Listar deducciones con filtro opcional `estatus` |
 | `PUT`  | `/api/solicitudes/{id}/aprobar` | Aprobar la solicitud y autorizar su deducción; el comentario es opcional |
-| `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud; exige comentario |
-| `PUT`  | `/api/solicitudes/{id}/correccion` | Devolver a corrección; hoy comparte la transición del rechazo |
+| `PUT`  | `/api/solicitudes/{id}/rechazar` | Rechazar la solicitud (o devolverla para corrección); exige comentario |
+| `PUT`  | `/api/deducciones/{id}/aplicar` | Aplicar definitivamente una deducción autorizada |
 | `PUT`  | `/api/deducciones/{id}/cancelar` | Cancelar una deducción autorizada; el comentario es opcional |
-| `PUT` | `/api/deducciones/{id}/aplicar` | Aplicar la deducción y enviar el aviso; acepta comentario opcional |
-| `POST` | `/api/notificaciones` | Envío manual de un aviso al aspirante |
+| `GET`  | `/api/admin/convocatorias` | Listar convocatorias registradas con su estado calculado |
+| `GET`  | `/api/admin/convocatorias/{id}` | Detalle de convocatoria, montos vigentes y banderas de edición |
+| `POST` | `/api/admin/convocatorias` | Crear nueva convocatoria con montos iniciales |
+| `PUT`  | `/api/admin/convocatorias/{id}` | Actualizar fechas y montos de una convocatoria |
+| `GET`  | `/api/admin/convocatorias/{id}/historial` | Historial de cambios de fechas de la convocatoria |
+| `POST` | `/api/notificaciones` | Envío manual de un aviso al solicitante (`ADMIN` + CSRF) |
 
 ---
 
-## Notas para los equipos
+## Notas técnicas y notificaciones
 
-- El **modal de detalle** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
-- Las estadísticas se cargan automáticamente en `PanelAdmin.cargarEstadisticas()`.
-- El detalle de la solicitud incluye un formulario de aviso por correo. Requiere una sesión de administrador y el token CSRF. La API recibe `idSolicitud` y `mensaje` y devuelve `204` cuando SMTP acepta el aviso.
-- La [guía de notificaciones](../NOTIFICACIONES.md) contiene la configuración SMTP completa, los ejemplos para AWS y el entorno local de pruebas.
-- En una base existente, integra `consultar_correo_solicitud` en la versión consolidada de `PKG_ADMINISTRADOR`, conservando los procedimientos de los otros equipos. La [guía de integración](../NOTIFICACIONES.md#oracle-e-integración-con-dev-y-main) detalla la dependencia de Oracle.
-- La consulta usa el correo de `Aspirantes`. Una solicitud sin correo disponible devuelve `422`. Una falla de SMTP devuelve `503`.
-- Los filtros por chip llaman a `PanelAdmin.cargarSolicitudes(estatus)` con el estatus seleccionado.
-- El comentario es obligatorio al rechazar y opcional al aprobar, reautorizar, cancelar o aplicar. En esta rama, aprobar y reautorizar requieren seleccionar el monto base. La versión integrada de `dev` incorpora su selección automática.
-- El detalle incluye los historiales de solicitud y deducción que devuelven los procedimientos Oracle.
-
-El backend también envía avisos automáticos al aprobar (incluida la reautorización), rechazar, cancelar o aplicar una deducción. El cambio de estado se confirma en Oracle antes de consultar el destinatario y enviar el correo. Las incidencias de correo se registran sin revertir la decisión administrativa.
+- **Seguridad y sesión:** todas las llamadas pasan por `ITTSecurity` (token CSRF automático y manejo de `401`/`403`) y cumplen la política CSP estricta sin scripts ni estilos en línea (ver [`../SEGURIDAD.md`](../SEGURIDAD.md)).
+- **Modal de detalle:** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
+- **Estadísticas y filtros:** las tarjetas se cargan en `PanelAdmin.cargarEstadisticas()` y los chips filtran mediante `PanelAdmin.cargarSolicitudes(estatus)`.
+- **Decisiones y montos:** el comentario es **obligatorio solo al rechazar** y opcional al aprobar, reautorizar o cancelar. El monto base se elige automáticamente por perfil (inscripción para aspirantes, reinscripción para estudiantes; el de ID más alto si hay varios).
+- **Respuestas del formulario:** el modal de respuestas muestra todas las preguntas en orden con su opción seleccionada, especificación mixta u observación (`Sin respuesta` si es opcional y no tiene contenido).
+- **Notificaciones por correo:** al elegir una acción se muestra la vista previa de la plantilla (`src/main/resources/mail/aviso-tramite.html`) antes de confirmar, y también existe envío manual mediante `POST /api/notificaciones`. Los avisos automáticos son asíncronos y un fallo SMTP no revierte la decisión en Oracle. Para configuración SMTP/Mailpit, cobertura y pruebas (`NotificacionServiceTest`, `NotificacionControllerTest`), consulta [`../NOTIFICACIONES.md`](../NOTIFICACIONES.md) y [`../PRUEBAS.md`](../PRUEBAS.md).
 
 ## Decisiones y plantillas de correo del equipo 6
 

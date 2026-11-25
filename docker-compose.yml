@@ -95,6 +95,12 @@ services:
       DB_URL: jdbc:oracle:thin:@//oracle-db:1521/${ORACLE_DATABASE:-XEPDB1}
       DB_USER: ${ORACLE_BACKEND_USER:?Define ORACLE_BACKEND_USER en .env}
       DB_PASSWORD: ${ORACLE_BACKEND_PASSWORD:?Define ORACLE_BACKEND_PASSWORD en .env}
+      # Seguridad (Equipo 1). Valores por omision adecuados para desarrollo.
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SAR_SESSION_TIMEOUT: ${SAR_SESSION_TIMEOUT:-30m}
+      SAR_CAPTCHA_ENABLED: ${SAR_CAPTCHA_ENABLED:-true}
+      SAR_OTP_ENABLED: ${SAR_OTP_ENABLED:-false}
+      SAR_OTP_LOG_CODE: ${SAR_OTP_LOG_CODE:-false}
 
     ports:
       - "${APP_PORT:-8080}:8080"
@@ -119,6 +125,8 @@ services:
     volumes:
       - ./modulo-administrativo:/usr/share/nginx/html/administrativo:ro
       - ./modulo-solicitante:/usr/share/nginx/html/solicitante:ro
+      # Recursos comunes de seguridad y navegacion (Equipo 1): /compartido/...
+      - ./modulo-compartido:/usr/share/nginx/html/compartido:ro
       - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
     profiles:
