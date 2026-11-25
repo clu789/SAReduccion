@@ -4,15 +4,21 @@ Configuración, operación e integración del correo de SAReducción para el enc
 del despliegue y los equipos de desarrollo.
 
 La implementación se mantiene en la rama `equipo-6/notificaciones`. El proveedor
-SMTP y sus credenciales los define el encargado. El backend utiliza esos valores
+SMTP elegido es Brevo; el encargado administra sus credenciales. El backend utiliza esos valores
 desde el entorno del contenedor.
+
+La [demo pública de Vercel](https://sareduccion-notificaciones.vercel.app)
+comparte la plantilla HTML con el backend. Usa un folio ficticio y un envío
+SMTP real protegido con clave privada y lista de destinatarios. La
+[guía de entrega al superadministrador](demo-notificaciones/README.md) explica
+Brevo, Vercel, el contenedor Azure y las comprobaciones pendientes en Oracle 12c.
 
 ## Índice
 
 - [Flujo y cobertura](#flujo-y-cobertura)
-- [Preparación para AWS](#preparación-para-aws)
+- [Preparación para Azure](#preparación-para-azure)
 - [Despliegue con Docker Compose](#despliegue-con-docker-compose)
-- [Variables en el contenedor de AWS](#variables-en-el-contenedor-de-aws)
+- [Variables en el contenedor de Azure](#variables-en-el-contenedor-de-azure)
 - [Referencia de configuración SMTP](#referencia-de-configuración-smtp)
 - [Oracle e integración con dev y main](#oracle-e-integración-con-dev-y-main)
 - [Comprobación de los envíos](#comprobación-de-los-envíos)
@@ -54,7 +60,7 @@ La aceptación por SMTP indica que el servidor recibió el mensaje para su enví
 La entrega final se verifica en el buzón de destino. El éxito de una decisión
 administrativa confirma el cambio en Oracle aunque falle la notificación.
 
-## Preparación para AWS
+## Preparación para Azure
 
 El encargado necesita disponer de estos datos antes de configurar el backend.
 
@@ -63,7 +69,7 @@ El encargado necesita disponer de estos datos antes de configurar el backend.
 | Host, puerto y modo de cifrado SMTP | Proveedor o administrador del correo |
 | Usuario y credencial SMTP, cuando se exija autenticación | Proveedor o administrador del correo |
 | Remitente o dominio autorizado | Proveedor o administrador del correo |
-| Acceso de red desde el backend hasta el destino SMTP | Encargado de AWS |
+| Acceso de red desde el backend hasta el destino SMTP | Encargado de Azure |
 | Cuenta técnica y destino Oracle del entorno | Encargado de base de datos |
 
 La conexión admite SMTP con usuario y contraseña o un relay autorizado. Un proveedor
@@ -101,10 +107,10 @@ de ejemplo por los del proveedor.
 SPRING_PROFILES_ACTIVE=prod
 SAR_LOAD_DEV_SEED=false
 
-SPRING_MAIL_HOST=smtp.proveedor.example
+SPRING_MAIL_HOST=smtp-relay.brevo.com
 SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=usuario-del-proveedor
-SPRING_MAIL_PASSWORD=credencial-del-proveedor
+SPRING_MAIL_USERNAME=usuario-smtp-indicado-por-brevo
+SPRING_MAIL_PASSWORD=clave-smtp-del-entorno
 SAR_MAIL_FROM=avisos@dominio.example
 SMTP_AUTH=true
 
@@ -185,9 +191,9 @@ El archivo principal de Compose levanta Oracle, backend y frontend. Si el encarg
 ya tiene una configuración propia del proyecto integrado, debe incorporar las
 variables SMTP al servicio backend de ese despliegue.
 
-## Variables en el contenedor de AWS
+## Variables en el contenedor de Azure
 
-Si el encargado utiliza una definición de contenedores en AWS, configura las
+Si el encargado utiliza una definición de contenedores en Azure, configura las
 variables en el entorno del **backend** e incorpora las credenciales mediante
 el mecanismo de secretos elegido para el despliegue.
 
@@ -260,18 +266,20 @@ consolidada y valida compilación y permisos de la cuenta técnica. El script 05
 contiene definiciones completas de paquetes que deben conservar los procedimientos
 de todos los equipos.
 
-El responsable de integración debe completar estos pasos.
+Esta rama incorpora `origin/main` en `6b160b0b341bb66091c839753855399cfe128a6d`.
+Se conservan el envío asíncrono y los controles de seguridad de la versión
+integrada. El responsable de integración debe completar estos pasos:
 
-1. Incorporar esta rama a la versión integrada de `dev`.
-2. Resolver las diferencias de `docker-compose.yml`, `.env.example`,
-   `application.properties` y la documentación, conservando las funciones
-   de los demás equipos.
-3. Conservar en `dev` su implementación de notificaciones en segundo plano.
-4. Incluir las clases de configuración y
-   `application-smtp-production.properties` del equipo 6.
+1. Revisar e incorporar la rama a la versión conjunta, conservando las funciones
+   y los cambios posteriores de los demás equipos.
+2. Mantener las clases de configuración y el perfil `smtp-production` del equipo 6.
+3. Configurar los secretos Brevo y el remitente verificado en el backend de Azure.
+4. Con el equipo 7, validar los paquetes y los permisos de la cuenta técnica en
+   la versión exacta de Oracle 12c. El inicializador del repositorio usa XE 21c;
+   las migraciones para la base existente requieren revisión.
 5. Validar el flujo con sesión, permisos y CSRF del equipo 1.
-6. Comprobar la consulta de correo en Oracle y los envíos con el SMTP elegido.
-7. Integrar la versión comprobada en `main`, reconstruir la imagen del backend
+6. Comprobar los cambios en Oracle y la recepción de los correos desde Azure.
+7. Promover la versión comprobada a `main`, reconstruir la imagen del backend
    y publicar el frontend actualizado.
 
 La guía del equipo 6 cubre la configuración SMTP. La aceptación del despliegue
@@ -307,11 +315,16 @@ Las pruebas automatizadas se ejecutan con Maven y Java compatibles con el proyec
 mvn -Dtest=SmtpProductionConfigurationTest,NotificacionServiceTest,NotificacionControllerTest test
 ```
 
-Se comprobaron 15 pruebas de estas clases. Cubren la configuración, los modos de
+Estas pruebas cubren la configuración, los modos de
 cifrado, los errores de arranque, las plantillas con y sin comentario, el escape
 HTML, la alternativa de texto y el endpoint manual. La validación de configuración
 de Compose se realiza con `config --quiet`. Las pruebas con dobles de envío
 se complementan con la entrega al proveedor elegido.
+
+La suite integrada sin pruebas `*IntegrationTest` pasó 97 pruebas Java
+(0 fallos y 0 errores). La demo Node pasó 6 pruebas de plantillas, validación
+y envío con transporte simulado. Estas pruebas no sustituyen la comprobación
+con Oracle 12c y el contenedor Azure reales.
 
 Antes de aprobar el despliegue, el encargado debe registrar el commit o la imagen
 probados, el modo SMTP, los resultados de los casos anteriores y la recepción
@@ -431,9 +444,9 @@ de despliegue. Estos son los casos que debe revisar el encargado.
 
 ## Pendientes de integración
 
-- Elegir el proveedor SMTP y comprobar la entrega desde AWS con sus credenciales.
-- Integrar la configuración de producción con la versión conjunta de `dev`
-  y comprobar sesión, permisos y CSRF antes de promover a `main`.
+- Comprobar la entrega Brevo desde el contenedor Azure definitivo.
+- Verificar Oracle 12c, sesión, permisos y CSRF en el despliegue conjunto antes
+  de promover a `main`.
 - Acordar e integrar la fuente de correo institucional de estudiantes.
 - El comentario de Aplicado se incluye en el correo. Su guardado en el historial
   Oracle requiere ampliar la operación correspondiente.

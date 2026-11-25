@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Notificaciones · SAReducción</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="/" aria-label="SAReducción, inicio">
+      <img src="/logo.png" width="48" height="48" alt="Instituto Tecnológico de Toluca">
+      <span><strong>SAReducción</strong><small>Instituto Tecnológico de Toluca</small></span>
+    </a>
+    <span class="team">Equipo 6 · Servicio de correo</span>
+  </header>
+  <main>
+    <div class="intro">
+      <div><p class="eyebrow">Demostración de notificaciones</p><h1>Notificaciones del trámite</h1>
+      <p>Prepara el aviso, agrega una observación y comprueba su recepción.</p></div>
+      <p id="connection" class="connection" role="status">Comprobando configuración…</p>
+    </div>
+    <div class="workspace">
+      <section class="editor" aria-labelledby="editor-title">
+        <h2 id="editor-title">Preparar correo</h2>
+        <form id="send-form">
+          <fieldset class="states">
+            <legend>Resultado de la solicitud</legend>
+            <label><input type="radio" name="evento" value="Autorizado" checked><span>Autorizado</span></label>
+            <label><input type="radio" name="evento" value="Rechazado"><span>Rechazado</span></label>
+            <label><input type="radio" name="evento" value="Aplicado"><span>Aplicado</span></label>
+            <label><input type="radio" name="evento" value="Cancelado"><span>Cancelado</span></label>
+          </fieldset>
+          <label class="field">Folio de demostración
+            <input id="solicitud" name="solicitud" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,9}" value="10" maxlength="10" required>
+          </label>
+          <div class="comment">
+            <label class="toggle"><input id="add-comment" type="checkbox">Agregar comentario</label>
+            <div id="comment-field" hidden>
+              <label class="field" for="comentario">Comentario para el solicitante</label>
+              <textarea id="comentario" name="comentario" maxlength="2000" rows="4" placeholder="Escribe la observación que acompañará al aviso"></textarea>
+              <span class="hint" id="comment-hint">Se incluirá dentro del correo.</span>
+            </div>
+          </div>
+          <div class="delivery">
+            <h3>Enviar prueba con Brevo</h3>
+            <label class="field">Correo del equipo
+              <input id="destinatario" name="destinatario" type="email" autocomplete="email" placeholder="correo@ejemplo.com" required>
+            </label>
+            <p class="hint">Usa uno de los destinatarios habilitados por el administrador.</p>
+            <label class="field">Clave de demostración
+              <input id="demo-code" type="password" autocomplete="off" placeholder="Clave compartida por el administrador" required>
+            </label>
+          </div>
+          <button id="send-button" class="send" type="submit" disabled>Enviar correo de prueba</button>
+          <div id="send-status" class="send-status" role="status" aria-live="polite"></div>
+        </form>
+      </section>
+      <section class="preview" aria-labelledby="preview-title">
+        <div class="preview-header"><div><p class="eyebrow">Plantilla del proyecto</p><h2 id="preview-title">Vista previa</h2></div><span id="preview-state" class="state-tag">Autorizado</span></div>
+        <div class="subject"><span>Asunto</span><strong id="subject">SAReducción | Autorizado | Solicitud 10</strong></div>
+        <iframe id="email-preview" title="Contenido del correo que recibirá el solicitante" sandbox=""></iframe>
+        <p class="preview-note">La demo usa un folio ficticio y envía un correo real. En el proyecto integrado, el aviso se genera después de guardar la decisión en Oracle.</p>
+      </section>
+    </div>
+  </main>
+  <footer><span>SAReducción · Notificaciones</span><span>Plantillas compartidas con el backend del proyecto</span></footer>
+</body>
+</html>

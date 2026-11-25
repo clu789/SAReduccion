@@ -54,3 +54,7 @@ backups/
 *.imp.log
 expdp*.log
 impdp*.log
+
+# Demo de notificaciones en Vercel
+.vercel/
+demo-notificaciones/dist/
