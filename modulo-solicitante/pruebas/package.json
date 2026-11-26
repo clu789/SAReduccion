@@ -1,8 +1,12 @@
 {
-  "name": "pruebas-formulario-equipo5",
+  "name": "pruebas-frontend-sareduccion",
   "version": "1.0.0",
   "private": true,
-  "description": "Pruebas del formulario dinamico de solicitud (Equipo 5) con jsdom",
-  "scripts": { "test": "node formulario.test.js" },
-  "devDependencies": { "jsdom": "^22.1.0" }
+  "description": "Pruebas JSDOM de modulo-solicitante y modulo-administrativo",
+  "scripts": {
+    "test": "node run-all.js"
+  },
+  "devDependencies": {
+    "jsdom": "^22.1.0"
+  }
 }

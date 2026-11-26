@@ -48,7 +48,7 @@ Debes ver `sareduccion-oracle` en estado `healthy`, los `OK:` de `init-db.sh` (`
 
 ## 2. Pruebas automatizadas rápidas (sin base de datos)
 
-### A. Pruebas unitarias de Java (86 pruebas en 12 clases)
+### A. Pruebas unitarias de Java (87 pruebas en 12 clases)
 ```powershell
 mvn -o test "-Dtest=!*IntegrationTest"
 ```
@@ -58,11 +58,14 @@ Validan:
 - Correo OTP y notificaciones (`CorreoOtpDeliveryTest`, `NotificacionServiceTest`, `NotificacionControllerTest`): activación condicional del bean SMTP, construcción HTML/texto plano segura ante XSS y propagación de `MDC` en envío asíncrono.
 - Reglas de negocio y controladores (`SolicitudAdminServiceTest`, `ConvocatoriaGestionServiceTest`, `ConvocatoriaGestionControllerTest`, `SolicitanteServiceTest`, `ValidadorRespuestasTest`, `TraductorErroresOracleTest`, `RutasUnificadasControllerTest`): traducción de códigos ORA positivos/negativos (`20870`, `20915` -> `404`), cálculo de estado/`activa`, eliminación de rutas duplicadas (`404`) y respuestas de formulario.
 
-### B. Sintaxis JS y pruebas JSDOM del formulario dinámico (64 verificaciones)
-Requieren **Node.js 16 o superior** y simulan las respuestas del backend sin necesitar Oracle, Docker ni navegador. Cubren preguntas `ABIERTA`, `OPCION_UNICA` y `MIXTA`, validaciones en vivo, envío con token CSRF, manejo de errores (`400`, `401`, `403`, `409`, `500`), solicitud existente, flujo de reenvío (precarga, cambio de tipo, estados no permitidos), aspirantes, aislamiento de roles y protección contra XSS.
+### B. Sintaxis JS y pruebas JSDOM de ambos módulos (106 verificaciones)
+Requieren **Node.js 16 o superior** y simulan las respuestas del backend sin necesitar Oracle, Docker ni navegador.
+- [`modulo-solicitante/pruebas/formulario.test.js`](modulo-solicitante/pruebas/formulario.test.js) (64 verificaciones): preguntas `ABIERTA`, `OPCION_UNICA` y `MIXTA`, validaciones en vivo, envío con token CSRF, manejo de errores (`400`, `401`, `403`, `409`, `500`), solicitud existente, flujo de reenvío (precarga, cambio de tipo, estados no permitidos), aspirantes, aislamiento de roles y XSS.
+- [`modulo-solicitante/pruebas/panel-solicitante.test.js`](modulo-solicitante/pruebas/panel-solicitante.test.js) (23 verificaciones): validación de login alumno/aspirante, flujo OTP de aspirante (`202` + reenvío `429` + confirmación), perfil sin CURP, convocatorias, retiro con CSRF, acciones por estado, XSS y aislamiento de roles.
+- [`modulo-administrativo/pruebas/panel-admin.test.js`](modulo-administrativo/pruebas/panel-admin.test.js) (19 verificaciones): bandeja, filtros (incluido `Retiradas`), ordenamiento, modal de respuestas, vista previa de correo, rechazo obligatorio, aplicación con comentario opcional, aviso manual (`422`), `<dialog>` de convocatorias, alta con validaciones, historial comparativo y XSS.
 
 ```powershell
-node --check modulo-compartido/js/itt-security.js modulo-administrativo/js/app.js modulo-administrativo/js/convocatorias-admin.js modulo-administrativo/js/convocatorias-crear-editar.js modulo-administrativo/js/historial-convocatorias.js modulo-solicitante/js/app.js modulo-solicitante/js/formulario.js modulo-solicitante/pruebas/formulario.test.js
+node --check modulo-compartido/js/itt-security.js modulo-administrativo/js/app.js modulo-administrativo/js/convocatorias-admin.js modulo-administrativo/js/convocatorias-crear-editar.js modulo-administrativo/js/historial-convocatorias.js modulo-administrativo/pruebas/panel-admin.test.js modulo-solicitante/js/app.js modulo-solicitante/js/formulario.js modulo-solicitante/pruebas/formulario.test.js modulo-solicitante/pruebas/panel-solicitante.test.js modulo-solicitante/pruebas/run-all.js modulo-solicitante/pruebas/rendimiento-e2e.js
 
 cd modulo-solicitante/pruebas
 npm test
@@ -94,7 +97,16 @@ Deben pasar **15 de 15** pruebas (`AuthenticationIntegrationTest`, `ApplicantAut
 
 > **Nota sobre otras pruebas en BD:**
 > - `EstudianteRepositoryIntegrationTest` solo corre si defines `SAR_JDBC_TEST_NUMERO_CONTROL` con un estudiante específico de pruebas JDBC (`"ESTUDIANTE DE PRUEBA"`), distinto del seed.
-> - Para validar también auditoría SQL directa en Oracle XE, puedes ejecutar dentro del contenedor `docker/init-db/pruebas/07-auditoria-seguridad-test.sql` como `SA_REDUCCION`.
+> - **Suite PL/SQL de auditoría y reglas de negocio:** Con Docker levantado, puedes ejecutar como `SA_REDUCCION` sin dejar datos residuales (usa `ROLLBACK` final):
+>   - [`docker/init-db/pruebas/07-auditoria-seguridad-test.sql`](docker/init-db/pruebas/07-auditoria-seguridad-test.sql) (8 comprobaciones de `PKG_SEGURIDAD` y `JOB_SEG_DEPURAR_AUDITORIA`).
+>   - [`docker/init-db/pruebas/reglas-negocio-test.sql`](docker/init-db/pruebas/reglas-negocio-test.sql) (22 comprobaciones del ciclo completo de solicitudes, respuestas, retiro, reenvío, rechazo, autorización, cancelación, recálculo al aplicar, inmutabilidad de historiales, traslape de convocatorias y desambiguación de aspirantes).
+
+### C. Pruebas E2E en vivo, cabeceras CSP y benchmark de rendimiento (`rendimiento-e2e.js`)
+Con la pila completa levantada (`http://localhost:8081`), ejecuta desde la raíz (lee las credenciales de `.env`):
+```powershell
+node modulo-solicitante/pruebas/rendimiento-e2e.js
+```
+Valida cabeceras HTTP y CSP estricta sin `unsafe-inline` en Nginx, rechazos `401`/`403`/`404`, login real con captcha accesible para los tres perfiles y tandas concurrentes (25 peticiones, 5 simultáneas) sobre los endpoints principales.
 
 ---
 
@@ -193,7 +205,31 @@ curl.exe -s -I http://localhost:8081/administrativo/convocatorias-admin.html
 
 ---
 
-## 7. Escenarios que NO aplican aún (pendientes fuera de alcance)
+## 7. Resultados de verificación registrados (25 de noviembre de 2026)
+
+| Suite / Verificación | Resultado | Detalle observado |
+| --- | --- | --- |
+| Java unitarias (`!*IntegrationTest`) | **87 / 87** | 12 clases, 0 fallos, 0 omitidas |
+| Java integración Oracle XE | **15 / 15** | `AuthenticationIntegrationTest`, `ApplicantAuthenticationIntegrationTest`, `SolicitudAdminServiceIntegrationTest` |
+| Sintaxis JS + JSDOM (`run-all.js`) | **106 / 106** | `formulario.test.js` (64), `panel-solicitante.test.js` (23), `panel-admin.test.js` (19) |
+| PL/SQL `PKG_SEGURIDAD` | **8 / 8** | Transacción autónoma, truncado, validaciones, `JOB_SEG_DEPURAR_AUDITORIA` habilitado |
+| PL/SQL reglas de negocio | **22 / 22** | Ciclo completo + inmutabilidad + `ROLLBACK` limpio |
+| E2E en vivo + CSP + rendimiento | **22 / 22** | `p50` de `8.9 ms` a `13.1 ms`; `p95` de `12.4 ms` a `31.8 ms` (25 reqs, 5 concurrentes, 100% HTTP 200) sobre seed de desarrollo |
+| OTP + SMTP en vivo (Mailpit) | **Exitoso** | Aspirante `F2026A001` (`202` -> código 6 dígitos en Mailpit -> `200 APPLICANT`) + aviso manual `204` recibido |
+| Respaldo y restauración (`expdp`/`impdp`) | **Exitoso** | `expdp` 23 tablas (SHA-256 verificado); `impdp` en esquema temporal `SA_REDUCCION_REST` (23 tablas, 6/6 paquetes `VALID`, 17 secuencias, 24 triggers) |
+| Compatibilidad navegadores (`RNF-32`) | **Parcial** | Auditoría estática de estándares web superada (sin APIs experimentales; `<dialog>` y `replaceChildren` estándar); pendiente prueba manual en Chrome/Firefox/Safari físicos |
+
+**Latencias medidas sobre el entorno Docker local (`rendimiento-e2e.js`, seed de 17 solicitudes):**
+- `GET /api/solicitudes`: `min=7.4ms`, `p50=12.4ms`, `p95=31.8ms`, `max=40.5ms` (`25/25` HTTP 200)
+- `GET /api/solicitudes/estadisticas`: `min=7.8ms`, `p50=10.5ms`, `p95=15.2ms`, `max=16.4ms` (`25/25` HTTP 200)
+- `GET /api/admin/convocatorias`: `min=6.3ms`, `p50=8.9ms`, `p95=12.4ms`, `max=12.7ms` (`25/25` HTTP 200)
+- `GET /api/solicitante/convocatorias`: `min=9.0ms`, `p50=10.8ms`, `p95=14.7ms`, `max=16.4ms` (`25/25` HTTP 200)
+- `GET /api/solicitante/solicitudes`: `min=8.9ms`, `p50=12.4ms`, `p95=17.0ms`, `max=18.2ms` (`25/25` HTTP 200)
+- `GET /api/solicitante/formulario?convocatoria=900002&tipo=1`: `min=11.0ms`, `p50=13.1ms`, `p95=18.6ms`, `max=19.2ms` (`25/25` HTTP 200)
+
+---
+
+## 8. Escenarios que NO aplican aún (pendientes fuera de alcance)
 
 - **Notificaciones por correo a estudiantes:** Aún no existe tabla/servicio institucional de correos para alumnos.
 - **Generación de recibos y sistema de pagos:** El flujo termina en deducción `APLICADO`.
