@@ -270,7 +270,7 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 | Estado | Requerimientos | Observación |
 | --- | --- | --- |
 | Parcial | RF-97, RF-98, RF-99, RF-100 | Las plantillas y el envío automático existen, pero la documentación indica cobertura completa para aspirantes y cobertura pendiente para estudiantes. |
-| Parcial | RNF-32 | El frontend usa estándares web compatibles y pasó auditoría estática + 106 pruebas JSDOM, pero falta matriz de pruebas ejecutadas en navegadores reales (Chrome, Firefox, Safari y Chromium). |
+| Parcial | RNF-32 | El frontend pasó auditoría estática de estándares, 106 pruebas JSDOM y verificación en vivo en Chrome (escritorio `1280x800` y móvil `390x844`, 0 errores JS y 0 violaciones CSP), pero falta matriz de pruebas ejecutadas en Firefox y Safari reales. |
 | Parcial | RNF-59 | La inicialización es controlada y visible, pero los cambios sobre una base existente requieren un procedimiento manual y no existe una migración automática. |
 | Pendiente | RF-106 | El procedimiento solo consulta correo de aspirantes; falta integrar la fuente institucional de correo para estudiantes. |
 | Pendiente | RNF-57 | Oracle 12c institucional no ha sido probado ni se ha validado la compatibilidad de scripts, objetos, permisos y configuración del seed. |

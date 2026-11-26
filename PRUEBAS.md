@@ -217,7 +217,7 @@ curl.exe -s -I http://localhost:8081/administrativo/convocatorias-admin.html
 | E2E en vivo + CSP + rendimiento | **22 / 22** | `p50` de `8.9 ms` a `13.1 ms`; `p95` de `12.4 ms` a `31.8 ms` (25 reqs, 5 concurrentes, 100% HTTP 200) sobre seed de desarrollo |
 | OTP + SMTP en vivo (Mailpit) | **Exitoso** | Aspirante `F2026A001` (`202` -> código 6 dígitos en Mailpit -> `200 APPLICANT`) + aviso manual `204` recibido |
 | Respaldo y restauración (`expdp`/`impdp`) | **Exitoso** | `expdp` 23 tablas (SHA-256 verificado); `impdp` en esquema temporal `SA_REDUCCION_REST` (23 tablas, 6/6 paquetes `VALID`, 17 secuencias, 24 triggers) |
-| Compatibilidad navegadores (`RNF-32`) | **Parcial** | Auditoría estática de estándares web superada (sin APIs experimentales; `<dialog>` y `replaceChildren` estándar); pendiente prueba manual en Chrome/Firefox/Safari físicos |
+| Compatibilidad navegadores (`RNF-32`) | **Parcial** | Verificado en **Chrome real** (`1280x800` y móvil `390x844` sobre `http://localhost:8081`): las 8 vistas (login/panel/formulario solicitante y login/bandeja/convocatorias/crear/historial administrativo) pasaron con **0 errores JS**, **0 violaciones CSP** y **0 overflow horizontal** en móvil; auditoría estática superada. Pendiente prueba manual en Firefox y Safari físicos. |
 
 **Latencias medidas sobre el entorno Docker local (`rendimiento-e2e.js`, seed de 17 solicitudes):**
 - `GET /api/solicitudes`: `min=7.4ms`, `p50=12.4ms`, `p95=31.8ms`, `max=40.5ms` (`25/25` HTTP 200)

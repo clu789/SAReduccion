@@ -121,6 +121,29 @@
 
 /* Telefonos */
 @media (max-width: 600px) {
+  #pagina-formulario-dinamico .itt-header-top { justify-content: center; padding: 8px 12px; }
+  #pagina-formulario-dinamico .logo-header--formulario { max-height: 40px; }
+  #pagina-formulario-dinamico .itt-navbar {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+  }
+  #pagina-formulario-dinamico .itt-navbar-links { flex: 1; min-width: 0; gap: 4px; }
+  #pagina-formulario-dinamico .itt-navbar-links li { flex: 1 1 0; min-width: 0; }
+  #pagina-formulario-dinamico .itt-navbar-links li a {
+    text-align: center;
+    padding: 8px 4px;
+    font-size: .8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #pagina-formulario-dinamico .itt-navbar-user { width: auto; flex-shrink: 0; gap: 0; }
+  #pagina-formulario-dinamico .itt-navbar-user .fa-user-circle,
+  #pagina-formulario-dinamico #nombre-usuario-nav { display: none; }
+
   .opcion-radio { padding: 10px; }
   .especificacion { margin-left: 8px; }
   #barra-botones { flex-direction: column-reverse; }
