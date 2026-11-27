@@ -393,7 +393,16 @@ const TabsTipoUsuario = {
     // Al cambiar de pestaña se descartan datos sensibles y avisos previos.
     const password = document.getElementById('password-alumno');
     const curp     = document.getElementById('curp-aspirante');
-    if (password) password.value = '';
+    if (password) {
+      password.value = '';
+      password.type = 'password';
+    }
+    const togglePassword = document.getElementById('toggle-password-alumno');
+    if (togglePassword) {
+      togglePassword.textContent = 'Mostrar';
+      togglePassword.setAttribute('aria-label', 'Mostrar contraseña');
+      togglePassword.setAttribute('aria-pressed', 'false');
+    }
     if (curp) curp.value = '';
     Alerta.limpiar('alerta-login');
   },
@@ -409,6 +418,19 @@ const LoginEstudiante = {
     if (!form) return;
 
     TabsTipoUsuario.init();
+    const password = document.getElementById('password-alumno');
+    const togglePassword = document.getElementById('toggle-password-alumno');
+    const boton = document.getElementById('btn-login');
+    const etiquetaBoton = boton?.querySelector('.login-button-text');
+    const indicadorCarga = boton?.querySelector('.login-button-spinner');
+    togglePassword?.addEventListener('click', () => {
+      const mostrar = password.type === 'password';
+      password.type = mostrar ? 'text' : 'password';
+      togglePassword.textContent = mostrar ? 'Ocultar' : 'Mostrar';
+      togglePassword.setAttribute('aria-label', `${mostrar ? 'Ocultar' : 'Mostrar'} contraseña`);
+      togglePassword.setAttribute('aria-pressed', String(mostrar));
+    });
+
     if (new URLSearchParams(window.location.search).get('sesion') === 'expirada') {
       Alerta.mostrar('alerta-login', 'advertencia', 'Su sesión expiró. Inicie sesión nuevamente.');
     }
@@ -419,10 +441,18 @@ const LoginEstudiante = {
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (boton?.disabled) return;
       const tipoActivo = document.querySelector('.tab-tipo.activo')?.dataset.tipo || 'alumno';
       if (!this.otpPendiente && !this.validar(tipoActivo)) return;
 
-      Spinner.show();
+      const controles = Array.from(form.querySelectorAll('input, button'));
+      const estadoControles = controles.map((control) => [control, control.disabled]);
+      form.setAttribute('aria-busy', 'true');
+      controles.forEach((control) => { control.disabled = true; });
+      if (indicadorCarga) indicadorCarga.hidden = false;
+      if (etiquetaBoton) {
+        etiquetaBoton.textContent = this.otpPendiente ? 'Validando código…' : 'Verificando acceso…';
+      }
       try {
         // Garantiza un token CSRF vigente para el POST.
         await Http.authSession();
@@ -440,7 +470,15 @@ const LoginEstudiante = {
         if (!this.otpPendiente) this.captcha()?.recargar();
       } finally {
         this.limpiarSensibles();
-        Spinner.hide();
+        estadoControles.forEach(([control, estabaDeshabilitado]) => {
+          control.disabled = estabaDeshabilitado;
+        });
+        form.removeAttribute('aria-busy');
+        if (indicadorCarga) indicadorCarga.hidden = true;
+        if (etiquetaBoton) {
+          etiquetaBoton.textContent = this.otpPendiente ? 'Confirmar código' : 'Ingresar al Sistema';
+        }
+        if (this.otpPendiente) document.getElementById('codigo-otp')?.focus();
       }
     });
   },

@@ -207,7 +207,7 @@ Orden de controles en cada inicio de sesión: CSRF, bloqueo temporal, captcha y,
 
 ### Código temporal de aspirantes (OTP)
 
-Está implementado y desactivado por omisión (`SAR_OTP_ENABLED=false`). Cuando se habilita, `com.itt.sareduccion.security.CorreoOtpDelivery` implementa `OtpDelivery` usando `JavaMailSender` siempre que `SPRING_MAIL_HOST` y `SAR_MAIL_FROM` estén configurados (si falla el envío, el acceso responde `503`). Para configurar el servidor SMTP o Mailpit en desarrollo, consulta [`NOTIFICACIONES.md`](NOTIFICACIONES.md).
+Está implementado y desactivado por omisión en desarrollo (`SAR_OTP_ENABLED=false`). El perfil `prod` lo activa por defecto y el Compose de producción fuerza `SAR_OTP_ENABLED=true`. `com.itt.sareduccion.security.CorreoOtpDelivery` usa `JavaMailSender`; se requiere un SMTP configurado (si falla el envío, el acceso responde `503`). Para configurar correo y despliegue TLS, consulta [`NOTIFICACIONES.md`](NOTIFICACIONES.md).
 
 Para probarlo sin servidor de correo, en `.env` define `SAR_OTP_ENABLED=true` y `SAR_OTP_LOG_CODE=true`; el código aparece en `docker compose logs backend` como `OTP-DEV`. No usar `SAR_OTP_LOG_CODE` fuera de desarrollo.
 
@@ -275,6 +275,8 @@ executor.submit(() -> {
 });
 ```
 
+**Errores de Oracle en el formulario.** Los códigos conocidos se traducen a errores de negocio y se registran como `WARN` con operación, código Oracle y tipo de respuesta; no se registra el texto interno de Oracle ni las respuestas del formulario. Los errores desconocidos se registran una sola vez por `GlobalExceptionHandler` con su traza y responden con un mensaje genérico y `correlationId`. La interfaz muestra esa referencia para facilitar el diagnóstico, sin exponer el detalle interno.
+
 **Niveles.**
 
 | Nivel | Cuándo |
@@ -295,10 +297,10 @@ executor.submit(() -> {
 ## 7. Proxy, IP real, cookies y cabeceras
 
 - **IP del cliente.** Nginx sobrescribe `X-Forwarded-For` y `X-Real-IP` con la IP de la conexión, de modo que el cliente no puede falsearlas. El backend (`server.forward-headers-strategy=native`) solo acepta esas cabeceras cuando la conexión viene de un proxy de confianza (`SAR_TRUSTED_PROXIES`; por omisión la red interna de Docker). En tu código usa siempre `request.getRemoteAddr()`; no leas `X-Forwarded-For` directamente.
-- **Puerto 8080.** En desarrollo el backend también está publicado en el host. En un despliegue real no debe exponerse: todo el tráfico entra por Nginx.
+- **Puertos directos.** El Compose de desarrollo publica Oracle y backend para facilitar pruebas locales. El Compose de producción (`docker-compose.smtp-production.yml`) elimina esos puertos: el único acceso público entra por Nginx.
 - **Cabeceras.** La API responde con `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'`, `Cache-Control: no-store` y, por HTTPS, `Strict-Transport-Security`. Las páginas reciben de Nginx `nosniff`, `X-Frame-Options`, `Referrer-Policy` y una CSP que solo permite recursos propios y los CDN de fuentes e iconos en uso.
 - **CSP de las páginas.** `docker/nginx/nginx.conf` aplica CSP estricta sin `'unsafe-inline'` en `script-src` ni `style-src`; todo código y estilo vive en archivos `.js`/`.css` externos con `addEventListener`.
-- **HTTPS.** Al desplegar con TLS: `SESSION_COOKIE_SECURE=true` y descomentar la línea de HSTS en `docker/nginx/nginx.conf`.
+- **HTTPS.** El Compose de producción usa `docker/nginx/nginx.prod.conf`: redirige HTTP a HTTPS, activa HSTS y monta el certificado TLS del despliegue. También fuerza `SESSION_COOKIE_SECURE=true`. El perfil `prod` habilita OTP y evita registrar sus códigos.
 
 ---
 

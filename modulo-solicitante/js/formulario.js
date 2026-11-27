@@ -91,6 +91,14 @@
     vaciar($('alerta-formulario'));
   }
 
+  function conReferencia(mensaje, error) {
+    const referencia = error && error.payload && error.payload.correlationId;
+    if (typeof referencia !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(referencia)) {
+      return mensaje;
+    }
+    return mensaje + ' Referencia: ' + referencia + '.';
+  }
+
   /* ───────────────── API ───────────────── */
   async function api(metodo, ruta, cuerpo) {
     const opciones = { method: metodo, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } };
@@ -137,16 +145,18 @@
         sesionExpirada();
         break;
       case 403:
-        alertar('error', 'Acceso no permitido. Recarga la página; si el problema continúa, vuelve a iniciar sesión.');
+        alertar('error', conReferencia(
+          'Acceso no permitido. Recarga la página; si el problema continúa, vuelve a iniciar sesión.', e));
         break;
       case 404:
-        alertar('advertencia', 'No encontramos la información solicitada.', acciones);
+        alertar('advertencia', conReferencia('No encontramos la información solicitada.', e), acciones);
         break;
       case 409:
-        alertar('advertencia', mensajeServidor || 'La operación no se puede realizar en este momento.', acciones);
+        alertar('advertencia', conReferencia(
+          mensajeServidor || 'La operación no se puede realizar en este momento.', e), acciones);
         break;
       default:
-        alertar('error', 'No fue posible procesar tu solicitud. Intenta más tarde.');
+        alertar('error', conReferencia('No fue posible procesar tu solicitud. Intenta más tarde.', e));
     }
   }
 
@@ -742,7 +752,9 @@
       limpiarErrores();
       const errores = e.payload.errores || [];
       aplicarErrores(errores);
-      alertar('error', errores.length ? 'El servidor encontró respuestas que corregir. Revisa las preguntas marcadas.' : (e.payload.error || 'Las respuestas no son válidas.'));
+      alertar('error', conReferencia(
+        errores.length ? 'El servidor encontró respuestas que corregir. Revisa las preguntas marcadas.'
+          : (e.payload.error || 'Las respuestas no son válidas.'), e));
       return;
     }
     manejarError(e, [enlacePanel()]);

@@ -44,13 +44,6 @@
   z-index: 1;
 }
 
-.login-card .login-logo {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.login-card .login-logo img { max-height: 72px; }
-
 .login-card h1 {
   text-align: center;
   font-size: 1.15rem;
@@ -787,3 +780,411 @@
 .input-mayusculas { text-transform: uppercase; }
 .btn-login-submit { margin-top: 8px; justify-content: center; }
 .login-ayuda { text-align: center; margin-top: 18px; font-size: .78rem; color: var(--itt-texto-claro); }
+
+/* ── Login institucional compartido con el módulo administrativo ── */
+#pagina-login-estudiante .login-wrapper {
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: 28px 18px;
+  overflow: auto;
+  background: #f3f5f7;
+}
+
+#pagina-login-estudiante .login-wrapper::before,
+#pagina-login-estudiante .login-wrapper::after { display: none; }
+
+#pagina-login-estudiante .login-institucion {
+  width: 100%;
+  max-width: 920px;
+  overflow: hidden;
+  border-bottom: 3px solid #337ab7;
+  border-radius: 3px;
+  background: #fff;
+  position: relative;
+  z-index: 1;
+}
+
+#pagina-login-estudiante .login-header-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#pagina-login-estudiante .login-card {
+  max-width: 420px;
+  padding: 30px 36px 24px;
+  border: 1px solid #dce3eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 26px rgba(28, 47, 68, .11);
+}
+
+#pagina-login-estudiante .login-card h1 {
+  margin-bottom: 4px;
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+#pagina-login-estudiante .login-card .login-subtitulo {
+  margin-bottom: 18px;
+  font-size: .88rem;
+}
+
+#pagina-login-estudiante .tabs-tipo-usuario {
+  margin-bottom: 20px;
+  border-color: #dce3eb;
+  border-radius: 5px;
+}
+
+#pagina-login-estudiante .tab-tipo {
+  min-height: 42px;
+  background: #f7f9fb;
+  color: #526170;
+}
+
+#pagina-login-estudiante .tab-tipo.activo {
+  background: #337ab7;
+  color: #fff;
+}
+
+#pagina-login-estudiante .tab-tipo:focus-visible,
+#pagina-login-estudiante .login-password-toggle:focus-visible,
+#pagina-login-estudiante .btn-login-submit:focus-visible {
+  outline: 3px solid rgba(51, 122, 183, .28);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+#pagina-login-estudiante .login-card .form-group { margin-bottom: 16px; }
+#pagina-login-estudiante .login-card .form-group label {
+  margin-bottom: 7px;
+  color: var(--itt-texto);
+}
+
+#pagina-login-estudiante .login-card .form-control-itt {
+  min-height: 46px;
+  padding: 10px 12px;
+  border-radius: 5px;
+}
+
+#pagina-login-estudiante .login-card .form-control-itt:focus {
+  border-color: #337ab7;
+  box-shadow: 0 0 0 3px rgba(51, 122, 183, .15);
+}
+
+#pagina-login-estudiante .login-password-field { position: relative; }
+#pagina-login-estudiante .login-password-field .form-control-itt { padding-right: 82px; }
+#pagina-login-estudiante .login-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: 0;
+  padding: 5px 2px;
+  background: transparent;
+  color: #337ab7;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#pagina-login-estudiante .login-password-toggle:hover { color: #23527c; }
+
+#pagina-login-estudiante .itt-captcha { margin: 2px 0 16px; }
+#pagina-login-estudiante .itt-captcha__desafio {
+  min-height: 72px;
+  justify-content: center;
+}
+#pagina-login-estudiante .itt-captcha__acciones {
+  justify-content: center;
+  gap: 16px;
+}
+#pagina-login-estudiante .itt-captcha__boton { color: #337ab7; }
+#pagina-login-estudiante .itt-captcha__boton:hover { color: #23527c; }
+#pagina-login-estudiante .itt-captcha__campo { min-height: 44px; }
+
+#pagina-login-estudiante .itt-otp__ayuda {
+  margin: 0 0 14px;
+  color: var(--itt-texto-claro);
+  line-height: 1.5;
+}
+#pagina-login-estudiante #paso-otp .itt-captcha__acciones { margin: 12px 0 16px; }
+
+#pagina-login-estudiante .btn-login-submit {
+  min-height: 46px;
+  margin-top: 2px;
+  border-radius: 5px;
+  background: #337ab7;
+}
+#pagina-login-estudiante .btn-login-submit:hover { background: #2e6da4; }
+#pagina-login-estudiante .btn-login-submit:disabled {
+  transform: none;
+  background: #6d91ad;
+  box-shadow: none;
+  cursor: wait;
+}
+
+#pagina-login-estudiante .login-button-spinner {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, .45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: login-solicitante-giro .7s linear infinite;
+}
+#pagina-login-estudiante .login-button-spinner[hidden] { display: none; }
+
+#pagina-login-estudiante .login-ayuda {
+  border-top: 1px solid #edf0f3;
+  padding-top: 15px;
+  line-height: 1.5;
+}
+
+@keyframes login-solicitante-giro { to { transform: rotate(360deg); } }
+
+@media (max-width: 520px) {
+  #pagina-login-estudiante .login-wrapper { justify-content: flex-start; padding: 20px 14px; }
+  #pagina-login-estudiante .login-card { padding: 26px 22px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pagina-login-estudiante .login-button-spinner { animation: none; }
+}
+
+/* ── Portal y formulario de acceso integrado ── */
+#pagina-login-estudiante {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: #f3f5f7;
+}
+
+#pagina-login-estudiante .login-wrapper {
+  display: block;
+  min-height: 100vh;
+  padding: 24px;
+  overflow: visible;
+  background: transparent;
+}
+
+#pagina-login-estudiante .login-page-background {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  color: #333;
+}
+
+#pagina-login-estudiante .login-institucion {
+  max-width: 920px;
+  margin: 0 auto 14px;
+  overflow: hidden;
+  border-bottom: 0;
+  border-radius: 3px;
+  background: #fff;
+  position: relative;
+  z-index: 1;
+}
+
+#pagina-login-estudiante .login-header-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#pagina-login-estudiante .login-portal-nav {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 12px 0 18px;
+  border: 1px solid #dce3eb;
+  border-radius: 4px;
+  background: #f8f8f8;
+  color: #777;
+}
+
+#pagina-login-estudiante .login-portal-nav > span {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+#pagina-login-estudiante .login-portal-nav .tabs-tipo-usuario {
+  align-items: stretch;
+  flex: 0 0 auto;
+  gap: 0;
+  margin: 0;
+  overflow: visible;
+  border: 0;
+}
+
+#pagina-login-estudiante .login-portal-nav .tab-tipo {
+  flex: 0 0 auto;
+  min-height: 50px;
+  padding: 0 18px;
+  border: 0;
+  border-left: 1px solid #e3e3e3;
+  border-radius: 0;
+  background: transparent;
+  color: #555;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background .2s, color .2s, border-color .2s;
+}
+
+#pagina-login-estudiante .login-portal-nav .tab-tipo:hover:not(.activo) {
+  background: #f0f3f6;
+  color: #23527c;
+}
+
+#pagina-login-estudiante .login-portal-nav .tab-tipo.activo {
+  border-bottom: 3px solid #337ab7;
+  background: #fff;
+  color: #337ab7;
+}
+
+#pagina-login-estudiante .login-portal-nav .tab-tipo:focus-visible {
+  outline: 3px solid rgba(51, 122, 183, .28);
+  outline-offset: 2px;
+}
+
+#pagina-login-estudiante .login-panel {
+  max-width: 920px;
+  margin: 16px auto 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#pagina-login-estudiante .login-panel__content {
+  display: flex;
+  justify-content: center;
+  padding: 22px 24px;
+}
+
+#pagina-login-estudiante .login-form-panel {
+  position: static;
+  z-index: auto;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+  text-align: left;
+}
+
+#pagina-login-estudiante .login-form-panel__header {
+  padding: 10px 14px;
+  border-bottom: 1px solid #ddd;
+  background: #f5f5f5;
+}
+
+#pagina-login-estudiante .login-form-panel .login-subtitulo {
+  margin: 0;
+  color: #444;
+  font-size: .95rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+#pagina-login-estudiante .login-form-panel__body {
+  padding: 14px 14px 12px;
+}
+
+#pagina-login-estudiante .login-form-panel form {
+  display: flex;
+  flex-direction: column;
+}
+
+#pagina-login-estudiante .login-form-panel .form-group {
+  margin-bottom: 12px;
+}
+
+#pagina-login-estudiante .login-form-panel .form-control-itt {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+#pagina-login-estudiante .login-form-panel .itt-captcha__campo {
+  min-height: 40px;
+}
+
+#pagina-login-estudiante .login-form-panel .btn-login-submit {
+  width: auto;
+  min-width: 90px;
+  min-height: 40px;
+  margin: 2px 0 0 auto;
+  padding: 8px 14px;
+  align-self: flex-end;
+}
+
+#pagina-login-estudiante .login-page-footer {
+  margin-top: 24px;
+  color: #777;
+  font-size: .78rem;
+  text-align: center;
+}
+
+#pagina-login-estudiante .login-card .login-ayuda {
+  margin: 14px 0 0;
+  font-size: .76rem;
+}
+
+@media (max-width: 768px) {
+  #pagina-login-estudiante .login-panel__content { padding: 20px; }
+}
+
+@media (max-width: 520px) {
+  #pagina-login-estudiante .login-wrapper { padding: 12px; }
+  #pagina-login-estudiante .login-page-background { max-width: 100%; }
+  #pagina-login-estudiante .login-portal-nav {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+    padding: 0 12px;
+  }
+  #pagina-login-estudiante .login-portal-nav > span {
+    min-height: 42px;
+    font-size: 1rem;
+  }
+  #pagina-login-estudiante .login-portal-nav .tabs-tipo-usuario {
+    width: 100%;
+  }
+  #pagina-login-estudiante .login-portal-nav .tab-tipo {
+    flex: 1;
+    min-height: 46px;
+    padding: 0 10px;
+    font-size: .82rem;
+  }
+  #pagina-login-estudiante .login-panel { margin-top: 10px; }
+  #pagina-login-estudiante .login-panel__header {
+    padding: 11px 16px;
+    font-size: 1rem;
+  }
+  #pagina-login-estudiante .login-panel__content { padding: 16px 12px; }
+  #pagina-login-estudiante .login-form-panel { max-width: 300px; }
+}
+
+@media (max-width: 640px) {
+  #pagina-login-estudiante .login-institucion {
+    max-width: 100%;
+    margin-bottom: 10px;
+    overflow: visible;
+    background: transparent;
+  }
+  #pagina-login-estudiante .login-header-image {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+}

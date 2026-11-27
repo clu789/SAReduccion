@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ## Notas técnicas y notificaciones
 
+- **Acceso administrativo:** presenta el formulario en una tarjeta compacta centrada bajo el encabezado institucional, con diseño adaptable; conserva los controles, el CAPTCHA compartido y el flujo de inicio de sesión existente.
 - **Seguridad y sesión:** todas las llamadas pasan por `ITTSecurity` (token CSRF automático y manejo de `401`/`403`) y cumplen la política CSP estricta sin scripts ni estilos en línea (ver [`../SEGURIDAD.md`](../SEGURIDAD.md)).
 - **Modal de detalle:** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
 - **Estadísticas y filtros:** las tarjetas se cargan en `PanelAdmin.cargarEstadisticas()` y los chips filtran mediante `PanelAdmin.cargarSolicitudes(estatus)`.

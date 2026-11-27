@@ -42,7 +42,7 @@ public class FormularioSolicitudService {
         try {
             return repository.convocatoriasAbiertas(principal);
         } catch (DataAccessException exception) {
-            throw traducir(exception);
+            throw traducir(exception, "consultar_convocatorias");
         }
     }
 
@@ -56,7 +56,7 @@ public class FormularioSolicitudService {
         try {
             return repository.misRespuestas(principal, idSolicitud);
         } catch (DataAccessException exception) {
-            throw traducir(exception);
+            throw traducir(exception, "consultar_respuestas");
         }
     }
 
@@ -86,7 +86,7 @@ public class FormularioSolicitudService {
                     convocatoria.getIdConvocatoria(), principal.getRole());
             return id;
         } catch (DataAccessException exception) {
-            throw traducir(exception);
+            throw traducir(exception, "crear_solicitud");
         }
     }
 
@@ -127,7 +127,7 @@ public class FormularioSolicitudService {
                     tipo.getIdFormulario().longValue(), json);
             LOG.info("REENVIO_CONFIRMADO idSolicitud={} rol={}", idSolicitud, principal.getRole());
         } catch (DataAccessException exception) {
-            throw traducir(exception);
+            throw traducir(exception, "reenviar_solicitud");
         }
     }
 
@@ -166,7 +166,7 @@ public class FormularioSolicitudService {
         try {
             return repository.obtenerFormulario(idConvocatoria, idTipoSolicitud);
         } catch (DataAccessException exception) {
-            throw traducir(exception);
+            throw traducir(exception, "obtener_formulario");
         }
     }
 
@@ -179,10 +179,13 @@ public class FormularioSolicitudService {
         }
     }
 
-    private RuntimeException traducir(DataAccessException exception) {
+    private RuntimeException traducir(DataAccessException exception, String operacion) {
         RuntimeException traducida = TraductorErroresOracle.traducir(exception);
-        if (traducida == exception) {
-            LOG.error("ERROR_INTERNO formulario codigoOracle={}", TraductorErroresOracle.codigoOracle(exception));
+        if (traducida != exception) {
+            Integer codigo = TraductorErroresOracle.codigoOracle(exception);
+            LOG.warn("ORACLE_RECHAZO formulario operacion={} codigoOracle={} respuesta={}", operacion,
+                    Integer.valueOf(Math.abs(codigo.intValue())),
+                    traducida.getClass().getSimpleName());
         }
         return traducida;
     }

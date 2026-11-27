@@ -80,14 +80,16 @@ y cifrado al arrancar. STARTTLS y TLS implícito son las dos opciones habituales
 El encargado utiliza el modo y el puerto indicados por su proveedor.
 
 En producción, configura `SAR_LOAD_DEV_SEED=false` para una base nueva. Las cuentas
-Oracle de ejemplo de `.env.example` deben sustituirse por las del entorno.
-El encargado coordina HTTPS, cookies, publicación de puertos y acceso a Oracle
-con el proyecto integrado.
+Oracle de ejemplo de `.env.example` deben sustituirse por las del entorno. El
+Compose de producción fuerza OTP y cookies seguras, elimina la publicación directa
+de Oracle/backend y sirve el sitio con HTTPS. Se necesita un certificado válido
+para el dominio y su clave privada antes de arrancar.
 
 ## Despliegue con Docker Compose
 
 Todos los comandos de esta sección se ejecutan desde la raíz del repositorio.
-Necesitas Docker con Compose y acceso al código que incorpora esta rama.
+Necesitas Docker Compose v2.24.4 o posterior (el perfil de producción usa las
+etiquetas `!reset` y `!override`) y acceso al código que incorpora esta rama.
 
 ### 1. Preparar el archivo del entorno
 
@@ -106,6 +108,8 @@ de ejemplo por los del proveedor.
 ```dotenv
 SPRING_PROFILES_ACTIVE=prod
 SAR_LOAD_DEV_SEED=false
+TLS_CERT_PATH=/ruta/absoluta/al/fullchain.pem
+TLS_KEY_PATH=/ruta/absoluta/a/privkey.pem
 
 SPRING_MAIL_HOST=smtp-relay.brevo.com
 SPRING_MAIL_PORT=587
@@ -189,7 +193,9 @@ docker compose --env-file .env.production \
 
 El archivo principal de Compose levanta Oracle, backend y frontend. Si el encargado
 ya tiene una configuración propia del proyecto integrado, debe incorporar las
-variables SMTP al servicio backend de ese despliegue.
+variables SMTP, TLS, `SESSION_COOKIE_SECURE=true` y `SAR_OTP_ENABLED=true` al
+servicio backend y proxy de ese despliegue. El certificado debe corresponder al
+dominio público; el puerto 80 redirige al 443 y solo el frontend publica puertos.
 
 ## Variables en el contenedor de Azure
 
