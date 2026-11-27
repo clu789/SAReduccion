@@ -604,6 +604,13 @@ const Formato = {
     if (Number.isNaN(fecha.getTime())) return String(valor);
     return fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
   },
+  /** Fecha numérica dd/mm/aaaa, como en las tablas de los sistemas del ITT. */
+  fechaCorta(valor) {
+    if (!valor) return '—';
+    const fecha = this.aFecha(valor);
+    if (Number.isNaN(fecha.getTime())) return String(valor);
+    return fecha.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  },
   fechaHora(valor) {
     if (!valor) return '—';
     const fecha = this.aFecha(valor);
@@ -632,6 +639,17 @@ const EstatusSolicitud = {
   },
   etiqueta(estatus) {
     return this.datos(estatus)[1];
+  },
+  /** Color de fondo de la celda «Estado» en las tablas. */
+  claseCelda(estatus) {
+    return {
+      PENDIENTE:  'estado-pendiente',
+      AUTORIZADO: 'estado-aceptado',
+      APLICADO:   'estado-aceptado',
+      RECHAZADO:  'estado-rechazado',
+      CANCELADO:  'estado-cancelado',
+      RETIRADO:   'estado-retirado',
+    }[estatus] || '';
   },
   badge(estatus) {
     const [clase, texto, icono] = this.datos(estatus);
@@ -753,6 +771,9 @@ const PanelSolicitante = {
     'pagina-panel-aspirante': 'APPLICANT',
   },
   idRetiro: null,
+  solicitudes: new Map(),
+  /* Sin solicitudes, la pestaña inicial es Convocatorias para orientar el primer trámite. */
+  vistaPredeterminada: 'solicitudes',
 
   async init() {
     if (!document.getElementById('lista-solicitudes')) return;
@@ -760,14 +781,13 @@ const PanelSolicitante = {
     if (!session) return;
     AuthSession.bindLogout('login.html', 'alerta-panel');
     SesionInactividad.iniciar('login.html');
-    this.bindMenuUsuario();
     this.bindVistas();
     this.bindAcciones();
     await this.cargar();
     this.irAHash();
   },
 
-  /* Vistas por hash: #solicitudes (predeterminada), #convocatorias y #solicitud-ID. */
+  /* Vistas por hash: #solicitudes y #convocatorias. */
   bindVistas() {
     window.addEventListener('hashchange', () => this.irAHash());
     this.irAHash();
@@ -775,23 +795,19 @@ const PanelSolicitante = {
 
   irAHash() {
     const hash = window.location.hash.slice(1);
-    this.mostrarVista(hash === 'convocatorias' ? 'convocatorias' : 'solicitudes');
-    if (hash.startsWith('solicitud-')) {
-      const tarjeta = document.getElementById(hash);
-      if (tarjeta) tarjeta.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      window.scrollTo(0, 0);
-    }
+    this.mostrarVista(hash === 'convocatorias' || hash === 'solicitudes' ? hash : this.vistaPredeterminada);
   },
 
+  /* Sincroniza las pestañas y los accesos rápidos de la información personal. */
   mostrarVista(nombre) {
     document.querySelectorAll('section.vista').forEach((seccion) => {
       seccion.hidden = seccion.dataset.vista !== nombre;
     });
-    document.querySelectorAll('.itt-navbar-links a[data-vista]').forEach((enlace) => {
+    document.querySelectorAll('a[data-vista]').forEach((enlace) => {
       const activa = enlace.dataset.vista === nombre;
       enlace.classList.toggle('activo', activa);
-      if (activa) enlace.setAttribute('aria-current', 'page');
+      if (enlace.getAttribute('role') === 'tab') enlace.setAttribute('aria-selected', String(activa));
+      else if (activa) enlace.setAttribute('aria-current', 'page');
       else enlace.removeAttribute('aria-current');
     });
   },
@@ -804,6 +820,7 @@ const PanelSolicitante = {
         Http.get('/solicitante/convocatorias'),
         Http.get('/solicitante/solicitudes'),
       ]);
+      this.vistaPredeterminada = solicitudes.length ? 'solicitudes' : 'convocatorias';
       this.renderPerfil(perfil, solicitudes);
       this.renderConvocatorias(convocatorias);
       this.renderSolicitudes(solicitudes);
@@ -819,20 +836,20 @@ const PanelSolicitante = {
 
   renderPerfil(perfil, solicitudes) {
     const esEstudiante = perfil.tipo === 'ESTUDIANTE';
-    this.setTexto('nombre-usuario-nav', perfil.nombre || perfil.identificador);
     this.setTexto('perfil-nombre', perfil.nombreCompleto || perfil.identificador);
     this.setTexto('perfil-tipo', esEstudiante ? 'Estudiante de reinscripción' : 'Aspirante de nuevo ingreso');
 
     const valor = (v) => (v === null || v === undefined || v === '') ? '—' : Html.escapar(v);
-    const datos = [this.dato(esEstudiante ? 'No. de control' : 'Ficha', valor(perfil.identificador))];
-    if (esEstudiante) datos.push(this.dato('Carrera', valor(perfil.carrera)));
-    datos.push(this.dato('Semestre', perfil.semestre ? `${Html.escapar(perfil.semestre)}°` : '—'));
+    const item = (etiqueta, valorHtml) => `<li><strong>${etiqueta}:</strong> ${valorHtml}</li>`;
+    const datos = [item(esEstudiante ? 'Número de Control' : 'Ficha', valor(perfil.identificador))];
+    if (esEstudiante) datos.push(item('Carrera', valor(perfil.carrera)));
+    datos.push(item('Semestre', perfil.semestre ? `${Html.escapar(perfil.semestre)}°` : '—'));
     if (!esEstudiante) {
-      datos.push(this.dato('Periodo de ingreso', perfil.anio
+      datos.push(item('Periodo de Ingreso', perfil.anio
         ? `${Html.escapar(perfil.periodoDescripcion)} ${Html.escapar(perfil.anio)}` : '—'));
     }
-    datos.push(this.dato('Solicitudes registradas', String(solicitudes.length)));
-    datos.push(this.dato('Estatus de la última solicitud', solicitudes.length
+    datos.push(item('Solicitudes Registradas', String(solicitudes.length)));
+    datos.push(item('Última Solicitud', solicitudes.length
       ? EstatusSolicitud.badge(solicitudes[0].estatus)
       : '<span class="badge-estatus badge-revision"><i class="fa fa-info-circle"></i> Sin solicitudes</span>'));
 
@@ -840,122 +857,252 @@ const PanelSolicitante = {
     if (contenedor) contenedor.innerHTML = datos.join('');
   },
 
-  bindMenuUsuario() {
-    const boton = document.getElementById('btn-menu-usuario');
-    const lista = document.getElementById('menu-usuario-lista');
-    if (!boton || !lista) return;
-
-    const abrir = (abierto) => {
-      lista.hidden = !abierto;
-      boton.setAttribute('aria-expanded', String(abierto));
-      boton.classList.toggle('abierto', abierto);
-    };
-    boton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      abrir(lista.hidden);
-      if (!lista.hidden) lista.querySelector('[role="menuitem"]').focus();
-    });
-    document.addEventListener('click', (e) => {
-      if (!lista.hidden && !lista.contains(e.target)) abrir(false);
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !lista.hidden) {
-        abrir(false);
-        boton.focus();
-      }
-    });
-    lista.querySelectorAll('[data-abrir-perfil]').forEach((opcion) => {
-      opcion.addEventListener('click', () => {
-        abrir(false);
-        Modal.abrir('modal-perfil');
-      });
-    });
-  },
-
   renderConvocatorias(convocatorias) {
     const contenedor = document.getElementById('lista-convocatorias');
     if (!contenedor) return;
-    if (!convocatorias.length) {
-      contenedor.innerHTML = `<div class="alerta alerta-info mb-0"><i class="fa fa-info-circle"></i>
-        <span>Por ahora no hay convocatorias en periodo de recepción de solicitudes.</span></div>`;
-      return;
-    }
 
-    const grupos = new Map();
-    convocatorias.forEach((c) => {
-      if (!grupos.has(c.idConvocatoria)) grupos.set(c.idConvocatoria, []);
-      grupos.get(c.idConvocatoria).push(c);
-    });
-
-    contenedor.innerHTML = [...grupos.values()].map((tipos) => {
-      const c = tipos[0];
-      const encabezado = `
-        <div class="convocatoria-encabezado">
-          <div>
-            <div class="convocatoria-titulo">Convocatoria ${Html.escapar(c.periodoDescripcion)} ${Html.escapar(c.anio)}</div>
-            <div class="convocatoria-fechas"><i class="fa fa-calendar"></i>
-              Recepción de solicitudes: ${Formato.fecha(c.fechaInicio)} al ${Formato.fecha(c.fechaFin)}</div>
-          </div>
-        </div>`;
-
-      if (c.idSolicitudExistente) {
-        return `<div class="convocatoria-item">${encabezado}
-          <div class="alerta alerta-info mb-0"><i class="fa fa-info-circle"></i>
-            <span>Ya tiene registrada la solicitud con folio <a href="#solicitud-${Html.escapar(c.idSolicitudExistente)}">${Html.escapar(c.idSolicitudExistente)}</a>
-            en esta convocatoria. Solo se permite una solicitud por convocatoria.</span></div>
-        </div>`;
-      }
-
-      const opciones = tipos.map((t) => {
+    const filas = convocatorias.map((t) => {
+      let opciones;
+      if (t.idSolicitudExistente) {
+        opciones = `<p>Ya tiene la solicitud con folio ${Html.escapar(t.idSolicitudExistente)} en esta convocatoria.</p>
+          ${this.botonVer(t.idSolicitudExistente)}`;
+      } else {
         const url = `formulario.html?convocatoria=${encodeURIComponent(t.idConvocatoria)}`
           + `&tipo=${encodeURIComponent(t.idTipoSolicitud)}&formulario=${encodeURIComponent(t.idFormulario)}`;
-        return `
-          <div class="convocatoria-tipo">
-            <div>
-              <div class="convocatoria-tipo-nombre">${Html.escapar(t.tipoSolicitud)}</div>
-              <div class="convocatoria-tipo-detalle">${Html.escapar(t.tipoDescripcion || '')}</div>
-              <div class="convocatoria-tipo-detalle">Reducción: <strong>${Formato.moneda(t.montoDeduccion)}</strong></div>
-            </div>
-            <a class="btn-itt btn-agregar" href="${url}"><i class="fa fa-plus-circle"></i> Iniciar solicitud</a>
-          </div>`;
-      }).join('');
-      return `<div class="convocatoria-item">${encabezado}${opciones}</div>`;
-    }).join('');
+        opciones = `<a class="btn-sii btn-sii-verde" href="${url}"><i class="fa fa-plus"></i> Iniciar solicitud</a>`;
+      }
+      return `
+        <tr>
+          <td>${Html.escapar(t.periodoDescripcion)} ${Html.escapar(t.anio)}</td>
+          <td class="text-nowrap">${Formato.fechaCorta(t.fechaInicio)}<br>-<br>${Formato.fechaCorta(t.fechaFin)}${this.plazoHtml(t.fechaFin)}</td>
+          <td>${Html.escapar(t.tipoSolicitud)}</td>
+          <td>${Html.escapar(t.tipoDescripcion || '')}</td>
+          <td class="text-nowrap">${Formato.moneda(t.montoDeduccion)}</td>
+          <td class="tabla-sii-opciones">${opciones}</td>
+        </tr>`;
+    });
+
+    this.setContador('contador-convocatorias', new Set(convocatorias.map((t) => t.idConvocatoria)).size);
+    contenedor.innerHTML = this.tablaHtml(
+      ['Convocatoria', 'Periodo de recepción', 'Tipo de solicitud', 'Descripción', 'Reducción', 'Opciones'],
+      filas,
+      'Por ahora no hay convocatorias en periodo de recepción de solicitudes.');
+  },
+
+  /** Etiqueta con los días que faltan para el cierre de la recepción. */
+  plazoHtml(fechaFin) {
+    const fin = Formato.aFecha(fechaFin);
+    if (Number.isNaN(fin.getTime())) return '';
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    fin.setHours(0, 0, 0, 0);
+    const dias = Math.round((fin - hoy) / 86400000);
+    if (dias < 0) return '';
+    const texto = dias === 0 ? 'Cierra hoy' : `Cierra en ${dias} ${dias === 1 ? 'día' : 'días'}`;
+    return `<span class="etiqueta-plazo${dias <= 3 ? ' etiqueta-plazo-urgente' : ''}">${texto}</span>`;
+  },
+
+  setContador(id, valor) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = String(valor); el.hidden = false; }
   },
 
   renderSolicitudes(solicitudes) {
     const contenedor = document.getElementById('lista-solicitudes');
-    if (!solicitudes.length) {
-      contenedor.innerHTML = `<div class="card-itt"><div class="card-itt-body">
-        <div class="alerta alerta-info mb-0"><i class="fa fa-info-circle"></i>
-        <span>Aún no tiene solicitudes registradas. Si hay una convocatoria abierta, puede iniciar su trámite en la sección anterior.</span></div>
-      </div></div>`;
-      return;
-    }
-    contenedor.innerHTML = solicitudes.map((s) => this.solicitudHtml(s)).join('');
+    this.solicitudes = new Map(solicitudes.map((s) => [String(s.idSolicitud), s]));
+
+    const filas = solicitudes.map((s) => {
+      const ultimoComentario = [...s.historial].reverse().find((m) => m.administrativo && m.comentario);
+      return `
+        <tr>
+          <td>${Html.escapar(s.idSolicitud)}</td>
+          <td>${Html.escapar(s.periodoDescripcion)} ${Html.escapar(s.anio)}</td>
+          <td>${Html.escapar(s.tipoSolicitud)}</td>
+          <td>${Formato.fechaCorta(s.fechaSolicitud)}</td>
+          <td class="estado-sii ${EstatusSolicitud.claseCelda(s.estatus)}">${Html.escapar(EstatusSolicitud.etiqueta(s.estatus))}</td>
+          <td>${ultimoComentario ? Html.escapar(ultimoComentario.comentario) : ''}</td>
+          <td>${Formato.fechaCorta(s.fechaActualizacion)}</td>
+          <td class="tabla-sii-opciones">${this.opcionesHtml(s)}</td>
+        </tr>`;
+    });
+
+    this.setContador('contador-solicitudes', solicitudes.length);
+    const resumen = solicitudes.length ? this.resumenHtml(solicitudes[0]) : '';
+    contenedor.innerHTML = resumen + this.tablaHtml(
+      ['Folio', 'Convocatoria', 'Tipo de solicitud', 'Fecha de envío', 'Estado', 'Comentarios', 'Última actualización', 'Opciones'],
+      filas,
+      'Aún no tiene solicitudes registradas. Puede iniciar una en la pestaña <a href="#convocatorias">Convocatorias</a>.');
   },
 
-  solicitudHtml(s) {
+  /** Recuadro de la solicitud más reciente: etapa actual y qué debe hacer el solicitante. */
+  resumenHtml(s) {
     return `
-      <article class="card-itt solicitud-card" id="solicitud-${Html.escapar(s.idSolicitud)}">
-        <div class="card-itt-header solicitud-card-header">
-          <span><i class="fa fa-file-text-o"></i> Folio ${Html.escapar(s.idSolicitud)}</span>
+      <section class="panel-sii resumen-solicitud" aria-labelledby="titulo-resumen">
+        <h3 class="panel-sii-encabezado panel-sii-encabezado-claro" id="titulo-resumen">
+          <span>Solicitud más reciente · Folio ${Html.escapar(s.idSolicitud)} · ${Html.escapar(s.tipoSolicitud)}</span>
           ${EstatusSolicitud.badge(s.estatus)}
+        </h3>
+        <div class="panel-sii-cuerpo">
+          ${this.progresoHtml(s.estatus)}
+          ${this.siguientePasoHtml(s)}
         </div>
-        <div class="card-itt-body">
-          <div class="grid-datos mb-16">
-            ${this.dato('Convocatoria', `${Html.escapar(s.periodoDescripcion)} ${Html.escapar(s.anio)}`)}
-            ${this.dato('Tipo de solicitud', Html.escapar(s.tipoSolicitud))}
-            ${this.dato('Fecha de solicitud', Formato.fecha(s.fechaSolicitud))}
-            ${this.dato('Última actualización', Formato.fechaHora(s.fechaActualizacion))}
-            ${this.dato('Recepción de solicitudes', `${Formato.fecha(s.fechaInicioRecepcion)} al ${Formato.fecha(s.fechaFinRecepcion)}`)}
-          </div>
-          ${this.deduccionHtml(s.deduccion)}
-          <h3 class="subtitulo-seccion"><i class="fa fa-history"></i> Seguimiento del trámite</h3>
-          <div class="estatus-timeline">${this.timelineHtml(s)}</div>
-          ${this.accionesHtml(s)}
+      </section>
+      <h3 class="tabla-titulo">Todas mis solicitudes</h3>`;
+  },
+
+  /** Barra de etapas: Enviada → En revisión → Autorizada → Aplicada. */
+  progresoHtml(estatus) {
+    const pasos = [
+      ['Enviada', 'fa-paper-plane'],
+      ['En revisión', 'fa-search'],
+      ['Autorizada', 'fa-check'],
+      ['Aplicada', 'fa-flag-checkered'],
+    ];
+    const etapa = {
+      PENDIENTE:  { indice: 1, clase: 'activo' },
+      AUTORIZADO: { indice: 2, clase: 'completado' },
+      APLICADO:   { indice: 3, clase: 'completado' },
+      RECHAZADO:  { indice: 2, clase: 'error',  texto: 'Rechazada', icono: 'fa-times' },
+      CANCELADO:  { indice: 3, clase: 'error',  texto: 'Cancelada', icono: 'fa-ban' },
+      RETIRADO:   { indice: 1, clase: 'neutro', texto: 'Retirada',  icono: 'fa-undo' },
+    }[estatus] || { indice: 0, clase: 'activo' };
+
+    const items = pasos.map(([texto, icono], i) => {
+      let clase = 'pendiente';
+      if (i < etapa.indice) clase = 'completado';
+      else if (i === etapa.indice) clase = etapa.clase;
+      const actual = i === etapa.indice;
+      const etiqueta = actual && etapa.texto ? etapa.texto : texto;
+      const simbolo = actual && etapa.icono ? etapa.icono : (clase === 'completado' ? 'fa-check' : icono);
+      return `<li class="${clase}"${actual ? ' aria-current="step"' : ''}>
+          <span class="paso-icono"><i class="fa ${simbolo}"></i></span>
+          <span class="paso-texto">${etiqueta}</span>
+        </li>`;
+    }).join('');
+    return `<ol class="progreso-tramite" aria-label="Etapas del trámite">${items}</ol>`;
+  },
+
+  /** Recuadro «¿Qué sigue?» con la indicación y la acción disponible para el estatus actual. */
+  siguientePasoHtml(s) {
+    const fin = Formato.fecha(s.fechaFinRecepcion);
+    let tipo = 'info';
+    let icono = 'fa-info-circle';
+    let texto;
+    let accion = '';
+
+    if (s.puedeRetirar) {
+      icono = 'fa-hourglass-half';
+      texto = `La administración está revisando su solicitud; no necesita hacer nada por ahora y el resultado aparecerá en esta página.
+        Si necesita corregir algo, puede retirarla hasta el ${fin} y volver a enviarla.`;
+      accion = `<button type="button" class="btn-sii btn-sii-rojo" data-retirar="${Html.escapar(s.idSolicitud)}">
+        <i class="fa fa-undo"></i> Retirar</button>`;
+    } else if (s.puedeReenviar) {
+      tipo = 'advertencia';
+      icono = 'fa-exclamation-triangle';
+      texto = {
+        RECHAZADO: 'Su solicitud fue rechazada. Revise el comentario de la administración, corrija la información y reenvíela.',
+        CANCELADO: 'La deducción de su solicitud fue cancelada. Puede corregir la información y reenviarla.',
+        RETIRADO:  'Retiró esta solicitud. Puede reenviarla con o sin cambios.',
+      }[s.estatus] + ` Tiene hasta el ${fin}.`;
+      accion = `<a class="btn-sii btn-sii-naranja" href="${this.urlReenvio(s)}"><i class="fa fa-pencil"></i> Corregir y reenviar</a>`;
+    } else if (s.estatus === 'AUTORIZADO') {
+      tipo = 'exito';
+      icono = 'fa-check-circle';
+      texto = 'Su solicitud fue autorizada. La reducción se aplicará en su pago de inscripción; no necesita hacer nada más.';
+    } else if (s.estatus === 'APLICADO') {
+      tipo = 'exito';
+      icono = 'fa-flag-checkered';
+      texto = 'La reducción ya se aplicó a su pago. El trámite concluyó.';
+    } else if (!s.recepcionAbierta) {
+      texto = `El periodo de recepción terminó el ${fin}; ya no es posible retirar ni reenviar esta solicitud.`;
+    } else {
+      return '';
+    }
+
+    const ultimoComentario = [...s.historial].reverse().find((m) => m.administrativo && m.comentario);
+    const comentario = ['RECHAZADO', 'CANCELADO'].includes(s.estatus) && ultimoComentario
+      ? `<div class="siguiente-paso-comentario"><i class="fa fa-comment"></i>
+          <strong>Comentario de la administración:</strong> ${Html.escapar(ultimoComentario.comentario)}</div>`
+      : '';
+    return `
+      <div class="siguiente-paso siguiente-paso-${tipo}">
+        <i class="fa ${icono} siguiente-paso-icono"></i>
+        <div class="siguiente-paso-texto">
+          <strong>¿Qué sigue?</strong>
+          <p>${texto}</p>
+          ${comentario}
         </div>
-      </article>`;
+        ${accion}
+      </div>`;
+  },
+
+  urlReenvio(s) {
+    return `formulario.html?reenviar=${encodeURIComponent(s.idSolicitud)}`
+      + `&convocatoria=${encodeURIComponent(s.idConvocatoria)}`
+      + `&tipo=${encodeURIComponent(s.idTipoSolicitud)}&formulario=${encodeURIComponent(s.idFormulario)}`;
+  },
+
+  /** Tabla con el formato de los sistemas del ITT; muestra un renglón de aviso si no hay datos. */
+  tablaHtml(columnas, filas, mensajeVacio) {
+    const cuerpo = filas.length
+      ? filas.join('')
+      : `<tr><td colspan="${columnas.length}" class="tabla-sii-vacia">${mensajeVacio}</td></tr>`;
+    return `
+      <div class="tabla-responsiva">
+        <table class="tabla-sii">
+          <thead><tr>${columnas.map((c) => `<th scope="col">${c}</th>`).join('')}</tr></thead>
+          <tbody>${cuerpo}</tbody>
+        </table>
+      </div>
+      <p class="tabla-sii-pie">Mostrando ${filas.length} ${filas.length === 1 ? 'registro' : 'registros'}</p>`;
+  },
+
+  botonVer(idSolicitud) {
+    return `<button type="button" class="btn-sii btn-sii-azul" data-ver-solicitud="${Html.escapar(idSolicitud)}">
+      <i class="fa fa-eye"></i> Ver</button>`;
+  },
+
+  /** Indicación y botones de la columna «Opciones» según el estatus de la solicitud. */
+  opcionesHtml(s) {
+    const fin = Formato.fechaCorta(s.fechaFinRecepcion);
+    const ver = this.botonVer(s.idSolicitud);
+
+    if (s.puedeRetirar) {
+      return `<p>En revisión. Puede retirarla hasta el ${fin} para corregirla.</p>
+        ${ver}
+        <button type="button" class="btn-sii btn-sii-rojo" data-retirar="${Html.escapar(s.idSolicitud)}">
+          <i class="fa fa-undo"></i> Retirar</button>`;
+    }
+    if (s.puedeReenviar) {
+      return `<p>Puede corregirla y reenviarla hasta el ${fin}.</p>
+        ${ver}
+        <a class="btn-sii btn-sii-naranja" href="${this.urlReenvio(s)}"><i class="fa fa-pencil"></i> Corregir y reenviar</a>`;
+    }
+    if (s.estatus === 'AUTORIZADO') return `<p>La reducción se aplicará en su pago de inscripción.</p>${ver}`;
+    if (s.estatus === 'APLICADO') return `<p>La reducción ya se aplicó. Trámite concluido.</p>${ver}`;
+    if (!s.recepcionAbierta) return `<p>El periodo de recepción terminó el ${fin}.</p>${ver}`;
+    return ver;
+  },
+
+  /** Ventana con el detalle, la deducción y el historial de una solicitud. */
+  abrirDetalle(idSolicitud) {
+    const s = this.solicitudes.get(String(idSolicitud));
+    if (!s) return;
+    this.setTexto('detalle-folio', s.idSolicitud);
+    document.getElementById('detalle-contenido').innerHTML = `
+      ${this.progresoHtml(s.estatus)}
+      <div class="grid-datos mb-16">
+        ${this.dato('Estado', EstatusSolicitud.badge(s.estatus))}
+        ${this.dato('Convocatoria', `${Html.escapar(s.periodoDescripcion)} ${Html.escapar(s.anio)}`)}
+        ${this.dato('Tipo de solicitud', Html.escapar(s.tipoSolicitud))}
+        ${this.dato('Fecha de envío', Formato.fecha(s.fechaSolicitud))}
+        ${this.dato('Última actualización', Formato.fechaHora(s.fechaActualizacion))}
+        ${this.dato('Recepción de solicitudes', `${Formato.fecha(s.fechaInicioRecepcion)} al ${Formato.fecha(s.fechaFinRecepcion)}`)}
+      </div>
+      ${this.deduccionHtml(s.deduccion)}
+      <h4 class="detalle-subtitulo">Historial del trámite</h4>
+      <div class="estatus-timeline">${this.timelineHtml(s)}</div>`;
+    Modal.abrir('modal-detalle');
   },
 
   dato(etiqueta, valorHtml) {
@@ -1004,54 +1151,16 @@ const PanelSolicitante = {
     }).join('');
   },
 
-  accionesHtml(s) {
-    const fin = Formato.fecha(s.fechaFinRecepcion);
-    if (s.puedeRetirar) {
-      return `
-        <div class="acciones-solicitud">
-          <div class="alerta alerta-info"><i class="fa fa-info-circle"></i>
-            <span>Su solicitud está en revisión y no puede editarse. Si necesita corregirla, puede retirarla hasta el ${fin}
-            y después reenviarla dentro del mismo plazo.</span></div>
-          <button type="button" class="btn-itt btn-borrar" data-retirar="${Html.escapar(s.idSolicitud)}">
-            <i class="fa fa-undo"></i> Retirar solicitud</button>
-        </div>`;
-    }
-    if (s.puedeReenviar) {
-      const motivo = {
-        RECHAZADO: 'Su solicitud fue rechazada. Revise los comentarios de la administración, corrija la información y reenvíela.',
-        CANCELADO: 'La deducción de su solicitud fue cancelada. Puede corregir la información y reenviarla.',
-        RETIRADO:  'Retiró esta solicitud. Puede reenviarla con o sin cambios.',
-      }[s.estatus];
-      const url = `formulario.html?modo=reenvio&solicitud=${encodeURIComponent(s.idSolicitud)}`
-        + `&convocatoria=${encodeURIComponent(s.idConvocatoria)}`
-        + `&tipo=${encodeURIComponent(s.idTipoSolicitud)}&formulario=${encodeURIComponent(s.idFormulario)}`;
-      return `
-        <div class="acciones-solicitud">
-          <div class="alerta alerta-advertencia"><i class="fa fa-exclamation-triangle"></i>
-            <span>${motivo} El reenvío está disponible hasta el ${fin}.</span></div>
-          <a class="btn-itt btn-editar" href="${url}"><i class="fa fa-pencil"></i> Corregir y reenviar</a>
-        </div>`;
-    }
-    if (s.estatus === 'AUTORIZADO') {
-      return `<div class="acciones-solicitud"><div class="alerta alerta-exito mb-0"><i class="fa fa-check-circle"></i>
-        <span>Su solicitud fue autorizada. La deducción se aplicará en su pago; cualquier cancelación la realiza la administración.</span></div></div>`;
-    }
-    if (s.estatus === 'APLICADO') {
-      return `<div class="acciones-solicitud"><div class="alerta alerta-exito mb-0"><i class="fa fa-check-circle"></i>
-        <span>La deducción ya fue aplicada. El trámite concluyó.</span></div></div>`;
-    }
-    if (!s.recepcionAbierta) {
-      return `<div class="acciones-solicitud"><div class="alerta alerta-info mb-0"><i class="fa fa-info-circle"></i>
-        <span>El periodo de recepción terminó el ${fin}; ya no es posible retirar ni reenviar esta solicitud.</span></div></div>`;
-    }
-    return '';
-  },
-
   bindAcciones() {
-    document.getElementById('lista-solicitudes').addEventListener('click', (e) => {
-      const boton = e.target.closest('[data-retirar]');
-      if (!boton) return;
-      this.idRetiro = boton.dataset.retirar;
+    document.querySelector('.pestanas-contenido').addEventListener('click', (e) => {
+      const ver = e.target.closest('[data-ver-solicitud]');
+      if (ver) {
+        this.abrirDetalle(ver.dataset.verSolicitud);
+        return;
+      }
+      const retirar = e.target.closest('[data-retirar]');
+      if (!retirar) return;
+      this.idRetiro = retirar.dataset.retirar;
       this.setTexto('retiro-folio', this.idRetiro);
       Alerta.limpiar('alerta-retiro');
       Modal.abrir('modal-retirar');
