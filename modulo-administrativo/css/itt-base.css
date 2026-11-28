@@ -179,10 +179,12 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   min-height: 44px;
 }
 
+/* Barra de menú azul (como en convocatorias), conservando el ancho y los
+   bordes redondeados del encabezado del panel. */
 #pagina-panel-admin .itt-navbar {
-  background: #F5F5F5;
-  border: 1px solid var(--adm-navbar-border, #DDDDDD);
-  border-bottom: 3px solid var(--adm-azul, #337AB7);
+  background: var(--adm-azul, #337AB7);
+  border: 1px solid var(--adm-azul-hover, #2E6DA4);
+  border-bottom: 3px solid var(--adm-azul-link-hover, #23527C);
   border-radius: var(--adm-radio-sm, 4px);
   max-width: 1052px;
   width: calc(100% - 48px);
@@ -191,18 +193,18 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
 }
 
 #pagina-panel-admin .itt-nav {
-  color: var(--adm-navbar-text, #777777);
+  color: #FFFFFF;
 }
 
 #pagina-panel-admin .itt-nav__boton,
 #pagina-panel-admin .itt-nav__salir {
-  color: var(--adm-navbar-text, #777777);
-  border-color: rgba(51, 122, 183, 0.3);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.65);
 }
 
 #pagina-panel-admin .itt-nav__boton:hover,
 #pagina-panel-admin .itt-nav__salir:hover {
-  background: rgba(51, 122, 183, 0.08);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .itt-navbar-links {
