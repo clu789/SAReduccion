@@ -739,7 +739,7 @@ const PanelAdmin = {
         const etiqueta = r.obligatoria === 'S' ? 'Obligatoria' : 'Opcional';
         const pregunta = r.pregunta || `Pregunta #${r.idPregunta || '—'}`;
         return `<div class="detalle-campo">
-          <label>${Html.escapar(pregunta)} · ${etiqueta}</label>
+          <div class="detalle-etiqueta">${Html.escapar(pregunta)} · ${etiqueta}</div>
           <div class="valor">${Html.escapar(respuesta)}</div>
         </div>`;
       }).join('');
@@ -823,19 +823,19 @@ const PanelAdmin = {
     const monto = (valor) => valor == null ? '—' : `$${Number(valor).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
     contenido.innerHTML = `
       <div class="detalle-campo">
-        <label>Monto de pago</label>
+        <div class="detalle-etiqueta">Monto de pago</div>
         <div class="valor">${monto(deduccion.montoPago)}</div>
       </div>
       <div class="detalle-campo">
-        <label>Deducción</label>
+        <div class="detalle-etiqueta">Deducción</div>
         <div class="valor">${monto(deduccion.montoDeduccion)}</div>
       </div>
       <div class="detalle-campo">
-        <label>Monto final</label>
+        <div class="detalle-etiqueta">Monto final</div>
         <div class="valor">${monto(deduccion.montoFinal)}</div>
       </div>
       <div class="detalle-campo">
-        <label>Estatus deducción</label>
+        <div class="detalle-etiqueta">Estatus deducción</div>
         <div class="valor">${Html.escapar(deduccion.estatus || '—')}</div>
       </div>`;
   },

@@ -47,8 +47,8 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 
 | Matriz | Implementado | Parcial | Pendiente | Acordado |
 | --- | ---: | ---: | ---: | ---: |
-| Requerimientos funcionales | 100 | 5 | 1 | 0 |
-| Requerimientos no funcionales | 58 | 4 | 6 | 0 |
+| Requerimientos funcionales | 101 | 4 | 1 | 0 |
+| Requerimientos no funcionales | 60 | 2 | 6 | 0 |
 
 | ID | Nombre del requerimiento | Descripción | Actor | Prioridad | Módulo | Criterios de aceptación | Estado |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -62,7 +62,7 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 | RF-08 | Protección CSRF | El sistema deberá exigir un token CSRF válido en las operaciones que modifican datos. | Estudiante, Aspirante, Administrador | Alta | Seguridad de autenticación | Las operaciones `POST`, `PUT`, `PATCH` y `DELETE` protegidas rechazarán una petición sin token válido. | Implementado |
 | RF-09 | Límite temporal de intentos | El sistema deberá aplicar controles temporales ante intentos fallidos de autenticación. | Estudiante, Aspirante, Administrador | Alta | Seguridad de autenticación | Después de superar el límite configurado, los intentos adicionales deberán ser bloqueados temporalmente y el bloqueo deberá vencer solo después de la ventana definida. | Implementado |
 | RF-10 | Captcha de autenticación | El sistema deberá proporcionar y validar un captcha en los flujos de inicio de sesión. | Estudiante, Aspirante, Administrador | Media | Seguridad de autenticación | El sistema rechazará respuestas incorrectas o repetidas y ofrecerá una alternativa accesible para el captcha. | Implementado |
-| RF-11 | Verificación temporal de aspirantes por correo | El sistema deberá permitir la verificación opcional de aspirantes mediante correo electrónico y código temporal. | Aspirante | Media | Autenticación | Cuando la verificación esté activa, el acceso se completará únicamente con un código válido y vigente enviado al destinatario autorizado. | Parcial |
+| RF-11 | Verificación temporal de aspirantes por correo | El sistema deberá permitir la verificación opcional de aspirantes mediante correo electrónico y código temporal. | Aspirante | Media | Autenticación | Cuando la verificación esté activa, el acceso se completará únicamente con un código válido y vigente enviado al destinatario autorizado. | Implementado |
 | RF-12 | Consulta del perfil del estudiante | El sistema deberá mostrar al estudiante autenticado sus datos de perfil. | Estudiante | Alta | Panel del estudiante | El perfil mostrado corresponderá al número de control de la sesión y no a un identificador recibido del cliente. | Implementado |
 | RF-13 | Consulta del perfil del aspirante | El sistema deberá mostrar al aspirante autenticado los datos asociados a su ficha, periodo y año. | Aspirante | Alta | Panel del aspirante | El perfil mostrado corresponderá a la clave completa de la sesión y no incluirá la CURP ni otros datos sensibles innecesarios. | Implementado |
 | RF-14 | Identidad de perfil en operaciones | El sistema deberá obtener la identidad del solicitante desde la sesión autenticada. | Estudiante, Aspirante | Alta | Solicitudes | Los identificadores personales enviados desde el cliente no sustituirán la identidad almacenada en la sesión. | Implementado |
@@ -204,8 +204,8 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 | RNF-39 | Errores comprensibles | Los errores de validación deberán presentarse de forma comprensible para el usuario. | Usabilidad | Alta | Los mensajes identificarán el campo o la regla afectada sin revelar detalles internos técnicos. | Implementado |
 | RNF-40 | Navegación por perfil | La interfaz deberá redirigir a cada perfil a su panel correspondiente. | Usabilidad | Alta | Los roles `STUDENT`, `APPLICANT` y `ADMIN` accederán a la interfaz correspondiente después del inicio de sesión. | Implementado |
 | RNF-41 | Manejo de sesión expirada | La interfaz deberá informar la expiración de sesión y orientar al usuario a autenticarse nuevamente. | Usabilidad y recuperación | Alta | Una sesión vencida mostrará el aviso definido y dirigirá al inicio de sesión correspondiente. | Implementado |
-| RNF-42 | Consultas eficientes | Las consultas de solicitudes deberán priorizarse para obtener una ejecución eficiente. | Rendimiento | Alta | Las consultas deberán utilizar relaciones, índices y filtros adecuados y evitar obtener conjuntos innecesarios. | Parcial |
-| RNF-43 | Carga eficiente de formularios | La carga de formularios deberá priorizarse para obtener una carga rápida y eficiente. | Rendimiento | Alta | Las preguntas y opciones deberán recuperarse mediante consultas o procedimientos adecuados sin recorrer datos innecesarios. | Parcial |
+| RNF-42 | Consultas eficientes | Las consultas de solicitudes deberán priorizarse para obtener una ejecución eficiente. | Rendimiento | Alta | Las consultas deberán utilizar relaciones, índices y filtros adecuados y evitar obtener conjuntos innecesarios. | Implementado |
+| RNF-43 | Carga eficiente de formularios | La carga de formularios deberá priorizarse para obtener una carga rápida y eficiente. | Rendimiento | Alta | Las preguntas y opciones deberán recuperarse mediante consultas o procedimientos adecuados sin recorrer datos innecesarios. | Implementado |
 | RNF-44 | Sin tiempo máximo definido | El sistema no tendrá un tiempo máximo obligatorio de respuesta establecido en esta etapa. | Rendimiento | Baja | No se aplicarán requisitos numéricos de latencia sin una decisión posterior del proyecto. | Pendiente |
 | RNF-45 | Sin SLA definido | No se exigirá un porcentaje mínimo de disponibilidad ni un horario obligatorio de operación. | Disponibilidad y confiabilidad | Baja | El proyecto no deberá afirmar un SLA o disponibilidad cuantitativa no acordada. | Pendiente |
 | RNF-46 | Manejo de errores de comunicación | El sistema deberá manejar los errores de comunicación entre frontend, backend y base de datos. | Recuperación y manejo de errores | Alta | Los errores recibirán una respuesta controlada y no expondrán detalles internos ni dejarán la interfaz en una operación parcial. | Implementado |
@@ -269,10 +269,8 @@ El estado describe la evidencia encontrada en el repositorio en esta revisión y
 
 | Estado | Requerimientos | Observación |
 | --- | --- | --- |
-| Parcial | RF-11 | La verificación por OTP existe en el backend, pero puede estar desactivada y depende de la configuración SMTP. |
 | Parcial | RF-97, RF-98, RF-99, RF-100 | Las plantillas y el envío automático existen, pero la documentación indica cobertura completa para aspirantes y cobertura pendiente para estudiantes. |
-| Parcial | RNF-32 | El frontend usa tecnologías compatibles, pero no se encontró una matriz documentada de pruebas verificadas en Chrome, Firefox, Safari y Chromium. |
-| Parcial | RNF-42, RNF-43 | Las consultas y cargas usan paquetes e índices, pero no se encontró una prueba cuantitativa o de carga acordada. |
+| Parcial | RNF-32 | El frontend pasó auditoría estática de estándares, 106 pruebas JSDOM y verificación en vivo en Chrome (escritorio `1280x800` y móvil `390x844`, 0 errores JS y 0 violaciones CSP), pero falta matriz de pruebas ejecutadas en Firefox y Safari reales. |
 | Parcial | RNF-59 | La inicialización es controlada y visible, pero los cambios sobre una base existente requieren un procedimiento manual y no existe una migración automática. |
 | Pendiente | RF-106 | El procedimiento solo consulta correo de aspirantes; falta integrar la fuente institucional de correo para estudiantes. |
 | Pendiente | RNF-57 | Oracle 12c institucional no ha sido probado ni se ha validado la compatibilidad de scripts, objetos, permisos y configuración del seed. |

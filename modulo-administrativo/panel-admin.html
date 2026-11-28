@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel Administrativo | SAReducción ITT</title>
+  <link rel="icon" type="image/png" href="img/logo.png" />
   <meta name="description" content="Panel de gestión de solicitudes de reducción de monto de inscripción para la Subdirección Académica del Instituto Tecnológico de Toluca." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -82,6 +83,7 @@
           id="buscador"
           class="form-control-itt buscador-input"
           placeholder="Buscar folio o solicitante..."
+          aria-label="Buscar por folio o solicitante"
         />
       </div>
     </div>
@@ -102,7 +104,7 @@
       <label class="filtro-etiqueta" for="filtro-convocatoria">Convocatoria:</label>
 
       <!-- Filtro por convocatoria (llenado desde la API) -->
-      <select id="filtro-convocatoria" class="form-control-itt filtro-convocatoria-select" disabled>
+      <select id="filtro-convocatoria" class="form-control-itt filtro-convocatoria-select" aria-label="Filtrar por convocatoria" disabled>
         <option value="">Cargando convocatorias...</option>
       </select>
     </div>
@@ -159,27 +161,27 @@
         <!-- Datos generales -->
         <div class="detalle-grid">
           <div class="detalle-campo">
-            <label>Folio</label>
+            <div class="detalle-etiqueta">Folio</div>
             <div class="valor" id="det-folio">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Solicitante</label>
+            <div class="detalle-etiqueta">Solicitante</div>
             <div class="valor" id="det-nombre">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Tipo solicitante</label>
+            <div class="detalle-etiqueta">Tipo solicitante</div>
             <div class="valor" id="det-tipo">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Tipo de solicitud</label>
+            <div class="detalle-etiqueta">Tipo de solicitud</div>
             <div class="valor" id="det-tipo-solicitud">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Convocatoria</label>
+            <div class="detalle-etiqueta">Convocatoria</div>
             <div class="valor" id="det-convocatoria">—</div>
           </div>
           <div class="detalle-campo">
-            <label>Actualizado</label>
+            <div class="detalle-etiqueta">Actualizado</div>
             <div class="valor" id="det-fecha-actualizacion">—</div>
           </div>
         </div>
@@ -267,10 +269,10 @@
             <button type="button" class="btn-aprobar" id="confirmar-decision-correo">Confirmar y enviar</button>
             <button type="button" class="btn-itt btn-secundario" id="btn-volver-decision-correo">Volver</button>
           </section>
-        <form id="form-notificacion">
-          <div class="form-grupo">
+        <form id="form-notificacion" class="notificacion-manual-box">
+          <div class="form-group">
             <label for="mensaje-notificacion">Aviso por correo</label>
-            <textarea id="mensaje-notificacion" name="mensaje" rows="3" maxlength="2000" required></textarea>
+            <textarea id="mensaje-notificacion" name="mensaje" class="form-control-itt" rows="3" maxlength="2000" required></textarea>
           </div>
           <button type="submit" class="btn-itt btn-secundario">Enviar aviso</button>
           <p role="status"></p>
