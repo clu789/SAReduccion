@@ -6,7 +6,7 @@
 # ── Credenciales y configuración local ──────────────────────
 # .env nunca debe versionarse; la plantilla es .env.example
 .env
-.env.*g
+.env.*
 !.env.example
 env
 *.env.local
@@ -54,3 +54,7 @@ backups/
 *.imp.log
 expdp*.log
 impdp*.log
+
+# Demo de notificaciones en Vercel
+.vercel/
+demo-notificaciones/dist/

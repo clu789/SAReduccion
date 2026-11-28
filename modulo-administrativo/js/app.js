@@ -313,28 +313,51 @@ const LoginAdmin = {
     if (!form) return;
     AuthSession.loginPage('ADMIN', 'panel-admin.html', 'alerta-login-admin');
 
+    const usuario = document.getElementById('usuario-admin');
+    const password = document.getElementById('password-admin');
+    const boton = document.getElementById('btn-login-admin');
+    const etiquetaBoton = boton?.querySelector('.btn-login-admin-text');
+    const indicadorCarga = boton?.querySelector('.login-button-spinner');
+    const togglePassword = document.getElementById('toggle-password-admin');
+
+    togglePassword?.addEventListener('click', () => {
+      const mostrar = password.type === 'password';
+      password.type = mostrar ? 'text' : 'password';
+      togglePassword.textContent = mostrar ? 'Ocultar' : 'Mostrar';
+      togglePassword.setAttribute('aria-label', `${mostrar ? 'Ocultar' : 'Mostrar'} contraseña`);
+      togglePassword.setAttribute('aria-pressed', String(mostrar));
+    });
+
+    const validarCampo = (campo, idError, mensaje, esValido) => {
+      const error = document.getElementById(idError);
+      campo?.classList.toggle('error', !esValido);
+      campo?.setAttribute('aria-invalid', String(!esValido));
+      if (error) {
+        error.textContent = esValido ? '' : mensaje;
+        error.classList.toggle('visible', !esValido);
+      }
+      return esValido;
+    };
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (boton?.disabled) return;
 
-      const usuario  = document.getElementById('usuario-admin');
-      const password = document.getElementById('password-admin');
+      const validoUsuario = validarCampo(
+        usuario, 'usuario-admin-error', 'Ingrese su usuario administrativo.', Boolean(usuario?.value.trim())
+      );
+      const validaPassword = validarCampo(
+        password, 'password-admin-error', 'Ingrese su contraseña.', Boolean(password?.value)
+      );
+      if (!validoUsuario || !validaPassword) return;
 
-      let valido = true;
-      if (!usuario || !usuario.value.trim()) {
-        usuario?.classList.add('error');
-        valido = false;
-      } else usuario?.classList.remove('error');
-
-      if (!password || !password.value) {
-        password?.classList.add('error');
-        valido = false;
-      } else password?.classList.remove('error');
-
-      if (!valido) return;
-
-      Spinner.show();
+      if (boton) {
+        boton.disabled = true;
+        boton.setAttribute('aria-busy', 'true');
+      }
+      if (indicadorCarga) indicadorCarga.hidden = false;
+      if (etiquetaBoton) etiquetaBoton.textContent = 'Verificando acceso…';
       try {
-        await Http.authSession();
         const username = usuario.value.trim().toUpperCase();
         const captcha = window.ITTSecurity ? window.ITTSecurity.captchaDe('#captcha-login-admin') : null;
         const session = await Http.post('/auth/login', {
@@ -355,7 +378,12 @@ const LoginAdmin = {
         window.ITTSecurity?.captchaDe('#captcha-login-admin')?.recargar();
       } finally {
         password.value = '';
-        Spinner.hide();
+        if (boton) {
+          boton.disabled = false;
+          boton.removeAttribute('aria-busy');
+        }
+        if (indicadorCarga) indicadorCarga.hidden = true;
+        if (etiquetaBoton) etiquetaBoton.textContent = 'Acceder al Panel';
       }
     });
   },

@@ -164,15 +164,16 @@ const visible = (n) => n && !n.classList.contains('hidden');
 
   console.log('\n[3] Errores del servidor al enviar');
   const llenar = async (doc) => { doc.getElementById('tipo-1').click(); await espera(() => doc.querySelectorAll('.pregunta').length === 4); doc.getElementById('p1').value = 'C'; doc.getElementById('p2').value = 'N'; doc.getElementById('p3-o1').click(); doc.getElementById('btn-siguiente').click(); doc.getElementById('confirmacion-datos').click(); doc.getElementById('btn-enviar').click(); };
-  t = await crear({ servidor: (m, u) => (m === 'POST' ? { status: 400, body: { error: 'Revise', errores: [{ idPregunta: 2, mensaje: 'El texto contiene caracteres no permitidos.' }] } } : null) }); ({ doc } = t);
+  t = await crear({ servidor: (m, u) => (m === 'POST' ? { status: 400, body: { error: 'Revise', errores: [{ idPregunta: 2, mensaje: 'El texto contiene caracteres no permitidos.' }], correlationId: 'req-form-400' } } : null) }); ({ doc } = t);
   await espera(() => doc.querySelectorAll('input[name="tipo-solicitud"]').length === 2); await llenar(doc);
   await espera(() => doc.getElementById('p2-error').classList.contains('visible'));
   ok(visible(doc.getElementById('paso-1')) && txt(doc.getElementById('p2-error')).includes('caracteres no permitidos'), '400: vuelve al paso 1 y marca la pregunta');
-  ok(txt(doc.getElementById('alerta-formulario')).includes('corregir'), '400: aviso general');
-  t = await crear({ servidor: (m) => (m === 'POST' ? { status: 409, body: { error: 'Ya existe una solicitud para esta convocatoria.', errores: [] } } : null) }); ({ doc } = t);
+  ok(txt(doc.getElementById('alerta-formulario')).includes('corregir')
+    && txt(doc.getElementById('alerta-formulario')).includes('req-form-400'), '400: aviso general con referencia');
+  t = await crear({ servidor: (m) => (m === 'POST' ? { status: 409, body: { error: 'Ya existe una solicitud para esta convocatoria.', errores: [], correlationId: 'req-form-409' } } : null) }); ({ doc } = t);
   await espera(() => doc.querySelectorAll('input[name="tipo-solicitud"]').length === 2); await llenar(doc);
   await espera(() => txt(doc.getElementById('alerta-formulario')).includes('Ya existe una solicitud'));
-  ok(true, '409: muestra el mensaje del servidor');
+  ok(txt(doc.getElementById('alerta-formulario')).includes('req-form-409'), '409: muestra el mensaje y referencia');
   ok(doc.querySelector('#alerta-formulario a') !== null, '409: ofrece ir al panel');
   t = await crear({ servidor: (m, u) => (m === 'POST' ? { status: 401, body: { error: 'x', errores: [] } } : null) }); ({ doc } = t);
   await espera(() => doc.querySelectorAll('input[name="tipo-solicitud"]').length === 2); await llenar(doc);
@@ -182,10 +183,13 @@ const visible = (n) => n && !n.classList.contains('hidden');
   await espera(() => doc.querySelectorAll('input[name="tipo-solicitud"]').length === 2); await llenar(doc);
   await espera(() => txt(doc.getElementById('alerta-formulario')).includes('Acceso no permitido'));
   ok(true, '403: aviso de acceso no permitido');
-  t = await crear({ servidor: (m) => (m === 'POST' ? { status: 500, body: { error: 'ORA-00600 interno' } } : null) }); ({ doc } = t);
+  t = await crear({ servidor: (m) => (m === 'POST' ? { status: 500, body: {
+    error: 'INTERNAL_ERROR', message: 'ORA-00600 interno', correlationId: 'req-form-500',
+  } } : null) }); ({ doc } = t);
   await espera(() => doc.querySelectorAll('input[name="tipo-solicitud"]').length === 2); await llenar(doc);
-  await espera(() => txt(doc.getElementById('alerta-formulario')).includes('No fue posible'));
-  ok(!txt(doc.getElementById('alerta-formulario')).includes('ORA-'), '500: mensaje generico, sin detalles internos');
+  await espera(() => txt(doc.getElementById('alerta-formulario')).includes('req-form-500'));
+  ok(txt(doc.getElementById('alerta-formulario')).includes('No fue posible')
+    && !txt(doc.getElementById('alerta-formulario')).includes('ORA-'), '500: referencia visible, sin detalles internos');
 
   console.log('\n[4] Solicitud existente y sin convocatoria');
   t = await crear({ convocatorias: CONV_FILAS({ idSolicitudExistente: 7, idEstatusSolicitud: 1 }) }); ({ doc } = t);

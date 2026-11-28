@@ -136,9 +136,46 @@ docker compose --profile full-stack down
 | [`ARQUITECTURA.md`](ARQUITECTURA.md) | Estructura de carpetas, capas, contenedores Docker, endpoints y autenticación |
 | [`BASE_DE_DATOS.md`](BASE_DE_DATOS.md) | Esquema Oracle, 23 tablas, paquetes PL/SQL, permisos y respaldo/restauración |
 | [`SEGURIDAD.md`](SEGURIDAD.md) | Autorización por rol, CSRF, captcha, OTP, auditoría en Oracle y estándar de logs |
-| [`NOTIFICACIONES.md`](NOTIFICACIONES.md) | Correo SMTP, Mailpit, plantillas HTML y avisos automáticos o manuales |
+| [`NOTIFICACIONES.md`](NOTIFICACIONES.md) | Brevo SMTP, plantillas HTML y avisos automáticos o manuales |
 | [`PRUEBAS.md`](PRUEBAS.md) | Pruebas unitarias Java, JSDOM, integración Oracle XE y verificación manual |
 | [`REQUERIMIENTOS.md`](REQUERIMIENTOS.md) | Matriz de requerimientos funcionales, no funcionales y reglas de negocio |
 | [`ASIGNACION_MODULOS.md`](ASIGNACION_MODULOS.md) | Distribución de los 7 equipos, integrantes, responsabilidades y reglas acordadas |
 | [`modulo-solicitante/README.md`](modulo-solicitante/README.md) | Vistas, endpoints y pruebas del módulo de estudiantes y aspirantes |
 | [`modulo-administrativo/README.md`](modulo-administrativo/README.md) | Vistas, convenciones y endpoints del módulo administrativo |
+
+## 7. Notificaciones del equipo 6
+
+El panel administrativo prepara el correo de **Autorizado**, **Rechazado**,
+**Aplicado** o **Cancelado** según la acción elegida. Permite revisar la plantilla,
+agregar un comentario y confirmar la decisión. El motivo del rechazo es obligatorio.
+
+El proveedor elegido es **Brevo**. Para el despliegue completo en **Azure**,
+el encargado configura sus valores como secretos del backend. La rama incluye el perfil `smtp-production` y
+`docker-compose.smtp-production.yml`, con soporte para STARTTLS, TLS implícito,
+validación de configuración y comprobación de conexión al arrancar.
+
+| Necesidad | Sección de la guía |
+| --- | --- |
+| Configurar y arrancar con Compose | [Despliegue con Docker Compose](NOTIFICACIONES.md#despliegue-con-docker-compose) |
+| Configurar el backend en Azure | [Variables en el contenedor de Azure](NOTIFICACIONES.md#variables-en-el-contenedor-de-azure) |
+| Elegir puerto, autenticación y TLS | [Referencia SMTP](NOTIFICACIONES.md#referencia-de-configuración-smtp) |
+| Integrar Oracle, dev y main | [Integración](NOTIFICACIONES.md#oracle-e-integración-con-dev-y-main) |
+| Probar la recepción y resolver errores | [Comprobación de envíos](NOTIFICACIONES.md#comprobación-de-los-envíos) y [diagnóstico](NOTIFICACIONES.md#diagnóstico) |
+| Probar localmente con Mailpit | [Prueba local](NOTIFICACIONES.md#pruebas-locales-con-mailpit) |
+
+La cobertura actual del destinatario corresponde a aspirantes. La entrega
+desde el contenedor de Azure se verifica en la puesta en marcha. La guía
+detalla las dependencias y los pendientes de integración.
+
+### Demo en Vercel y guía para el superadministrador
+
+[**Abrir la demo de notificaciones**](https://sareduccion-notificaciones.vercel.app).
+Permite revisar las cuatro plantillas e intentar un correo real con Brevo a un
+buzón autorizado, usando la clave privada de demostración. El folio de la demo
+es ficticio. La consulta y actualización reales de Oracle pertenecen al
+proyecto completo.
+
+La [guía de Vercel, Brevo, Azure y Oracle 12c](demo-notificaciones/README.md)
+explica la configuración, las pruebas y las dependencias del despliegue.
+La compatibilidad completa con la instancia Oracle 12c debe verificarse junto
+con el equipo de base de datos.

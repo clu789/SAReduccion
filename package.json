@@ -1,0 +1,12 @@
+{
+  "name": "sareduccion-demo-notificaciones",
+  "private": true,
+  "version": "1.0.0",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "build:demo": "node demo-notificaciones/build.cjs",
+    "dev:demo": "node --env-file-if-exists=.env.demo.local demo-notificaciones/server.cjs",
+    "test:demo": "node --test demo-notificaciones/test/*.test.cjs"
+  },
+  "dependencies": { "nodemailer": "10.6.1" }
+}

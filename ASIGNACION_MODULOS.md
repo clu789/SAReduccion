@@ -121,6 +121,7 @@ Cada equipo funcional desarrolla su módulo de extremo a extremo: interfaz, vali
 - Permitir al estudiante o aspirante **retirar** únicamente sus solicitudes **PENDIENTE**, mientras siga abierto el periodo de recepción. Una solicitud **AUTORIZADO** solo puede ser cancelada por un administrador; la interfaz no debe ofrecer esa acción al solicitante.
 - Integrar los paneles con endpoints reales y procedimientos PL/SQL, sustituyendo los datos simulados.
 - Adaptar las vistas del solicitante para teléfonos móviles y computadoras, cuidando la navegación, los formularios y la visualización del seguimiento. Coordinar la navegación compartida con el equipo 1.
+- Revisar y mejorar la interfaz visual y la facilidad de uso de los paneles de estudiante y aspirante, manteniendo coherencia con el estilo institucional y sin alterar las reglas de negocio. Verificar los estados vacíos, errores, carga, sesión expirada y navegación en móvil y escritorio.
 - Desarrollar y probar en su rama los cambios de backend y base de datos que requiera su funcionalidad.
 - Implementar en sus pantallas el manejo de **sesión expirada**, avisos de inactividad y respuestas `401`/`403`, de acuerdo con el mecanismo común del equipo 1.
 - Validar en el backend que cada solicitante solamente pueda consultar o modificar sus propios datos y solicitudes; integrar CSRF en las operaciones de cambio.
@@ -148,6 +149,7 @@ Cada equipo funcional desarrolla su módulo de extremo a extremo: interfaz, vali
 - Validar el orden de las fechas, la ausencia de convocatorias superpuestas, los importes y las relaciones. No permitir cambios una vez superado el límite de aplicación.
 - Permitir modificar fechas mientras corresponda, registrando las anteriores y nuevas en el historial de convocatorias; permitir actualizar los montos oficiales hasta el límite de autorización, sin alterar retroactivamente las deducciones ya autorizadas.
 - Implementar las interfaces, endpoints y propuestas SQL/PLSQL que sean necesarias para esta funcionalidad.
+- Revisar y mejorar la interfaz de administración de convocatorias y montos para que sea clara, consistente y fácil de utilizar. Mantener las validaciones y operaciones existentes; probar las pantallas en los tamaños de escritorio previstos.
 - Coordinar la disponibilidad de convocatorias con los equipos 2, 3 y 5.
 - Restringir las operaciones administrativas a usuarios autorizados y aplicar los controles comunes de sesión y CSRF.
 - Registrar logs técnicos de creación, modificación y errores de convocatorias y montos; documentar endpoints y probar las validaciones del módulo.
@@ -170,6 +172,7 @@ Cada equipo funcional desarrolla su módulo de extremo a extremo: interfaz, vali
 - Obtener preguntas y opciones desde la base de datos.
 - Implementar preguntas **ABIERTA**, **MÚLTIPLE** (una sola opción) y **MIXTA** (una sola opción y especificación adicional cuando la opción seleccionada la requiera), según el modelo existente.
 - Validar campos obligatorios y formatos de respuesta.
+- Revisar y modificar el formulario de solicitud y su interfaz para que las preguntas, opciones, instrucciones, campos obligatorios y errores sean fáciles de entender y responder. Mantener los tipos de pregunta y el contrato existente con backend; cualquier cambio en la estructura de datos o procedimientos debe coordinarse con el equipo 7.
 - Guardar y recuperar respuestas mediante el backend y los procedimientos PL/SQL. El envío inicial de solicitud y respuestas debe ser completo y atómico, sin borradores.
 - Permitir preparar y confirmar el reenvío de solicitudes **RETIRADO**, **RECHAZADO** o **CANCELADO** dentro del plazo de recepción. La actualización de tipo y respuestas se realiza al reenviar, sin crear otra solicitud; una solicitud **PENDIENTE** no se edita directamente.
 - Coordinar la integración del formulario con el panel del equipo 3.
@@ -239,6 +242,7 @@ Cada equipo funcional desarrolla su módulo de extremo a extremo: interfaz, vali
 - **Pruebas:** cada equipo verifica el funcionamiento normal, los errores y los accesos no autorizados de sus endpoints. El equipo 1 prueba los mecanismos compartidos de seguridad.
 - **Contratos de API:** cada equipo documenta sus endpoints, parámetros, respuestas y códigos HTTP. Puede hacerlo en Markdown; **OpenAPI/Swagger no es obligatorio** para esta etapa.
 - **SQL/PLSQL:** se reutilizan primero los procedimientos, triggers y restricciones ya existentes. Cada equipo desarrolla y prueba únicamente los cambios que necesite; el equipo 7 los valida e integra en los scripts oficiales.
+- **Errores de procedimientos:** el equipo dueño del módulo identifica y documenta los códigos Oracle de negocio que utiliza. Se conserva `RAISE_APPLICATION_ERROR` cuando corresponda; el backend traduce los códigos conocidos a respuestas seguras y registra operación, código y correlación. No se debe devolver `SQLERRM`, trazas ni datos sensibles al navegador, ni agregar parámetros `OUT` solo para “guardar” un log. Un parámetro `OUT` devuelve un valor al llamador, pero no persiste un registro. Si se requiere auditoría persistente en Oracle, se propone explícitamente el paquete o tabla, sus permisos y su comportamiento ante `ROLLBACK`. Todo cambio debe actualizar las llamadas Java, las respuestas HTTP, la interfaz y las pruebas relacionadas.
 - **Integración entre equipos:** acordar los contratos de los endpoints y eventos antes de depender de la implementación final de otro módulo, para reducir bloqueos.
 
 ### Actividades fuera del alcance obligatorio actual
@@ -268,6 +272,24 @@ No se asignan como funcionalidades de esta etapa: cambio, recuperación o desblo
 **Participación transversal del equipo 7:** Durante todo el flujo, revisa y consolida los cambios oficiales de Oracle propuestos por los equipos funcionales. Los paquetes y validaciones existentes deben reutilizarse antes de proponer modificaciones.
 
 **Pendiente de integración:** Coordinar con el sistema institucional el momento de aplicación de una deducción y la generación del comprobante correspondiente. La base de datos ya contempla el procedimiento de aplicación; esta asignación no supone que la integración institucional esté terminada.
+
+## 5. Estado de revisión de entregables por equipo
+
+**Revisión estática del repositorio al 27 de noviembre de 2026.** La existencia de pantallas, endpoints o pruebas no equivale a aceptación formal. “Parcial” significa que existe una base funcional, pero faltan los puntos de revisión indicados o evidencia de pruebas integradas. Oracle 12c queda fuera de esta etapa y no se considera un bloqueo.
+
+| Equipo | Estado observado | Puntos por revisar o completar |
+| --- | --- | --- |
+| **1 — Autenticación y seguridad** | **Parcial: mecanismos compartidos implementados.** Hay autenticación por perfil, sesiones, captcha, CSRF, autorización, límites de intentos, auditoría y pruebas automatizadas. | Confirmar que los módulos consuman consistentemente las respuestas `401`/`403` y los logs comunes. Probar los tres accesos y sus controles en el entorno integrado. Verificar OTP, TLS, SMTP y proxies al preparar un despliegue; el limitador compartido solo es requisito si se usan varias réplicas. |
+| **2 — Panel administrativo** | **Parcial: operaciones principales y pruebas presentes.** | Completar y verificar logs técnicos para decisiones y errores Oracle conocidos; los historiales de negocio en Oracle no sustituyen esos logs. Probar con datos de XE 21c los flujos de aprobación, rechazo, cancelación, reautorización y aplicación, incluidos rol, CSRF y errores. |
+| **3 — Panel de estudiante y aspirante** | **Parcial: paneles y conexión con servicios existentes.** | Mejorar la interfaz visual y la facilidad de uso como se indica en las responsabilidades del equipo. Verificar responsive, estados vacíos/carga/error, sesión expirada, accesibilidad básica y navegación en móviles y escritorio; registrar resultados de pruebas en navegadores. |
+| **4 — Convocatorias y montos** | **Parcial: pantallas, servicios y pruebas de backend presentes.** | Mejorar la interfaz de administración de convocatorias y montos. Volver a probar orden y traslape de fechas, límites de operación, cambios permitidos y montos inválidos mediante la interfaz y el backend. |
+| **5 — Formularios de solicitud** | **Parcial: formulario dinámico, validaciones y pruebas existentes.** | Modificar y mejorar el formulario y su interfaz: presentación de instrucciones, preguntas, opciones, campos obligatorios y errores. Probar preguntas abiertas, de opción única y mixtas, reenvíos, identidad/propiedad de la solicitud, atomicidad del envío y adaptación a móvil con datos de prueba. |
+| **6 — Notificaciones** | **Parcial: servicio, plantillas y pruebas automatizadas presentes.** | Probar entrega real desde el entorno de despliegue. Acordar la fuente de correo institucional de estudiantes; resolver o aceptar explícitamente la ausencia de reintentos persistentes y el guardado del comentario de “Aplicado” en el historial. No confundir estos avisos con el OTP del equipo 1. |
+| **7 — Base de datos e integración oficial** | **Parcial: scripts y paquetes para Oracle XE 21c presentes.** | Revisar e integrar las propuestas de los equipos, permisos y compilación; ejecutar instalación limpia y pruebas de cambios sobre una base XE 21c existente, comprobando errores visibles y recuperación. Oracle 12c se evaluará aparte cuando se retome esa decisión; no se exige para cerrar esta etapa. |
+
+### Criterio para marcar un punto como terminado
+
+El equipo responsable debe aportar el cambio integrado, la prueba del caso normal y de sus errores relevantes, y evidencia de que no se filtran datos sensibles. Para procedimientos, la prueba debe verificar también que las llamadas Java y las respuestas del frontend siguen el contrato actualizado. Las pruebas con correo real deben usar buzones autorizados; las pruebas funcionales y de inserción deben usar datos ficticios en una base de pruebas.
 
 ---
 

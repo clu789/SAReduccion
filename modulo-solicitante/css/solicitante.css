@@ -6,7 +6,7 @@
 /* ── Login de Estudiante ── */
 .login-wrapper {
   min-height: 100vh;
-  background: linear-gradient(145deg, #1a3a6b 0%, #2a5298 50%, #1a3a6b 100%);
+  background: linear-gradient(145deg, var(--itt-azul-oscuro) 0%, var(--itt-azul) 50%, var(--itt-azul-oscuro) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -43,13 +43,6 @@
   position: relative;
   z-index: 1;
 }
-
-.login-card .login-logo {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.login-card .login-logo img { max-height: 72px; }
 
 .login-card h1 {
   text-align: center;
@@ -139,7 +132,7 @@
 .estatus-item.activo::before {
   background: var(--itt-azul-medio);
   border-color: var(--itt-azul-medio);
-  box-shadow: 0 0 0 4px rgba(42,82,152,.2);
+  box-shadow: 0 0 0 4px rgba(51,122,183,.2);
 }
 
 .estatus-item.rechazado::before {
@@ -203,8 +196,7 @@
   flex-wrap: wrap;
 }
 
-.info-alumno-card .info-avatar,
-.perfil-encabezado .info-avatar {
+.info-alumno-card .info-avatar {
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--itt-azul-medio);
@@ -217,8 +209,7 @@
 }
 
 .info-alumno-card .info-datos { flex: 1; }
-.info-alumno-card .info-nombre,
-.perfil-encabezado .info-nombre {
+.info-alumno-card .info-nombre {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--itt-azul);
@@ -242,99 +233,406 @@
   align-self: center;
 }
 
-/* ── Menú del usuario en la barra de navegación ── */
-.menu-usuario { position: relative; }
+/* ── Panel del solicitante con el estilo de los sistemas del ITT (SII) ── */
+.panel-solicitante {
+  --sii-azul:  var(--itt-azul);
+  --sii-borde: #ddd;
+  --sii-gris:  #eee;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.43;
+}
 
-.menu-usuario-boton {
+.itt-navbar-sistema {
+  color: var(--itt-blanco);
+  font-size: 18px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,.15);
-  border: 1px solid rgba(255,255,255,.35);
+  min-width: 0;
+}
+
+.itt-navbar-sistema span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-sii {
+  background: var(--itt-blanco);
+  border: 1px solid var(--sii-borde);
+  border-radius: 4px;
+  box-shadow: 0 1px 1px rgba(0,0,0,.05);
+  margin-bottom: 20px;
+}
+
+.panel-sii-primario { border-color: var(--sii-azul); }
+
+.panel-sii-encabezado {
+  background: var(--sii-azul);
   color: var(--itt-blanco);
-  padding: 5px 12px;
-  border-radius: var(--radio-btn);
-  font: inherit;
-  font-size: .875rem;
-  cursor: pointer;
+  margin: 0;
+  padding: 10px 15px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 3px 3px 0 0;
+}
+
+.panel-sii-cuerpo { padding: 15px; }
+
+/* Información personal: ficha con nombre a la izquierda y datos a la derecha */
+.info-personal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+}
+
+.info-personal-ficha {
+  border: 1px solid var(--sii-borde);
+  border-radius: 4px;
+  padding: 20px 15px 18px;
+  text-align: center;
+}
+
+.info-personal-foto {
+  width: 124px;
+  height: 150px;
+  margin: 0 auto 14px;
+  background: #e4e9f0;
+  color: #a4b1c2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.info-personal-foto i { font-size: 140px; line-height: 1; margin-bottom: -14px; }
+
+.info-personal-nombre {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  text-transform: uppercase;
+  word-break: break-word;
+}
+
+.info-personal-tipo {
+  margin-top: 14px;
+  padding: 2px 12px;
+  background: #d9d9d9;
+  border-radius: 12px;
+  color: #333;
+  font-size: 13px;
+  text-align: center;
+}
+
+.info-personal-detalle {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding-top: 12px;
+}
+
+.info-personal-lista {
+  margin: 0;
+  padding-left: 20px;
+  color: #333;
+}
+
+.info-personal-lista li { margin-bottom: 10px; }
+.info-personal-lista .badge-estatus { vertical-align: middle; }
+
+/* Accesos rápidos circulares, como los del SII */
+.grupo-accesos {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+  padding: 6px 24px 10px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.grupo-accesos legend {
+  margin: 0 auto;
+  padding: 0 6px;
+  font-size: 10px;
+  color: #333;
+}
+
+.acceso-circular {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e6e6e6;
+  color: var(--itt-blanco);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
   transition: background var(--transition);
 }
 
-.menu-usuario-boton:hover,
-.menu-usuario-boton.abierto { background: rgba(255,255,255,.28); }
-.menu-usuario-boton:focus-visible { outline: 2px solid var(--itt-azul-claro); outline-offset: 2px; }
+.acceso-circular:hover { background: #cfcfcf; color: var(--itt-blanco); text-decoration: none; }
+.acceso-circular.activo { background: var(--itt-naranja); }
+.acceso-documento:hover { background: #d9534f; }
+.acceso-circular:focus-visible { outline: 2px solid var(--sii-azul); outline-offset: 2px; }
 
-.menu-usuario-flecha { font-size: .8rem !important; transition: transform var(--transition); }
-.menu-usuario-boton.abierto .menu-usuario-flecha { transform: rotate(180deg); }
-
-.menu-usuario-lista {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 180px;
-  margin: 0;
-  padding: 6px 0;
+/* Pestañas «Mis Solicitudes / Convocatorias» */
+.pestanas-sii {
+  display: flex;
   list-style: none;
-  background: var(--itt-blanco);
-  border: 1px solid var(--itt-gris-borde);
-  border-radius: 6px;
-  box-shadow: 0 6px 20px rgba(0,0,0,.18);
-  z-index: 1000;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--sii-borde);
 }
 
-.menu-usuario-lista[hidden] { display: none; }
+.pestanas-sii a {
+  display: block;
+  margin: 0 2px -1px 0;
+  padding: 10px 15px;
+  border: 1px solid transparent;
+  border-radius: 4px 4px 0 0;
+  color: var(--sii-azul);
+}
 
-.menu-usuario-lista button {
+.pestanas-sii a:hover {
+  background: var(--sii-gris);
+  border-color: var(--sii-gris) var(--sii-gris) var(--sii-borde);
+  text-decoration: none;
+}
+
+.pestanas-sii a.activo,
+.pestanas-sii a.activo:hover {
+  background: var(--itt-blanco);
+  border-color: var(--sii-borde) var(--sii-borde) transparent;
+  color: #555;
+  cursor: default;
+}
+
+.pestanas-contenido { margin-top: 15px; min-height: 160px; }
+
+.vista[hidden] { display: none !important; }
+
+/* Contador de la pestaña, como los indicadores grises del SII */
+.pestana-contador {
+  display: inline-block;
+  min-width: 10px;
+  margin-left: 3px;
+  padding: 3px 7px;
+  border-radius: 10px;
+  background: #777;
+  color: var(--itt-blanco);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.pestana-contador[hidden] { display: none; }
+
+.vista-ayuda {
+  margin: 0 0 15px;
+  color: #555;
+  font-size: 13px;
+}
+
+.vista-ayuda i { color: var(--itt-azul); margin-right: 4px; }
+
+/* Resumen de la solicitud más reciente */
+.resumen-solicitud { margin-bottom: 20px; box-shadow: none; }
+
+.panel-sii-encabezado-claro {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #f5f5f5;
+  border-bottom: 1px solid var(--sii-borde);
+  color: #333;
+  font-size: 14px;
+}
+
+.tabla-titulo {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #333;
+}
+
+/* Etapas del trámite */
+.progreso-tramite {
+  display: flex;
+  list-style: none;
+  margin: 4px 0 18px;
+  padding: 0;
+}
+
+.progreso-tramite li {
+  flex: 1;
+  position: relative;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+}
+
+/* Línea que une cada etapa con la anterior */
+.progreso-tramite li::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: -50%;
   width: 100%;
-  padding: 9px 16px;
-  background: none;
-  border: none;
-  color: var(--itt-texto);
-  font: inherit;
-  font-size: .875rem;
+  height: 3px;
+  background: #ddd;
+}
+
+.progreso-tramite li:first-child::before { display: none; }
+.progreso-tramite li:not(.pendiente)::before { background: #5cb85c; }
+
+.paso-icono {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 5px;
+  border-radius: 50%;
+  border: 3px solid #ddd;
+  background: var(--itt-blanco);
+  color: #bbb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.paso-texto { display: block; font-weight: 700; }
+
+.progreso-tramite .completado .paso-icono { background: #5cb85c; border-color: #5cb85c; color: var(--itt-blanco); }
+.progreso-tramite .completado .paso-texto { color: #3c763d; }
+.progreso-tramite .activo .paso-icono { border-color: var(--itt-azul); color: var(--itt-azul); box-shadow: 0 0 0 4px rgba(51,122,183,.18); }
+.progreso-tramite .activo .paso-texto { color: var(--itt-azul); }
+.progreso-tramite .error .paso-icono { background: #d9534f; border-color: #d9534f; color: var(--itt-blanco); }
+.progreso-tramite .error .paso-texto { color: #a94442; }
+.progreso-tramite .neutro .paso-icono { background: #777; border-color: #777; color: var(--itt-blanco); }
+.progreso-tramite .neutro .paso-texto { color: #555; }
+
+/* Recuadro «¿Qué sigue?» con los colores de las alertas del SII */
+.siguiente-paso {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 15px;
+  border: 1px solid;
+  border-radius: 4px;
+}
+
+.siguiente-paso-icono { font-size: 22px; flex-shrink: 0; }
+.siguiente-paso-texto { flex: 1; min-width: 0; }
+.siguiente-paso-texto > strong { display: block; margin-bottom: 2px; }
+.siguiente-paso-texto p { margin: 0; }
+.siguiente-paso .btn-sii { flex-shrink: 0; }
+
+.siguiente-paso-info        { background: #d9edf7; border-color: #bce8f1; color: #31708f; }
+.siguiente-paso-exito       { background: #dff0d8; border-color: #d6e9c6; color: #3c763d; }
+.siguiente-paso-advertencia { background: #fcf8e3; border-color: #faebcc; color: #8a6d3b; }
+
+.siguiente-paso-comentario {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,.6);
+  border-radius: 3px;
+  font-size: 13px;
+}
+
+/* Días restantes de la convocatoria */
+.etiqueta-plazo {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #5cb85c;
+  color: var(--itt-blanco);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.etiqueta-plazo-urgente { background: #f0ad4e; }
+
+.tabla-sii td .etiqueta-plazo { display: table; }
+
+/* Tablas con el formato de los sistemas del ITT (encabezado azul claro y renglones alternados) */
+.tabla-responsiva { width: 100%; overflow-x: auto; }
+
+.tabla-sii {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: #333;
+}
+
+.tabla-sii th,
+.tabla-sii td {
+  padding: 8px;
+  border: 1px solid var(--sii-borde);
   text-align: left;
+  vertical-align: top;
+}
+
+.tabla-sii thead th {
+  background: #d9edf7;
+  border-bottom-width: 2px;
+  font-weight: 700;
+  vertical-align: bottom;
+}
+
+.tabla-sii tbody tr:nth-child(odd) { background: #f9f9f9; }
+
+.tabla-sii-opciones { text-align: center !important; min-width: 190px; }
+.tabla-sii-opciones p { margin: 0 0 6px; }
+.tabla-sii-opciones .btn-sii { margin: 2px; }
+
+.tabla-sii-vacia { text-align: center !important; color: #666; }
+
+.tabla-sii-pie { margin: 10px 0 0; font-size: 13px; color: #333; }
+
+.text-nowrap { white-space: nowrap; }
+
+/* Celda «Estado» coloreada según el estatus */
+.tabla-sii td.estado-sii { color: var(--itt-blanco); font-weight: 700; }
+.tabla-sii td.estado-aceptado  { background: #28a745; }
+.tabla-sii td.estado-pendiente { background: #f0ad4e; }
+.tabla-sii td.estado-rechazado { background: #d9534f; }
+.tabla-sii td.estado-cancelado { background: var(--itt-naranja); }
+.tabla-sii td.estado-retirado  { background: #777; }
+
+/* Botones pequeños de la columna «Opciones» */
+.btn-sii {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--itt-blanco);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.menu-usuario-lista button i { width: 16px; color: var(--itt-azul-medio); font-size: 1rem; }
-.menu-usuario-lista button:hover,
-.menu-usuario-lista button:focus-visible { background: #eef3fb; color: var(--itt-azul); outline: none; }
-.menu-usuario-lista li + li { border-top: 1px solid var(--itt-gris-borde); }
-.menu-usuario-lista [data-auth-logout] i { color: var(--itt-rojo); }
+.btn-sii:hover { color: var(--itt-blanco); text-decoration: none; filter: brightness(.92); }
+.btn-sii:focus-visible { outline: 2px solid var(--sii-azul); outline-offset: 2px; }
 
-/* ── Vistas del panel (Mis Solicitudes / Convocatorias) ── */
-.vista[hidden] { display: none !important; }
-.vista > .titulo-seccion:first-child { margin-top: 0; }
-
-/* ── Ventana «Mi perfil» ── */
-.perfil-encabezado {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding-bottom: 16px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--itt-gris-borde);
-}
-
-/* ── Panel del solicitante (Equipo 3) ── */
-.titulo-seccion {
-  font-size: 1.2rem;
-  margin: 28px 0 14px;
-}
-
-.subtitulo-seccion {
-  font-size: .95rem;
-  color: var(--itt-azul);
-  margin: 4px 0 14px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--itt-azul-claro);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.btn-sii-azul    { background: var(--itt-azul); border-color: #2e6da4; }
+.btn-sii-verde   { background: #5cb85c; border-color: #4cae4c; }
+.btn-sii-naranja { background: var(--itt-naranja); border-color: #d4572b; }
+.btn-sii-rojo    { background: #d9534f; border-color: #d43f3a; }
 
 .texto-claro { color: var(--itt-texto-claro); font-size: .875rem; }
 .mt-12 { margin-top: 12px; }
@@ -366,62 +664,6 @@
 .badge-aplicado  { background: #c3e6cb; color: #0f4d1c; border: 1px solid #2e8b57; }
 .badge-retirado  { background: #ececec; color: #4a4a4a; border: 1px solid #a8a8a8; }
 
-/* Convocatorias disponibles */
-.convocatoria-item + .convocatoria-item {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid var(--itt-gris-borde);
-}
-
-.convocatoria-encabezado { margin-bottom: 12px; }
-
-.convocatoria-titulo {
-  font-weight: 700;
-  color: var(--itt-azul);
-  font-size: 1rem;
-  margin-bottom: 3px;
-}
-
-.convocatoria-fechas {
-  font-size: .82rem;
-  color: var(--itt-texto-claro);
-}
-
-.convocatoria-tipo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: #f8fafc;
-  border: 1px solid var(--itt-gris-borde);
-  border-radius: 6px;
-  padding: 14px 16px;
-  margin-bottom: 10px;
-}
-
-.convocatoria-tipo-nombre {
-  font-weight: 700;
-  color: var(--itt-azul-medio);
-  margin-bottom: 2px;
-}
-
-.convocatoria-tipo-detalle {
-  font-size: .82rem;
-  color: var(--itt-texto-claro);
-}
-
-/* Tarjeta de cada solicitud */
-.solicitud-card-header {
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-
-.solicitud-card-header > span:first-child {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .deduccion-resumen {
   background: linear-gradient(135deg, #eaf7ee 0%, #f4fbf6 100%);
   border: 1px solid #b9e2c7;
@@ -439,30 +681,28 @@
   margin-bottom: 12px;
 }
 
-.acciones-solicitud {
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--itt-gris-borde);
-}
+/* Ventana de detalle de la solicitud */
+.modal-box-amplio { max-width: 680px; }
 
-.acciones-solicitud .btn-itt { margin-top: 4px; }
+.detalle-subtitulo {
+  margin: 4px 0 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--sii-borde);
+  font-size: 15px;
+}
 
 .btn-itt[disabled] { opacity: .6; cursor: not-allowed; transform: none; }
 
 /* La imagen institucional se ajusta al ancho disponible en lugar de recortarse. */
 .itt-header-top img.logo-header { max-width: 100%; height: auto; }
 
-/* Encabezado centrado, como en el módulo administrativo. */
-.panel-solicitante .itt-header-top { justify-content: center; padding: 10px 24px; }
-.panel-solicitante .itt-header-top img.logo-header { max-height: 64px; }
+.panel-solicitante .itt-header-top img.logo-header { max-height: 90px; }
 
 .modal-box { max-height: calc(100vh - 32px); overflow-y: auto; }
 
 /* ── Tabletas (panel del solicitante) ── */
 @media (max-width: 768px) {
-  .panel-solicitante .itt-header-top { padding: 8px 12px; }
-
-  /* La barra se mantiene en un renglón: pestañas a la izquierda, usuario a la derecha. */
+  /* La barra se mantiene en un renglón: sistema a la izquierda, usuario a la derecha. */
   .panel-solicitante .itt-navbar {
     flex-direction: row;
     align-items: center;
@@ -470,39 +710,31 @@
     gap: 8px;
     padding: 6px 12px;
   }
-  .panel-solicitante .itt-navbar-links { flex-wrap: nowrap; min-width: 0; }
   .panel-solicitante .itt-navbar-user { width: auto; flex-shrink: 0; }
 
-  .panel-solicitante .titulo-seccion { font-size: 1.1rem; }
+  /* Información personal en una columna: ficha arriba y datos abajo. */
+  .info-personal { grid-template-columns: 1fr; gap: 16px; }
+  .info-personal-detalle { padding-top: 0; }
   .card-itt-header { padding: 12px 16px; }
 }
 
 /* ── Teléfonos ── */
 @media (max-width: 600px) {
-  .panel-solicitante .itt-header-top img.logo-header { max-height: 40px; }
-
-  /* Pestañas de igual ancho que ocupan el espacio libre de la barra. */
-  .panel-solicitante .itt-navbar-links { flex: 1; gap: 4px; }
-  .panel-solicitante .itt-navbar-links li { flex: 1 1 0; min-width: 0; }
-  .panel-solicitante .itt-navbar-links li a {
-    text-align: center;
-    padding: 8px 4px;
-    font-size: .8rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .menu-usuario-boton { padding: 6px 10px; }
-  #nombre-usuario-nav {
-    max-width: 90px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  .panel-solicitante .itt-header { padding: 0 12px; }
+  .itt-navbar-sistema { font-size: 15px; }
 
   .panel-solicitante .itt-main { padding: 16px 12px; }
-  .itt-main h2 { font-size: 1.2rem; }
+  .itt-main h2:not(.panel-sii-encabezado) { font-size: 1.2rem; }
   .card-itt-body { padding: 14px; }
+
+  .info-personal-foto { width: 100px; height: 120px; }
+  .info-personal-foto i { font-size: 112px; margin-bottom: -11px; }
+  .grupo-accesos { align-self: center; }
+
+  /* Pestañas de igual ancho. */
+  .pestanas-sii li { flex: 1 1 0; min-width: 0; }
+  .pestanas-sii a { text-align: center; padding: 9px 4px; font-size: 13px; white-space: nowrap; }
+  .pestanas-contenido { margin-top: 12px; }
 
   .info-alumno-card { flex-direction: column; align-items: center; text-align: center; }
   .info-alumno-card .info-meta { justify-content: center; }
@@ -524,16 +756,16 @@
   .grid-datos .dato-valor { text-align: right; }
   .deduccion-resumen .grid-datos > div { border-bottom-color: #cfe9d8; }
 
-  .solicitud-card-header { gap: 8px; }
+  .siguiente-paso { flex-wrap: wrap; }
+  .siguiente-paso .btn-sii { width: 100%; justify-content: center; }
+  .progreso-tramite li { font-size: 11px; }
+  .paso-icono { width: 28px; height: 28px; font-size: 11px; }
+  .progreso-tramite li::before { top: 13px; }
+
   .estatus-timeline { --tl-separacion: 16px; padding-left: 26px; }
   .estatus-item::before { left: -21px; }
   .estatus-item::after { left: -15px; }
 
-  .convocatoria-tipo { flex-direction: column; align-items: stretch; padding: 12px; }
-  .convocatoria-tipo .btn-itt,
-  .acciones-solicitud .btn-itt { width: 100%; justify-content: center; }
-
-  .perfil-encabezado { flex-direction: column; text-align: center; }
   .modal-body { padding: 16px; }
   .modal-footer { flex-direction: column-reverse; }
   .modal-footer .btn-itt { width: 100%; justify-content: center; }
@@ -544,8 +776,415 @@
   .panel-solicitante .itt-navbar-links li a i { display: none; }
 }
 
-/* ── Clases de apoyo sin estilos en línea (RNF-66) ── */
 .icono-titulo-seccion { color: var(--itt-azul-claro); }
 .input-mayusculas { text-transform: uppercase; }
 .btn-login-submit { margin-top: 8px; justify-content: center; }
 .login-ayuda { text-align: center; margin-top: 18px; font-size: .78rem; color: var(--itt-texto-claro); }
+
+/* ── Login institucional compartido con el módulo administrativo ── */
+#pagina-login-estudiante .login-wrapper {
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: 28px 18px;
+  overflow: auto;
+  background: #f3f5f7;
+}
+
+#pagina-login-estudiante .login-wrapper::before,
+#pagina-login-estudiante .login-wrapper::after { display: none; }
+
+#pagina-login-estudiante .login-institucion {
+  width: 100%;
+  max-width: 920px;
+  overflow: hidden;
+  border-bottom: 3px solid #337ab7;
+  border-radius: 3px;
+  background: #fff;
+  position: relative;
+  z-index: 1;
+}
+
+#pagina-login-estudiante .login-header-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#pagina-login-estudiante .login-card {
+  max-width: 420px;
+  padding: 30px 36px 24px;
+  border: 1px solid #dce3eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 26px rgba(28, 47, 68, .11);
+}
+
+#pagina-login-estudiante .login-card h1 {
+  margin-bottom: 4px;
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+#pagina-login-estudiante .login-card .login-subtitulo {
+  margin-bottom: 18px;
+  font-size: .88rem;
+}
+
+#pagina-login-estudiante .tabs-tipo-usuario {
+  margin-bottom: 20px;
+  border-color: #dce3eb;
+  border-radius: 5px;
+}
+
+#pagina-login-estudiante .tab-tipo {
+  min-height: 42px;
+  background: #f7f9fb;
+  color: #526170;
+}
+
+#pagina-login-estudiante .tab-tipo.activo {
+  background: #337ab7;
+  color: #fff;
+}
+
+#pagina-login-estudiante .tab-tipo:focus-visible,
+#pagina-login-estudiante .login-password-toggle:focus-visible,
+#pagina-login-estudiante .btn-login-submit:focus-visible {
+  outline: 3px solid rgba(51, 122, 183, .28);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+#pagina-login-estudiante .login-card .form-group { margin-bottom: 16px; }
+#pagina-login-estudiante .login-card .form-group label {
+  margin-bottom: 7px;
+  color: var(--itt-texto);
+}
+
+#pagina-login-estudiante .login-card .form-control-itt {
+  min-height: 46px;
+  padding: 10px 12px;
+  border-radius: 5px;
+}
+
+#pagina-login-estudiante .login-card .form-control-itt:focus {
+  border-color: #337ab7;
+  box-shadow: 0 0 0 3px rgba(51, 122, 183, .15);
+}
+
+#pagina-login-estudiante .login-password-field { position: relative; }
+#pagina-login-estudiante .login-password-field .form-control-itt { padding-right: 82px; }
+#pagina-login-estudiante .login-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: 0;
+  padding: 5px 2px;
+  background: transparent;
+  color: #337ab7;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#pagina-login-estudiante .login-password-toggle:hover { color: #23527c; }
+
+#pagina-login-estudiante .itt-captcha { margin: 2px 0 16px; }
+#pagina-login-estudiante .itt-captcha__desafio {
+  min-height: 72px;
+  justify-content: center;
+}
+#pagina-login-estudiante .itt-captcha__acciones {
+  justify-content: center;
+  gap: 16px;
+}
+#pagina-login-estudiante .itt-captcha__boton { color: #337ab7; }
+#pagina-login-estudiante .itt-captcha__boton:hover { color: #23527c; }
+#pagina-login-estudiante .itt-captcha__campo { min-height: 44px; }
+
+#pagina-login-estudiante .itt-otp__ayuda {
+  margin: 0 0 14px;
+  color: var(--itt-texto-claro);
+  line-height: 1.5;
+}
+#pagina-login-estudiante #paso-otp .itt-captcha__acciones { margin: 12px 0 16px; }
+
+#pagina-login-estudiante .btn-login-submit {
+  min-height: 46px;
+  margin-top: 2px;
+  border-radius: 5px;
+  background: #337ab7;
+}
+#pagina-login-estudiante .btn-login-submit:hover { background: #2e6da4; }
+#pagina-login-estudiante .btn-login-submit:disabled {
+  transform: none;
+  background: #6d91ad;
+  box-shadow: none;
+  cursor: wait;
+}
+
+#pagina-login-estudiante .login-button-spinner {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, .45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: login-solicitante-giro .7s linear infinite;
+}
+#pagina-login-estudiante .login-button-spinner[hidden] { display: none; }
+
+#pagina-login-estudiante .login-ayuda {
+  border-top: 1px solid #edf0f3;
+  padding-top: 15px;
+  line-height: 1.5;
+}
+
+@keyframes login-solicitante-giro { to { transform: rotate(360deg); } }
+
+@media (max-width: 520px) {
+  #pagina-login-estudiante .login-wrapper { justify-content: flex-start; padding: 20px 14px; }
+  #pagina-login-estudiante .login-card { padding: 26px 22px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pagina-login-estudiante .login-button-spinner { animation: none; }
+}
+
+/* ── Portal y formulario de acceso integrado ── */
+#pagina-login-estudiante {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: #f3f5f7;
+}
+
+#pagina-login-estudiante .login-wrapper {
+  display: block;
+  min-height: 100vh;
+  padding: 24px;
+  overflow: visible;
+  background: transparent;
+}
+
+#pagina-login-estudiante .login-page-background {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+  color: #333;
+}
+
+#pagina-login-estudiante .login-institucion {
+  max-width: 920px;
+  margin: 0 auto 14px;
+  overflow: hidden;
+  border-bottom: 0;
+  border-radius: 3px;
+  background: #fff;
+  position: relative;
+  z-index: 1;
+}
+
+#pagina-login-estudiante .login-header-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#pagina-login-estudiante .login-portal-nav {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 12px 0 18px;
+  border: 1px solid #dce3eb;
+  border-radius: 4px;
+  background: #f8f8f8;
+  color: #777;
+}
+
+#pagina-login-estudiante .login-portal-nav > span {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+#pagina-login-estudiante .login-portal-nav .tabs-tipo-usuario {
+  align-items: stretch;
+  flex: 0 0 auto;
+  gap: 0;
+  margin: 0;
+  overflow: visible;
+  border: 0;
+}
+
+#pagina-login-estudiante .login-portal-nav .tab-tipo {
+  flex: 0 0 auto;
+  min-height: 50px;
+  padding: 0 18px;
+  border: 0;
+  border-left: 1px solid #e3e3e3;
+  border-radius: 0;
+  background: transparent;
+  color: #555;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background .2s, color .2s, border-color .2s;
+}
+
+#pagina-login-estudiante .login-portal-nav .tab-tipo:hover:not(.activo) {
+  background: #f0f3f6;
+  color: #23527c;
+}
+
+#pagina-login-estudiante .login-portal-nav .tab-tipo.activo {
+  border-bottom: 3px solid #337ab7;
+  background: #fff;
+  color: #337ab7;
+}
+
+#pagina-login-estudiante .login-portal-nav .tab-tipo:focus-visible {
+  outline: 3px solid rgba(51, 122, 183, .28);
+  outline-offset: 2px;
+}
+
+#pagina-login-estudiante .login-panel {
+  max-width: 920px;
+  margin: 16px auto 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#pagina-login-estudiante .login-panel__content {
+  display: flex;
+  justify-content: center;
+  padding: 22px 24px;
+}
+
+#pagina-login-estudiante .login-form-panel {
+  position: static;
+  z-index: auto;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+  text-align: left;
+}
+
+#pagina-login-estudiante .login-form-panel__header {
+  padding: 10px 14px;
+  border-bottom: 1px solid #ddd;
+  background: #f5f5f5;
+}
+
+#pagina-login-estudiante .login-form-panel .login-subtitulo {
+  margin: 0;
+  color: #444;
+  font-size: .95rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+#pagina-login-estudiante .login-form-panel__body {
+  padding: 14px 14px 12px;
+}
+
+#pagina-login-estudiante .login-form-panel form {
+  display: flex;
+  flex-direction: column;
+}
+
+#pagina-login-estudiante .login-form-panel .form-group {
+  margin-bottom: 12px;
+}
+
+#pagina-login-estudiante .login-form-panel .form-control-itt {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+#pagina-login-estudiante .login-form-panel .itt-captcha__campo {
+  min-height: 40px;
+}
+
+#pagina-login-estudiante .login-form-panel .btn-login-submit {
+  width: auto;
+  min-width: 90px;
+  min-height: 40px;
+  margin: 2px 0 0 auto;
+  padding: 8px 14px;
+  align-self: flex-end;
+}
+
+#pagina-login-estudiante .login-page-footer {
+  margin-top: 24px;
+  color: #777;
+  font-size: .78rem;
+  text-align: center;
+}
+
+#pagina-login-estudiante .login-card .login-ayuda {
+  margin: 14px 0 0;
+  font-size: .76rem;
+}
+
+@media (max-width: 768px) {
+  #pagina-login-estudiante .login-panel__content { padding: 20px; }
+}
+
+@media (max-width: 520px) {
+  #pagina-login-estudiante .login-wrapper { padding: 12px; }
+  #pagina-login-estudiante .login-page-background { max-width: 100%; }
+  #pagina-login-estudiante .login-portal-nav {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+    padding: 0 12px;
+  }
+  #pagina-login-estudiante .login-portal-nav > span {
+    min-height: 42px;
+    font-size: 1rem;
+  }
+  #pagina-login-estudiante .login-portal-nav .tabs-tipo-usuario {
+    width: 100%;
+  }
+  #pagina-login-estudiante .login-portal-nav .tab-tipo {
+    flex: 1;
+    min-height: 46px;
+    padding: 0 10px;
+    font-size: .82rem;
+  }
+  #pagina-login-estudiante .login-panel { margin-top: 10px; }
+  #pagina-login-estudiante .login-panel__header {
+    padding: 11px 16px;
+    font-size: 1rem;
+  }
+  #pagina-login-estudiante .login-panel__content { padding: 16px 12px; }
+  #pagina-login-estudiante .login-form-panel { max-width: 300px; }
+}
+
+@media (max-width: 640px) {
+  #pagina-login-estudiante .login-institucion {
+    max-width: 100%;
+    margin-bottom: 10px;
+    overflow: visible;
+    background: transparent;
+  }
+  #pagina-login-estudiante .login-header-image {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+}

@@ -10,6 +10,7 @@ import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -28,6 +29,7 @@ import com.itt.sareduccion.auth.AuthRole;
 import com.itt.sareduccion.auth.SessionAttributes;
 import com.itt.sareduccion.auth.SessionPrincipal;
 import com.itt.sareduccion.model.EnvioSolicitudRequest;
+import com.itt.sareduccion.security.CorrelationIdFilter;
 import com.itt.sareduccion.service.AccesoDenegadoException;
 import com.itt.sareduccion.service.FormularioSolicitudService;
 import com.itt.sareduccion.service.ReglaNegocioException;
@@ -179,11 +181,13 @@ public class FormularioSolicitudController {
     public static final class ErrorRespuesta {
         private final String error;
         private final List<ValidacionRespuestasException.ErrorCampo> errores;
+        private final String correlationId;
 
         private ErrorRespuesta(String error, List<ValidacionRespuestasException.ErrorCampo> errores) {
             this.error = error;
             this.errores = errores == null
                     ? new ArrayList<ValidacionRespuestasException.ErrorCampo>() : errores;
+            this.correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
         }
 
         public String getError() {
@@ -192,6 +196,10 @@ public class FormularioSolicitudController {
 
         public List<ValidacionRespuestasException.ErrorCampo> getErrores() {
             return errores;
+        }
+
+        public String getCorrelationId() {
+            return correlationId;
         }
     }
 }

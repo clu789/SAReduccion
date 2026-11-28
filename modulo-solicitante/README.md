@@ -47,6 +47,8 @@ modulo-solicitante/
 
 ## Tecnologías
 
+- **Acceso:** el login de alumnos y aspirantes está integrado en el panel del portal institucional; conserva el encabezado adaptable, las pestañas de perfil, CAPTCHA y verificación OTP cuando está habilitada.
+
 - **HTML5** – Estructura semántica adaptable a teléfonos móviles y computadoras
 - **CSS3 / Vanilla CSS** – Estilos con variables CSS (sin frameworks adicionales)
 - **JavaScript (ES6+)** – Lógica del navegador con `fetch()` a través de `ITTSecurity` (sin jQuery ni código/estilos en línea, conforme a la CSP estricta descrita en [`../SEGURIDAD.md`](../SEGURIDAD.md))

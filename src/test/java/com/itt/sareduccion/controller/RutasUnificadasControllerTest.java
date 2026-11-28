@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,6 +18,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,6 +34,7 @@ import com.itt.sareduccion.security.GlobalExceptionHandler;
 import com.itt.sareduccion.security.SecurityAuditService;
 import com.itt.sareduccion.security.WebSecurityConfig;
 import com.itt.sareduccion.service.FormularioSolicitudService;
+import com.itt.sareduccion.service.ReglaNegocioException;
 import com.itt.sareduccion.service.SolicitanteService;
 import com.itt.sareduccion.service.SolicitudAdminService;
 
@@ -121,6 +124,27 @@ class RutasUnificadasControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"comentario\":\"Motivo\"}"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void errorDeFormularioIncluyeLaReferenciaDeCorrelacion() throws Exception {
+        MockHttpSession estudiante = sesion(new AuthenticatedPrincipal("ALU_21281181", "21281181", AuthRole.STUDENT));
+        String correlationId = "form-test-123";
+        when(formularioService.enviar(any(), any()))
+                .thenThrow(new ReglaNegocioException("El periodo de recepción no está abierto."));
+
+        MDC.put("correlationId", correlationId);
+        try {
+            mockMvc.perform(post("/api/solicitante/solicitudes").session(estudiante)
+                    .header(SessionAttributes.CSRF_HEADER, SessionAttributes.csrfToken(estudiante))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"idConvocatoria\":1,\"idTipoSolicitud\":1,\"respuestas\":[]}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error").value("El periodo de recepción no está abierto."))
+                    .andExpect(jsonPath("$.correlationId").value(correlationId));
+        } finally {
+            MDC.remove("correlationId");
+        }
     }
 
     private MockHttpSession sesion(AuthenticatedPrincipal principal) {

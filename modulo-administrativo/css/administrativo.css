@@ -376,7 +376,6 @@
 
 /* ── Clases de apoyo sin estilos en línea (RNF-66) ── */
 .login-admin-centrado { text-align: center; margin-bottom: 16px; }
-.login-admin-logo { max-height: 70px; }
 .login-admin-titulo { text-align: center; font-size: 1.1rem; margin-bottom: 4px; color: var(--itt-azul); }
 .login-admin-subtitulo { text-align: center; font-size: .8rem; color: var(--itt-texto-claro); margin-bottom: 24px; }
 .input-con-icono { position: relative; }
@@ -425,3 +424,227 @@
 .confirmar-texto { margin: 0; }
 .notificacion-manual-box { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--itt-gris-borde); }
 .notificacion-manual-box [role="status"] { margin: 8px 0 0; font-size: .85rem; color: var(--itt-texto-claro); }
+
+/* ── Acceso administrativo ── */
+#pagina-login-admin {
+  --login-borde: #dce3eb;
+  min-height: 100vh;
+  background: #f3f5f7;
+}
+
+#pagina-login-admin .login-admin-wrapper {
+  display: block;
+  min-height: 100vh;
+  padding: 24px;
+  overflow: auto;
+  background: #f3f5f7;
+}
+
+#pagina-login-admin .login-admin-wrapper::before { display: none; }
+
+#pagina-login-admin .login-admin-page {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+#pagina-login-admin .login-admin-institucion {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto 14px;
+  overflow: hidden;
+  border-bottom: 0;
+  border-radius: 3px;
+  background: #fff;
+}
+
+#pagina-login-admin .login-admin-header-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#pagina-login-admin .login-admin-nav {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 1px solid #dce3eb;
+  border-radius: 4px;
+  background: #f8f8f8;
+  color: #777;
+}
+
+#pagina-login-admin .login-admin-nav span {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+#pagina-login-admin .login-admin-card {
+  width: 100%;
+  max-width: 300px;
+  margin: 16px auto 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+}
+
+#pagina-login-admin .login-admin-card-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid #ddd;
+  background: #f5f5f5;
+}
+
+#pagina-login-admin .login-admin-card-header h1 {
+  margin: 0;
+  color: #444;
+  font-size: .95rem;
+  font-weight: 500;
+}
+
+#pagina-login-admin .login-admin-card-body {
+  padding: 14px 14px 12px;
+}
+
+#pagina-login-admin .login-admin-card form {
+  display: flex;
+  flex-direction: column;
+}
+
+#pagina-login-admin .login-admin-card .form-group { margin-bottom: 12px; }
+#pagina-login-admin .login-admin-card .form-group label {
+  margin-bottom: 6px;
+  color: var(--itt-texto);
+}
+
+#pagina-login-admin .login-admin-card .form-control-itt {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+
+#pagina-login-admin .login-admin-card .form-control-itt:focus {
+  border-color: #337ab7;
+  box-shadow: 0 0 0 3px rgba(51, 122, 183, .15);
+}
+
+#pagina-login-admin .login-password-field { position: relative; }
+#pagina-login-admin .login-password-field .form-control-itt { padding-right: 82px; }
+#pagina-login-admin .login-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: 0;
+  padding: 5px 2px;
+  background: transparent;
+  color: #337ab7;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#pagina-login-admin .login-password-toggle:hover { color: #23527c; }
+#pagina-login-admin .login-password-toggle:focus-visible {
+  outline: 2px solid #337ab7;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+#pagina-login-admin .itt-captcha { margin: 2px 0 12px; }
+#pagina-login-admin .itt-captcha__desafio {
+  min-height: 72px;
+  justify-content: center;
+}
+#pagina-login-admin .itt-captcha__acciones {
+  justify-content: center;
+  gap: 16px;
+}
+#pagina-login-admin .itt-captcha__pregunta { text-align: center; }
+#pagina-login-admin .itt-captcha__boton { color: #337ab7; }
+#pagina-login-admin .itt-captcha__boton:hover { color: #23527c; }
+#pagina-login-admin .itt-captcha__campo { min-height: 40px; }
+
+#pagina-login-admin .btn-login-admin {
+  width: auto;
+  min-width: 90px;
+  min-height: 40px;
+  justify-content: center;
+  gap: 9px;
+  margin: 2px 0 0 auto;
+  padding: 8px 14px;
+  border-radius: 5px;
+  background: #337ab7;
+  align-self: flex-end;
+}
+
+#pagina-login-admin .btn-login-admin:hover { background: #2e6da4; }
+#pagina-login-admin .btn-login-admin:focus-visible {
+  outline: 3px solid rgba(51, 122, 183, .3);
+  outline-offset: 2px;
+}
+#pagina-login-admin .btn-login-admin:disabled {
+  transform: none;
+  background: #6d91ad;
+  box-shadow: none;
+  cursor: wait;
+}
+
+#pagina-login-admin .login-button-spinner {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, .45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: login-giro .7s linear infinite;
+}
+#pagina-login-admin .login-button-spinner[hidden] { display: none; }
+
+#pagina-login-admin .login-admin-aviso {
+  border-top: 1px solid #edf0f3;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  line-height: 1.5;
+}
+
+#pagina-login-admin .login-admin-footer {
+  margin-top: 24px;
+  color: #777;
+  font-size: .78rem;
+  text-align: center;
+}
+
+#pagina-login-admin .mensaje-error.visible { display: block; }
+
+@keyframes login-giro { to { transform: rotate(360deg); } }
+
+@media (max-width: 520px) {
+  #pagina-login-admin .login-admin-wrapper { padding: 12px; }
+  #pagina-login-admin .login-admin-nav { min-height: 46px; padding: 0 12px; }
+  #pagina-login-admin .login-admin-card { max-width: 300px; }
+}
+
+@media (max-width: 640px) {
+  #pagina-login-admin .login-admin-institucion {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 10px;
+    overflow: visible;
+    background: transparent;
+  }
+  #pagina-login-admin .login-admin-header-image {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pagina-login-admin .login-button-spinner { animation: none; }
+}

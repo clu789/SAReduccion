@@ -3,98 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Acceso Administrativo | SAReducción ITT</title>
+  <title>Acceso Administrativo | Instituto Tecnológico de Toluca</title>
   <link rel="icon" type="image/png" href="img/logo.png" />
-  <meta name="description" content="Acceso exclusivo para el personal administrativo de la Subdirección Académica del Instituto Tecnológico de Toluca." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+  <meta name="description" content="Acceso para personal administrativo de la Subdirección Académica del Instituto Tecnológico de Toluca." />
   <link rel="stylesheet" href="css/itt-base.css" />
   <link rel="stylesheet" href="css/administrativo.css" />
-  <!-- Componentes comunes de seguridad (Equipo 1) -->
   <link rel="stylesheet" href="/compartido/css/itt-security.css" />
 </head>
 <body id="pagina-login-admin">
+  <main class="login-admin-wrapper">
+    <div class="login-admin-page">
+      <header class="login-admin-institucion">
+        <img
+          src="img/header.png"
+          alt="Tecnológico Nacional de México — Instituto Tecnológico de Toluca"
+          class="login-admin-header-image"
+        />
+      </header>
 
-  <!-- ═══ SPINNER ═══ -->
-  <div id="spinner-overlay" class="spinner-overlay">
-    <div class="spinner-ring"></div>
-  </div>
+      <nav class="login-admin-nav" aria-label="Navegación administrativa">
+        <span>Gestión de Reducciones</span>
+      </nav>
 
-  <!-- ═══ LOGIN ADMIN WRAPPER ═══ -->
-  <div class="login-admin-wrapper">
-    <div class="login-admin-card">
+      <section class="login-admin-card" aria-labelledby="login-admin-titulo">
+        <header class="login-admin-card-header">
+          <h1 id="login-admin-titulo">Iniciar sesión</h1>
+        </header>
+        <div class="login-admin-card-body">
+          <div id="alerta-login-admin" aria-live="polite"></div>
 
-      <!-- Badge de área -->
-      <div class="login-admin-centrado">
-        <span class="badge-admin">
-          <i class="fa fa-shield"></i> Panel Administrativo
-        </span>
-      </div>
+          <form id="form-login-admin" novalidate>
+            <div class="form-group">
+              <label for="usuario-admin">Usuario Administrativo <span class="requerido">*</span></label>
+              <input
+                type="text"
+                id="usuario-admin"
+                name="usuario-admin"
+                class="form-control-itt"
+                placeholder="ID de administrador"
+                autocomplete="username"
+                aria-describedby="usuario-admin-error"
+                required
+              />
+              <span class="mensaje-error" id="usuario-admin-error"></span>
+            </div>
 
-      <!-- Logo ITT -->
-      <div class="login-admin-centrado">
-        <img src="img/logo.png" alt="Instituto Tecnológico de Toluca" class="login-admin-logo" />
-      </div>
+            <div class="form-group">
+              <label for="password-admin">Contraseña <span class="requerido">*</span></label>
+              <div class="login-password-field">
+                <input
+                  type="password"
+                  id="password-admin"
+                  name="password-admin"
+                  class="form-control-itt"
+                  placeholder="Contraseña"
+                  autocomplete="current-password"
+                  aria-describedby="password-admin-error"
+                  required
+                />
+                <button
+                  type="button"
+                  id="toggle-password-admin"
+                  class="login-password-toggle"
+                  aria-label="Mostrar contraseña"
+                  aria-controls="password-admin"
+                  aria-pressed="false"
+                >Mostrar</button>
+              </div>
+              <span class="mensaje-error" id="password-admin-error"></span>
+            </div>
 
-      <h1 class="login-admin-titulo">SAReducción</h1>
-      <p class="login-admin-subtitulo">
-        Subdirección Académica<br />
-        <strong>Instituto Tecnológico de Toluca</strong>
-      </p>
+            <div id="captcha-login-admin" data-itt-captcha></div>
 
-      <!-- Alertas -->
-      <div id="alerta-login-admin"></div>
+            <button type="submit" id="btn-login-admin" class="btn-itt btn-primario w-100 btn-login-admin">
+              <span class="login-button-spinner" aria-hidden="true" hidden></span>
+              <span class="btn-login-admin-text">Acceder al Panel</span>
+            </button>
+          </form>
 
-      <!-- Formulario -->
-      <form id="form-login-admin" novalidate>
-        <div class="form-group">
-          <label for="usuario-admin">Usuario Administrativo <span class="requerido">*</span></label>
-          <div class="input-con-icono">
-            <i class="fa fa-user"></i>
-            <input
-              type="text"
-              id="usuario-admin"
-              name="usuario-admin"
-              class="form-control-itt"
-              placeholder="ID de administrador"
-              autocomplete="username"
-              required
-            />
-          </div>
-          <span class="mensaje-error" id="usuario-admin-error"></span>
+          <p class="login-admin-aviso">
+            Acceso restringido a personal autorizado de la <strong>Subdirección Académica</strong>.
+          </p>
         </div>
+      </section>
 
-        <div class="form-group">
-          <label for="password-admin">Contraseña <span class="requerido">*</span></label>
-          <div class="input-con-icono">
-            <i class="fa fa-lock"></i>
-            <input
-              type="password"
-              id="password-admin"
-              name="password-admin"
-              class="form-control-itt"
-              placeholder="Contraseña"
-              autocomplete="current-password"
-              required
-            />
-          </div>
-          <span class="mensaje-error" id="password-admin-error"></span>
-        </div>
-
-        <!-- Captcha con alternativa accesible (Equipo 1) -->
-        <div id="captcha-login-admin" data-itt-captcha></div>
-
-        <button type="submit" id="btn-login-admin" class="btn-itt btn-primario w-100 btn-login-admin">
-          <i class="fa fa-sign-in"></i> Acceder al Panel
-        </button>
-      </form>
-
-      <p class="login-admin-aviso">
-        Acceso restringido a personal autorizado de la<br /><strong>Subdirección Académica</strong>.
-      </p>
+      <footer class="login-admin-footer">
+        Instituto Tecnológico de Toluca <span aria-hidden="true">|</span> Subdirección Académica
+      </footer>
     </div>
-  </div>
+  </main>
 
   <script src="/compartido/js/itt-security.js"></script>
   <script src="js/app.js"></script>
