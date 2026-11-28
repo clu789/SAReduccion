@@ -163,13 +163,21 @@ Además activa el aviso de inactividad: un minuto antes de que la sesión expire
 <div data-itt-nav></div>
 ```
 
-Dibuja una barra con el menú «Vistas» (las pantallas del rol en sesión), la identidad y «Cerrar sesión». Es navegable con teclado (`Tab`, `Enter`, `Esc`). Para agregar tus pantallas al menú:
+Dibuja una barra con las pantallas del rol en sesión como un grupo de botones unidos, la identidad y «Cerrar sesión». Cada botón es un enlace directo o abre un submenú; el botón de la sección actual queda resaltado. Es navegable con teclado (`Tab`, `Enter`, `Esc`).
+
+- `ADMIN`: **Panel administrativo** (enlace) y **Convocatorias ▾** (submenú con *Administrar convocatorias*, *Crear o editar convocatoria* e *Historial de convocatorias*).
+- `STUDENT` y `APPLICANT`: **Vistas ▾** con su panel y `/solicitante/formulario.html`.
+
+Para agregar tus pantallas a la barra:
 
 ```js
-ITTSecurity.Navegacion.registrar('ADMIN', { titulo: 'Convocatorias', href: '/administrativo/convocatorias-admin.html' });
+// Botón directo
+ITTSecurity.Navegacion.registrar('ADMIN', { titulo: 'Reportes', href: '/administrativo/reportes.html' });
+// Opción dentro de un submenú existente (o nuevo) por su título
+ITTSecurity.Navegacion.registrar('ADMIN', { titulo: 'Montos', href: '/administrativo/montos.html' }, 'Convocatorias');
 ```
 
-La barra compartida y la protección de sesión ya están integradas en las pantallas protegidas de ambos módulos (`panel-estatus.html`, `panel-aspirante.html`, `formulario.html`, `panel-admin.html`, `convocatorias-admin.html`, `convocatorias-crear-editar.html` y `historial-convocatorias.html`). Para `STUDENT` y `APPLICANT` incluye su panel y `/solicitante/formulario.html`; para `ADMIN` incluye las cuatro vistas administrativas. Los envoltorios HTTP de ambos módulos usan `ITTSecurity` para centralizar CSRF, reintento del token y avisos de autorización.
+La barra compartida y la protección de sesión ya están integradas en las pantallas protegidas de ambos módulos (`panel-estatus.html`, `panel-aspirante.html`, `formulario.html`, `panel-admin.html`, `convocatorias-admin.html`, `convocatorias-crear-editar.html` y `historial-convocatorias.html`). Para `STUDENT` y `APPLICANT` incluye su panel y `/solicitante/formulario.html`; para `ADMIN` incluye el panel administrativo y, en el submenú *Convocatorias*, las tres vistas de convocatorias. Los envoltorios HTTP de ambos módulos usan `ITTSecurity` para centralizar CSRF, reintento del token y avisos de autorización.
 
 ### Captcha
 

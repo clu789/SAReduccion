@@ -73,7 +73,34 @@
   cursor: pointer;
 }
 .itt-nav__boton:hover,
-.itt-nav__salir:hover { background: rgba(255, 255, 255, .16); }
+.itt-nav__salir:hover { background: rgba(255, 255, 255, .16); color: #ffffff; }
+
+/* Entradas de la barra unidas como un grupo de botones */
+.itt-nav__vistas { display: inline-flex; align-items: stretch; }
+.itt-nav__vistas .itt-nav__boton {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  border-radius: 0;
+  text-decoration: none;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.itt-nav__vistas .itt-nav__boton:hover { text-decoration: none; }
+/* Prueba: botones de secciones sin marco (Cerrar sesión lo conserva) */
+.itt-nav__vistas .itt-nav__boton { border-color: transparent; }
+.itt-nav__vistas .itt-nav__grupo + .itt-nav__grupo .itt-nav__boton { margin-left: -1px; }
+.itt-nav__vistas .itt-nav__grupo:first-child .itt-nav__boton { border-radius: 4px 0 0 4px; }
+.itt-nav__vistas .itt-nav__grupo:last-child .itt-nav__boton { border-radius: 0 4px 4px 0; }
+.itt-nav__vistas .itt-nav__grupo:only-child .itt-nav__boton { border-radius: 4px; }
+/* Botón de la sección actual: fondo blanco y texto azul */
+.itt-nav__boton--activo,
+.itt-nav__boton--activo:hover {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: var(--itt-azul, #1b396a);
+  font-weight: 600;
+}
 .itt-nav__usuario { margin-left: auto; }
 .itt-nav__menu {
   position: absolute;

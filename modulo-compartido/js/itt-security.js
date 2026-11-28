@@ -296,27 +296,53 @@
   /* ───────────── Navegación compartida ───────────── */
 
   var Navegacion = {
+    /**
+     * Entradas de la barra por rol. Cada entrada es un enlace directo
+     * ({titulo, href}) o un botón con submenú ({titulo, opciones: [{titulo, href}]}).
+     * Las entradas se dibujan juntas, como un grupo de botones.
+     */
     vistas: {
       STUDENT: [
-        { titulo: 'Mi solicitud', href: '/solicitante/panel-estatus.html' },
-        { titulo: 'Nueva solicitud', href: '/solicitante/formulario.html' },
+        { titulo: 'Vistas', opciones: [
+          { titulo: 'Mi solicitud', href: '/solicitante/panel-estatus.html' },
+          { titulo: 'Nueva solicitud', href: '/solicitante/formulario.html' },
+        ] },
       ],
       APPLICANT: [
-        { titulo: 'Panel de aspirante', href: '/solicitante/panel-aspirante.html' },
-        { titulo: 'Nueva solicitud', href: '/solicitante/formulario.html' },
+        { titulo: 'Vistas', opciones: [
+          { titulo: 'Panel de aspirante', href: '/solicitante/panel-aspirante.html' },
+          { titulo: 'Nueva solicitud', href: '/solicitante/formulario.html' },
+        ] },
       ],
       ADMIN: [
         { titulo: 'Panel administrativo', href: '/administrativo/panel-admin.html' },
-        { titulo: 'Convocatorias', href: '/administrativo/convocatorias-admin.html' },
-        { titulo: 'Nueva o editar convocatoria', href: '/administrativo/convocatorias-crear-editar.html' },
-        { titulo: 'Historial de convocatorias', href: '/administrativo/historial-convocatorias.html' },
+        { titulo: 'Convocatorias', opciones: [
+          { titulo: 'Administrar convocatorias', href: '/administrativo/convocatorias-admin.html' },
+          { titulo: 'Crear o editar convocatoria', href: '/administrativo/convocatorias-crear-editar.html' },
+          { titulo: 'Historial de convocatorias', href: '/administrativo/historial-convocatorias.html' },
+        ] },
       ],
     },
     etiquetas: { STUDENT: 'Estudiante', APPLICANT: 'Aspirante', ADMIN: 'Administrador' },
 
-    /** Permite a cada equipo agregar sus pantallas al menú: registrar('ADMIN', {titulo, href}). */
-    registrar: function (rol, vista) {
-      (this.vistas[rol] = this.vistas[rol] || []).push(vista);
+    /**
+     * Permite a cada equipo agregar sus pantallas a la barra:
+     * registrar('ADMIN', {titulo, href}) agrega un botón directo;
+     * registrar('ADMIN', {titulo, href}, 'Convocatorias') lo agrega al submenú con ese título.
+     */
+    registrar: function (rol, vista, submenu) {
+      var entradas = (this.vistas[rol] = this.vistas[rol] || []);
+      if (submenu) {
+        for (var i = 0; i < entradas.length; i++) {
+          if (entradas[i].opciones && entradas[i].titulo === submenu) {
+            entradas[i].opciones.push(vista);
+            return;
+          }
+        }
+        entradas.push({ titulo: submenu, opciones: [vista] });
+        return;
+      }
+      entradas.push(vista);
     },
 
     /** Dibuja la barra en `contenedor` para la sesión dada (o la consulta si se omite). */
@@ -334,24 +360,64 @@
 
     pintar: function (raiz, datos) {
       var vistas = this.vistas[datos.role] || [];
-      var idMenu = 'itt-nav-menu-' + Math.random().toString(36).slice(2, 8);
       raiz.textContent = '';
       raiz.hidden = false;
       raiz.classList.add('itt-nav');
       raiz.setAttribute('role', 'navigation');
       raiz.setAttribute('aria-label', 'Navegación del sistema');
 
-      var boton = crear('button', {
-        type: 'button', 'class': 'itt-nav__boton', 'aria-haspopup': 'true',
-        'aria-expanded': 'false', 'aria-controls': idMenu,
-      }, 'Vistas ▾');
-      var lista = crear('ul', { id: idMenu, 'class': 'itt-nav__menu', hidden: '' });
+      var actual = global.location.pathname;
+      var menus = [];
+
+      function cerrarMenus(excepto) {
+        menus.forEach(function (m) {
+          if (m !== excepto) { m.lista.hidden = true; m.boton.setAttribute('aria-expanded', 'false'); }
+        });
+      }
+
+      var barra = crear('div', { 'class': 'itt-nav__vistas' });
       vistas.forEach(function (vista) {
-        var li = crear('li');
-        var enlace = crear('a', { href: vista.href }, vista.titulo);
-        if (global.location.pathname === vista.href) enlace.setAttribute('aria-current', 'page');
-        li.appendChild(enlace);
-        lista.appendChild(li);
+        var grupo = crear('div', { 'class': 'itt-nav__grupo' });
+
+        if (!vista.opciones) {
+          var directo = crear('a', { href: vista.href, 'class': 'itt-nav__boton' }, vista.titulo);
+          if (actual === vista.href) {
+            directo.setAttribute('aria-current', 'page');
+            directo.classList.add('itt-nav__boton--activo');
+          }
+          grupo.appendChild(directo);
+          barra.appendChild(grupo);
+          return;
+        }
+
+        var idMenu = 'itt-nav-menu-' + Math.random().toString(36).slice(2, 8);
+        var boton = crear('button', {
+          type: 'button', 'class': 'itt-nav__boton', 'aria-haspopup': 'true',
+          'aria-expanded': 'false', 'aria-controls': idMenu,
+        }, vista.titulo + ' ▾');
+        var lista = crear('ul', { id: idMenu, 'class': 'itt-nav__menu', hidden: '' });
+        vista.opciones.forEach(function (opcion) {
+          var li = crear('li');
+          var enlace = crear('a', { href: opcion.href }, opcion.titulo);
+          if (actual === opcion.href) {
+            enlace.setAttribute('aria-current', 'page');
+            boton.classList.add('itt-nav__boton--activo');
+          }
+          li.appendChild(enlace);
+          lista.appendChild(li);
+        });
+        var menu = { boton: boton, lista: lista };
+        menus.push(menu);
+        boton.addEventListener('click', function () {
+          var abrir = lista.hidden;
+          cerrarMenus(menu);
+          lista.hidden = !abrir;
+          boton.setAttribute('aria-expanded', String(abrir));
+        });
+
+        grupo.appendChild(boton);
+        grupo.appendChild(lista);
+        barra.appendChild(grupo);
       });
 
       var usuario = crear('span', { 'class': 'itt-nav__usuario' },
@@ -359,20 +425,15 @@
       var salir = crear('button', { type: 'button', 'class': 'itt-nav__salir' }, 'Cerrar sesión');
       salir.addEventListener('click', function () { logout(); });
 
-      function abrir(valor) {
-        lista.hidden = !valor;
-        boton.setAttribute('aria-expanded', String(valor));
-      }
-      boton.addEventListener('click', function () { abrir(lista.hidden); });
       raiz.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !lista.hidden) { abrir(false); boton.focus(); }
+        if (e.key !== 'Escape') return;
+        menus.forEach(function (m) {
+          if (!m.lista.hidden) { cerrarMenus(); m.boton.focus(); }
+        });
       });
-      document.addEventListener('click', function (e) { if (!raiz.contains(e.target)) abrir(false); });
+      document.addEventListener('click', function (e) { if (!raiz.contains(e.target)) cerrarMenus(); });
 
-      var grupo = crear('div', { 'class': 'itt-nav__grupo' });
-      grupo.appendChild(boton);
-      grupo.appendChild(lista);
-      raiz.appendChild(grupo);
+      raiz.appendChild(barra);
       raiz.appendChild(usuario);
       raiz.appendChild(salir);
     },

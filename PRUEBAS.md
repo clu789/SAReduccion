@@ -141,7 +141,7 @@ Valida cabeceras HTTP y CSP estricta sin `unsafe-inline` en Nginx, rechazos `401
    - En una solicitud `PENDIENTE` (ej. `F2026B007` o `21281189`): aprobar sin seleccionar un monto (comentario opcional). El backend deberá usar automáticamente inscripción para aspirantes o reinscripción para estudiantes y el monto con ID más alto de ese tipo. La solicitud deberá cambiar a `AUTORIZADO`, generar deducción y permitir luego **Aplicar deducción** (estado final inmutable `APLICADO`) o **Cancelar deducción** (pasa a `CANCELADO` y habilita **Reautorizar**).
    - En otra solicitud `PENDIENTE`: probar **Rechazar** sin comentario (debe exigir motivo obligatorio) y luego con motivo (cambia a `RECHAZADO`).
 4. **Módulo de Convocatorias (Equipo 4) y barra común:**
-   - Usar el menú **`Vistas ▾`** de la barra superior en `panel-admin.html` para navegar entre:
+   - En la barra superior de `panel-admin.html`, usar el botón **`Convocatorias ▾`** (junto a **`Panel administrativo`**) para navegar entre:
      - `convocatorias-admin.html` (listado, búsqueda, filtros por año/estado, modal de detalle y modal de edición).
      - `convocatorias-crear-editar.html` (probar validación de orden de fechas, montos con >2 decimales, fechas superpuestas con la `900002` y creación de una convocatoria futura sin solapamiento, p. ej. año `2027`).
      - `historial-convocatorias.html` (tras editar una fecha de la convocatoria creada, verificar que aparece el cambio comparativo `valor anterior -> valor nuevo`, filtros por administrador/campo/rango y modal de detalle).

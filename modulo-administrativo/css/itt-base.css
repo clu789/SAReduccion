@@ -207,6 +207,19 @@ a:hover { text-decoration: underline; color: var(--itt-azul); }
   background: rgba(255, 255, 255, 0.16);
 }
 
+/* Prueba: botones de secciones sin marco (Cerrar sesión lo conserva) */
+#pagina-panel-admin .itt-nav__vistas .itt-nav__boton {
+  border-color: transparent;
+}
+
+/* Botón de la sección actual: fondo blanco y texto azul del panel */
+#pagina-panel-admin .itt-nav__boton--activo,
+#pagina-panel-admin .itt-nav__boton--activo:hover {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: var(--adm-azul, #337AB7);
+}
+
 .itt-navbar-links {
   display: flex;
   list-style: none;
