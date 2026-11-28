@@ -205,9 +205,15 @@ const txt = (n) => (n ? n.textContent.replace(/\s+/g, ' ').trim() : null);
   ok(txt(doc.getElementById('stat-total')) === '3' && txt(doc.getElementById('stat-pendiente')) === '1', 'estadisticas renderizadas');
   ok(doc.querySelector('#tabla-solicitudes img[src="x"]') === null && w.xssTab === undefined, 'XSS en tabla escapado');
 
-  doc.getElementById('filtro-retirado').click();
+  const selEstatus = doc.getElementById('filtro-estatus');
+  selEstatus.value = '6';
+  selEstatus.dispatchEvent(new w.Event('change', { bubbles: true }));
   await espera(() => reqs.some((r) => r.url.includes('estatus=6')));
-  ok(true, 'chip Retiradas consulta estatus=6');
+  ok(true, 'combo de estatus "Retiradas" consulta estatus=6');
+  selEstatus.value = 'todos';
+  selEstatus.dispatchEvent(new w.Event('change', { bubbles: true }));
+  await espera(() => { const u = reqs[reqs.length - 1].url; return /\/api\/solicitudes(\?|$)/.test(u) && !u.includes('estatus='); });
+  ok(true, 'combo de estatus "Todas" consulta sin filtro de estatus');
 
   doc.querySelector('#tabla-solicitudes th[data-col="idSolicitud"]').click();
   doc.querySelector('#tabla-solicitudes th[data-col="idSolicitud"]').click();

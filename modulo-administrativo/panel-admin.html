@@ -90,14 +90,18 @@
 
     <!-- ── Filtros ── -->
     <div class="bandeja-filtros">
-      <span class="filtro-etiqueta">Filtrar:</span>
-      <button class="filtro-chip todos activo"   data-estatus="todos" id="filtro-todos">Todas</button>
-      <button class="filtro-chip pendiente"       data-estatus="1"     id="filtro-pendiente">Pendientes</button>
-      <button class="filtro-chip aprobado"        data-estatus="2"     id="filtro-autorizado">Autorizadas</button>
-      <button class="filtro-chip correccion"      data-estatus="3"     id="filtro-rechazado">Rechazadas</button>
-      <button class="filtro-chip cancelado"       data-estatus="4"     id="filtro-cancelado">Canceladas</button>
-      <button class="filtro-chip aplicado"        data-estatus="5"     id="filtro-aplicado">Aplicadas</button>
-      <button class="filtro-chip retirado"        data-estatus="6"     id="filtro-retirado">Retiradas</button>
+      <label class="filtro-etiqueta" for="filtro-estatus">Estatus:</label>
+      <select id="filtro-estatus" class="form-control-itt filtro-estatus-select">
+        <option value="todos" selected>Todas</option>
+        <option value="1">Pendientes</option>
+        <option value="2">Autorizadas</option>
+        <option value="3">Rechazadas</option>
+        <option value="4">Canceladas</option>
+        <option value="5">Aplicadas</option>
+        <option value="6">Retiradas</option>
+      </select>
+
+      <label class="filtro-etiqueta" for="filtro-convocatoria">Convocatoria:</label>
 
       <!-- Filtro por convocatoria (llenado desde la API) -->
       <select id="filtro-convocatoria" class="form-control-itt filtro-convocatoria-select" aria-label="Filtrar por convocatoria" disabled>

@@ -9,6 +9,8 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -42,6 +44,8 @@ import com.itt.sareduccion.service.SolicitudAdminService;
 @RequestMapping("/api")
 public class SolicitudAdminController {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SolicitudAdminController.class);
+
     private static final String CSRF_HEADER = SessionAttributes.CSRF_HEADER;
 
     private final SolicitudAdminService solicitudAdminService;
@@ -57,7 +61,7 @@ public class SolicitudAdminController {
             HttpServletRequest request) {
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         List<SolicitudAdmin> solicitudes = solicitudAdminService.listar(principal.getIdentity(), estatus,
                 convocatoria, solicitante);
@@ -74,7 +78,7 @@ public class SolicitudAdminController {
             HttpServletRequest request) {
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         return ResponseEntity.ok(solicitudAdminService.estadisticas(principal.getIdentity(), convocatoria));
     }
@@ -83,7 +87,7 @@ public class SolicitudAdminController {
     public ResponseEntity<?> detalle(@PathVariable("id") long id, HttpServletRequest request) {
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         SolicitudAdminService.DetalleSolicitud detalle = solicitudAdminService.detalle(principal.getIdentity(), id);
 
@@ -149,7 +153,7 @@ public class SolicitudAdminController {
     public ResponseEntity<?> montos(HttpServletRequest request) {
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         List<MontoAdmin> montos = solicitudAdminService.listarMontos(principal.getIdentity());
         List<Map<String, Object>> respuesta = new ArrayList<Map<String, Object>>();
@@ -168,7 +172,7 @@ public class SolicitudAdminController {
             HttpServletRequest request) {
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         List<DeduccionAdmin> deducciones = solicitudAdminService.listarDeducciones(principal.getIdentity(), estatus);
         List<Map<String, Object>> respuesta = new ArrayList<Map<String, Object>>();
@@ -185,11 +189,11 @@ public class SolicitudAdminController {
             HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (!SessionAttributes.validCsrf(session, csrfHeader)) {
-            return csrfInvalido();
+            return csrfInvalido(request);
         }
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         AprobarRequest datos = body == null ? new AprobarRequest() : body;
         solicitudAdminService.aprobar(principal.getIdentity(), id, datos.getIdMontoInscripcion(),
@@ -212,11 +216,11 @@ public class SolicitudAdminController {
             HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (!SessionAttributes.validCsrf(session, csrfHeader)) {
-            return csrfInvalido();
+            return csrfInvalido(request);
         }
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         String comentario = body == null ? null : body.getComentario();
         solicitudAdminService.cancelarDeduccion(principal.getIdentity(), id, comentario);
@@ -230,11 +234,11 @@ public class SolicitudAdminController {
             HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (!SessionAttributes.validCsrf(session, csrfHeader)) {
-            return csrfInvalido();
+            return csrfInvalido(request);
         }
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         solicitudAdminService.aplicarDeduccion(principal.getIdentity(), id, body == null ? null : body.getComentario());
         return ResponseEntity.ok(mensaje("Deduccion aplicada correctamente."));
@@ -249,11 +253,11 @@ public class SolicitudAdminController {
             HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (!SessionAttributes.validCsrf(session, csrfHeader)) {
-            return csrfInvalido();
+            return csrfInvalido(request);
         }
         SessionPrincipal principal = administrador(request);
         if (principal == null) {
-            return noAutorizado();
+            return noAutorizado(request);
         }
         String comentario = body == null ? null : body.getComentario();
         solicitudAdminService.rechazar(principal.getIdentity(), id, comentario);
@@ -274,12 +278,16 @@ public class SolicitudAdminController {
         return principal != null && principal.getRole() == AuthRole.ADMIN ? principal : null;
     }
 
-    private ResponseEntity<ErrorResponse> noAutorizado() {
+    private ResponseEntity<ErrorResponse> noAutorizado(HttpServletRequest request) {
+        LOG.warn("ACCESO_ADMIN_DENEGADO motivo=SIN_SESION_ADMIN metodo={} uri={}", request.getMethod(),
+                request.getRequestURI());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorResponse("Acceso no autorizado para el panel administrativo"));
     }
 
-    private ResponseEntity<ErrorResponse> csrfInvalido() {
+    private ResponseEntity<ErrorResponse> csrfInvalido(HttpServletRequest request) {
+        LOG.warn("ACCESO_ADMIN_DENEGADO motivo=CSRF_INVALIDO metodo={} uri={}", request.getMethod(),
+                request.getRequestURI());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse("Solicitud no válida"));
     }
 
