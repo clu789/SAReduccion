@@ -152,7 +152,8 @@ public class SolicitudAdminService {
         try {
             datos = administradorRepository.consultarDetalle(idAdministrador, idSolicitud);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo consultar el detalle de la solicitud");
+            throw traducirError(exception, "detalle_solicitud",
+                    "No se pudo consultar el detalle de la solicitud");
         }
         if (datos == null) {
             throw rechazo("DETALLE", idSolicitud, idAdministrador, "Solicitud no encontrada");
@@ -184,7 +185,7 @@ public class SolicitudAdminService {
         try {
             solicitud = administradorRepository.buscarSolicitud(idAdministrador, idSolicitud);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo consultar la solicitud");
+            throw traducirError(exception, "buscar_solicitud", "No se pudo consultar la solicitud");
         }
         if (solicitud == null) {
             throw rechazo("APROBAR", idSolicitud, idAdministrador, "Solicitud no encontrada");
@@ -212,7 +213,7 @@ public class SolicitudAdminService {
             administradorRepository.autorizarDeduccion(idAdministrador, idSolicitud, idMontoInscripcion,
                     idMontoReinscripcion, motivo);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo aprobar la solicitud");
+            throw traducirError(exception, "aprobar_solicitud", "No se pudo aprobar la solicitud");
         }
         LOG.info("{} idSolicitud={} admin={} estatus={}->AUTORIZADO tipoMonto={} conComentario={}",
                 Integer.valueOf(ESTATUS_CANCELADO).equals(estatusActual) ? "SOLICITUD_REAUTORIZADA" : "SOLICITUD_APROBADA",
@@ -228,7 +229,7 @@ public class SolicitudAdminService {
         try {
             administradorRepository.rechazarSolicitud(idAdministrador, idSolicitud, comentario);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo rechazar la solicitud");
+            throw traducirError(exception, "rechazar_solicitud", "No se pudo rechazar la solicitud");
         }
         LOG.info("SOLICITUD_RECHAZADA idSolicitud={} admin={} estatus=RECHAZADO", idSolicitud, admin(idAdministrador));
         notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.RECHAZO, comentario);
@@ -245,7 +246,7 @@ public class SolicitudAdminService {
         try {
             deduccion = administradorRepository.buscarDeduccion(idAdministrador, idDeduccion);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo consultar la deduccion");
+            throw traducirError(exception, "buscar_deduccion", "No se pudo consultar la deduccion");
         }
         if (deduccion == null) {
             throw rechazo(operacion, idDeduccion, idAdministrador, "Deduccion no encontrada");
@@ -257,7 +258,7 @@ public class SolicitudAdminService {
         try {
             administradorRepository.cancelarDeduccion(idAdministrador, idDeduccion, motivo);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo cancelar la deduccion");
+            throw traducirError(exception, "cancelar_deduccion", "No se pudo cancelar la deduccion");
         }
         LOG.info("DEDUCCION_CANCELADA idDeduccion={} idSolicitud={} admin={} estatus=AUTORIZADO->CANCELADO conComentario={}",
                 idDeduccion, deduccion.getIdSolicitud(), admin(idAdministrador), motivo != null);
@@ -275,7 +276,7 @@ public class SolicitudAdminService {
         try {
             deduccion = administradorRepository.buscarDeduccion(idAdministrador, idDeduccion);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo consultar la deduccion");
+            throw traducirError(exception, "buscar_deduccion", "No se pudo consultar la deduccion");
         }
         if (deduccion == null) {
             throw rechazo(operacion, idDeduccion, idAdministrador, "Deduccion no encontrada");
@@ -287,7 +288,7 @@ public class SolicitudAdminService {
         try {
             administradorRepository.aplicarDeduccion(idAdministrador, idDeduccion);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo aplicar la deduccion");
+            throw traducirError(exception, "aplicar_deduccion", "No se pudo aplicar la deduccion");
         }
         LOG.info("DEDUCCION_APLICADA idDeduccion={} idSolicitud={} admin={} estatus=AUTORIZADO->APLICADO",
                 idDeduccion, deduccion.getIdSolicitud(), admin(idAdministrador));
@@ -329,7 +330,7 @@ public class SolicitudAdminService {
         try {
             montos = administradorRepository.listarMontos(idAdministrador);
         } catch (DataAccessException exception) {
-            throw traducirError(exception, "No se pudo consultar el monto base");
+            throw traducirError(exception, "listar_montos", "No se pudo consultar el monto base");
         }
 
         MontoAdmin elegido = null;
@@ -364,23 +365,24 @@ public class SolicitudAdminService {
      * amigable. Cualquier otro error (conexion, SQL mal formado, etc.) se
      * relanza tal cual.
      */
-    private ReglaNegocioException traducirError(DataAccessException exception, String mensajeGenerico) {
+    private ReglaNegocioException traducirError(DataAccessException exception, String operacion,
+            String mensajeGenerico) {
         Integer codigo = codigoOracle(exception);
         if (codigo == null) {
-            LOG.error("ERROR_BD operacion=\"{}\" tipo={}", mensajeGenerico, exception.getClass().getSimpleName());
             throw exception;
         }
         int ora = Math.abs(codigo.intValue());
         if (ora == ORACLE_PLAZO_CERRADO) {
-            LOG.warn("PLAZO_CERRADO operacion=\"{}\" codigoOracle={}", mensajeGenerico, ora);
+            LOG.warn("ORACLE_RECHAZO administrador operacion={} codigoOracle={} respuesta=NEGOCIO_TRADUCIDO",
+                    operacion, ora);
             return new ReglaNegocioException(
                     mensajeGenerico + ": se vencio el plazo de la convocatoria para esta operacion.");
         }
         if (esErrorDePaquete(ora) || esErrorDeTrigger(ora) || ora == ORACLE_NO_DATA_FOUND) {
-            LOG.warn("REGLA_ORACLE operacion=\"{}\" codigoOracle={}", mensajeGenerico, ora);
+            LOG.warn("ORACLE_RECHAZO administrador operacion={} codigoOracle={} respuesta=NEGOCIO_TRADUCIDO",
+                    operacion, ora);
             return new ReglaNegocioException(mensajeGenerico);
         }
-        LOG.error("ERROR_ORACLE operacion=\"{}\" codigoOracle={}", mensajeGenerico, ora);
         throw exception;
     }
 

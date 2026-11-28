@@ -1,6 +1,7 @@
 package com.itt.sareduccion.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,6 +31,11 @@ import com.itt.sareduccion.model.SolicitudAdmin;
 import com.itt.sareduccion.repository.AdministradorRepository;
 import com.itt.sareduccion.repository.AdministradorRepository.DetalleSolicitudData;
 import com.itt.sareduccion.service.SolicitudAdminService.DetalleSolicitud;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class SolicitudAdminServiceTest {
 
@@ -109,6 +115,34 @@ class SolicitudAdminServiceTest {
         doThrow(new DataAccessResourceFailureException("Pool sin conexion"))
                 .when(repository).consultarDetalle("SA01", 15L);
         assertThrows(DataAccessResourceFailureException.class, () -> service.detalle("SA01", 15L));
+    }
+
+    @Test
+    void registraUnaAdvertenciaPorErrorOracleDeNegocioYNoRegistraErroresTecnicos() {
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(SolicitudAdminService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            doThrow(errorOracle(20870)).when(repository).rechazarSolicitud("SA01", 10L, "Motivo");
+            assertThrows(ReglaNegocioException.class, () -> service.rechazar("SA01", 10L, "Motivo"));
+
+            assertEquals(1, appender.list.size());
+            ILoggingEvent evento = appender.list.get(0);
+            assertEquals(Level.WARN, evento.getLevel());
+            assertTrue(evento.getFormattedMessage().contains("operacion=rechazar_solicitud"));
+            assertTrue(evento.getFormattedMessage().contains("codigoOracle=20870"));
+            assertFalse(evento.getFormattedMessage().contains("ORA-"));
+
+            DataAccessException inesperado = errorOracle(942);
+            doThrow(inesperado).when(repository).consultarDetalle("SA01", 11L);
+            assertSame(inesperado,
+                    assertThrows(DataAccessException.class, () -> service.detalle("SA01", 11L)));
+            assertEquals(1, appender.list.size());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test

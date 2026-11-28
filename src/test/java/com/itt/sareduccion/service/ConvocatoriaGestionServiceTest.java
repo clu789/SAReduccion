@@ -3,8 +3,10 @@ package com.itt.sareduccion.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,6 +25,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import com.itt.sareduccion.repository.ConvocatoriaGestionRepository;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 class ConvocatoriaGestionServiceTest {
 
@@ -111,6 +118,44 @@ class ConvocatoriaGestionServiceTest {
         assertThrows(ConvocatoriaNoEncontradaException.class,
                 () -> service.actualizarConvocatoria("SA01", 999L, hoy, hoy.plusDays(6),
                         hoy.plusDays(11), hoy.plusDays(16), new BigDecimal("550"), new BigDecimal("650")));
+    }
+
+    @Test
+    void registraUnaAdvertenciaPorErrorOracleTraducidoYPropagaElTecnicoSinLogLocal() {
+        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(ConvocatoriaGestionService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        LocalDate hoy = LocalDate.now();
+        DataIntegrityViolationException duplicada = new DataIntegrityViolationException(
+                "ORA-20916 detalle interno",
+                new SQLException("detalle interno", "72000", 20916));
+        try {
+            when(repository.crearConvocatoria("SA01", 1, 2026, hoy, hoy.plusDays(5), hoy.plusDays(10),
+                    hoy.plusDays(15), new BigDecimal("500"), new BigDecimal("600")))
+                    .thenThrow(duplicada);
+
+            assertThrows(ReglaNegocioException.class, () -> service.crearConvocatoria(
+                    "SA01", 1, 2026, hoy, hoy.plusDays(5), hoy.plusDays(10), hoy.plusDays(15),
+                    new BigDecimal("500"), new BigDecimal("600")));
+
+            assertEquals(1, appender.list.size());
+            ILoggingEvent evento = appender.list.get(0);
+            assertEquals(Level.WARN, evento.getLevel());
+            assertTrue(evento.getFormattedMessage().contains("operacion=crear_convocatoria"));
+            assertTrue(evento.getFormattedMessage().contains("codigoOracle=20916"));
+            assertFalse(evento.getFormattedMessage().contains("detalle interno"));
+
+            DataIntegrityViolationException inesperada = new DataIntegrityViolationException(
+                    "ORA-942", new SQLException("detalle interno", "72000", 942));
+            when(repository.listarHistorialConvocatoria("SA01", 2L)).thenThrow(inesperada);
+            assertSame(inesperada, assertThrows(DataIntegrityViolationException.class,
+                    () -> service.listarHistorialConvocatoria("SA01", 2L)));
+            assertEquals(1, appender.list.size());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     private Map<String, Object> fila(long id, LocalDate ini, LocalDate fin, LocalDate aut, LocalDate apl) {

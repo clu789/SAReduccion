@@ -275,7 +275,7 @@ executor.submit(() -> {
 });
 ```
 
-**Errores de Oracle en el formulario.** Los códigos conocidos se traducen a errores de negocio y se registran como `WARN` con operación, código Oracle y tipo de respuesta; no se registra el texto interno de Oracle ni las respuestas del formulario. Los errores desconocidos se registran una sola vez por `GlobalExceptionHandler` con su traza y responden con un mensaje genérico y `correlationId`. La interfaz muestra esa referencia para facilitar el diagnóstico, sin exponer el detalle interno.
+**Errores de Oracle en formularios y servicios administrativos.** Los códigos conocidos se traducen a errores de negocio y se registran una sola vez como `WARN` con operación, código Oracle y tipo de respuesta; no se registra el texto interno de Oracle, datos personales ni respuestas del formulario. Los errores desconocidos se propagan sin registrarlos en los servicios y los registra una sola vez `GlobalExceptionHandler` como `ERROR` con su traza; la respuesta es genérica e incluye `correlationId` para facilitar el diagnóstico.
 
 **Niveles.**
 

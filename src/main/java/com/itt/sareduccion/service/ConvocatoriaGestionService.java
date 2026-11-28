@@ -52,7 +52,7 @@ public class ConvocatoriaGestionService {
             return convocatorias;
 
         } catch (DataAccessException exception) {
-            throw traducirErrorOracle(exception);
+            throw traducirErrorOracle(exception, "listar_convocatorias");
         }
     }
 
@@ -128,7 +128,7 @@ public class ConvocatoriaGestionService {
             return convocatoriaEncontrada;
 
         } catch (DataAccessException exception) {
-            throw traducirErrorOracle(exception);
+            throw traducirErrorOracle(exception, "consultar_montos_convocatoria");
         }
     }
 
@@ -192,7 +192,7 @@ public class ConvocatoriaGestionService {
             return idCreada;
 
         } catch (DataAccessException exception) {
-            throw traducirErrorOracle(exception);
+            throw traducirErrorOracle(exception, "crear_convocatoria");
         }
     }
 
@@ -245,7 +245,7 @@ public class ConvocatoriaGestionService {
                     idConvocatoria, resultado.get("huboCambios"));
             return resultado;
         } catch (DataAccessException exception) {
-            throw traducirErrorOracle(exception);
+            throw traducirErrorOracle(exception, "actualizar_convocatoria");
         }
     }
 
@@ -260,7 +260,7 @@ public class ConvocatoriaGestionService {
         try {
             return repository.listarHistorialConvocatoria(idAdministrador, idConvocatoria);
         } catch (DataAccessException exception) {
-            throw traducirErrorOracle(exception);
+            throw traducirErrorOracle(exception, "listar_historial_convocatoria");
         }
     }
 
@@ -278,8 +278,7 @@ public class ConvocatoriaGestionService {
         }
     }
 
-    private RuntimeException traducirErrorOracle(
-            DataAccessException exception) {
+    private RuntimeException traducirErrorOracle(DataAccessException exception, String operacion) {
 
         Integer codigo = obtenerCodigoOracle(exception);
 
@@ -288,7 +287,16 @@ public class ConvocatoriaGestionService {
         }
 
         int error = Math.abs(codigo);
+        RuntimeException traducida = traducirCodigoOracle(error);
+        if (traducida == null) {
+            return exception;
+        }
+        LOG.warn("ORACLE_RECHAZO convocatoria operacion={} codigoOracle={} respuesta={}",
+                operacion, error, traducida.getClass().getSimpleName());
+        return traducida;
+    }
 
+    private RuntimeException traducirCodigoOracle(int error) {
         switch (error) {
             case 20910:
                 return new ReglaNegocioException(
@@ -349,7 +357,7 @@ public class ConvocatoriaGestionService {
                 return new ReglaNegocioException(
                         "Las fechas se superponen con otra convocatoria.");
             default:
-                return exception;
+                return null;
         }
     }
 
