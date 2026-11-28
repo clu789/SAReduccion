@@ -56,6 +56,7 @@ mvn -o test "-Dtest=!*IntegrationTest"
 Validan:
 - Seguridad (`SecurityUnitTest`, `SecurityFlowTest`): CSRF, captcha de imagen y texto accesible, limitador de intentos por usuario e IP, rotación de sesión, cabeceras de seguridad, `@RequiereRol` e interceptación de rutas (`/api/admin/**`, `/api/notificaciones/**`, `/api/solicitante/**`).
 - Correo OTP y notificaciones (`CorreoOtpDeliveryTest`, `NotificacionServiceTest`, `NotificacionControllerTest`): activación condicional del bean SMTP, construcción HTML/texto plano segura ante XSS y propagación de `MDC` en envío asíncrono.
+- Panel administrativo, Equipo 2 (`SolicitudAdminControllerTest`): operaciones no autorizadas (sin sesión `401`, estudiante o aspirante `403`, administrador sin CSRF o con CSRF ajeno `403`, y validación propia del controlador aun sin el interceptor) y autorizadas (filtros del listado, detalle con respuestas, deducción e historial, aprobar/rechazar/cancelar/aplicar con la identidad de la sesión y `409` ante transiciones no permitidas).
 - Reglas de negocio y controladores (`SolicitudAdminServiceTest`, `ConvocatoriaGestionServiceTest`, `ConvocatoriaGestionControllerTest`, `SolicitanteServiceTest`, `ValidadorRespuestasTest`, `TraductorErroresOracleTest`, `RutasUnificadasControllerTest`): traducción de códigos ORA positivos/negativos (`20870`, `20915` -> `404`), cálculo de estado/`activa`, eliminación de rutas duplicadas (`404`) y respuestas de formulario.
 
 ### B. Sintaxis JS y pruebas JSDOM del formulario dinámico (64 verificaciones)
@@ -121,7 +122,7 @@ Deben pasar **15 de 15** pruebas (`AuthenticationIntegrationTest`, `ApplicantAut
 ### C. Flujo de Administrador (`SA01`)
 1. Ingresar en `http://localhost:8081/administrativo/login.html` con `SA01` y `ORACLE_ADMIN_PASSWORD`.
 2. **Bandeja (`panel-admin.html`):**
-   - Probar tarjetas de estadísticas y todos los chips de filtro (`Todas`, `Pendientes`, `Autorizadas`, `Rechazadas`, `Canceladas`, `Aplicadas`, **`Retiradas`**), el filtro por convocatoria, el buscador por folio/nombre y el ordenamiento de columnas.
+   - Probar tarjetas de estadísticas y todas las opciones del combo de estatus (`Todas`, `Pendientes`, `Autorizadas`, `Rechazadas`, `Canceladas`, `Aplicadas`, **`Retiradas`**), el filtro por convocatoria, el buscador por folio/nombre y el ordenamiento de columnas.
    - Abrir detalle (`👁`) y respuestas (`📄`) de varias solicitudes.
    - En **Ver respuestas**, comprobar que aparezcan todas las preguntas del formulario en orden. Las respuestas de opción deben mostrar la opción elegida y las respuestas mixtas deben incluir su especificación; una observación opcional sin contenido debe aparecer como "Sin respuesta".
 3. **Ciclo de decisión:**

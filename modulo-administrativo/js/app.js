@@ -650,16 +650,15 @@ const PanelAdmin = {
     });
   },
 
-  /* ── Chips de filtro ── */
+  /* ── Filtros de estatus y convocatoria ── */
   iniciarFiltros() {
-    document.querySelectorAll('.filtro-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        document.querySelectorAll('.filtro-chip').forEach(c => c.classList.remove('activo'));
-        chip.classList.add('activo');
-        this.filtroActual = chip.dataset.estatus;
+    const selectEstatus = document.getElementById('filtro-estatus');
+    if (selectEstatus) {
+      selectEstatus.addEventListener('change', () => {
+        this.filtroActual = selectEstatus.value;
         this.cargarSolicitudes();
       });
-    });
+    }
 
     const selectConvocatoria = document.getElementById('filtro-convocatoria');
     if (selectConvocatoria) {

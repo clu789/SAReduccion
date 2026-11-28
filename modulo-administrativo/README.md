@@ -106,11 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
 - **Acceso administrativo:** presenta el formulario en una tarjeta compacta centrada bajo el encabezado institucional, con diseño adaptable; conserva los controles, el CAPTCHA compartido y el flujo de inicio de sesión existente.
 - **Seguridad y sesión:** todas las llamadas pasan por `ITTSecurity` (token CSRF automático y manejo de `401`/`403`) y cumplen la política CSP estricta sin scripts ni estilos en línea (ver [`../SEGURIDAD.md`](../SEGURIDAD.md)).
 - **Modal de detalle:** se abre con `Modal.abrir('modal-detalle')` y se cierra con `Modal.cerrar('modal-detalle')`.
-- **Estadísticas y filtros:** las tarjetas se cargan en `PanelAdmin.cargarEstadisticas()` y los chips filtran mediante `PanelAdmin.cargarSolicitudes(estatus)`.
+- **Estadísticas y filtros:** las tarjetas se cargan en `PanelAdmin.cargarEstadisticas()` y el combo de estatus (`#filtro-estatus`: Todas, Pendientes, Autorizadas, Rechazadas, Canceladas, Aplicadas, Retiradas) filtra mediante `PanelAdmin.cargarSolicitudes()`, combinado con el combo de convocatoria y el buscador.
 - **Decisiones y montos:** el comentario es **obligatorio solo al rechazar** y opcional al aprobar, reautorizar o cancelar. El monto base se elige automáticamente por perfil (inscripción para aspirantes, reinscripción para estudiantes; el de ID más alto si hay varios).
 - **Respuestas del formulario:** el modal de respuestas muestra todas las preguntas en orden con su opción seleccionada, especificación mixta u observación (`Sin respuesta` si es opcional y no tiene contenido).
 - **Notificaciones por correo:** al elegir una acción se muestra la vista previa de la plantilla (`src/main/resources/mail/aviso-tramite.html`) antes de confirmar, y también existe envío manual mediante `POST /api/notificaciones`. Los avisos automáticos son asíncronos y un fallo SMTP no revierte la decisión en Oracle. Para configuración SMTP/Mailpit, cobertura y pruebas (`NotificacionServiceTest`, `NotificacionControllerTest`), consulta [`../NOTIFICACIONES.md`](../NOTIFICACIONES.md) y [`../PRUEBAS.md`](../PRUEBAS.md).
-
 ## Decisiones y plantillas de correo del equipo 6
 
 1. Abre el detalle de una solicitud y elige la acción administrativa.
@@ -131,3 +130,5 @@ historial Oracle requiere ampliar el procedimiento correspondiente.
 
 Para configurar el contenedor, integrar Oracle, comprobar los envíos y ejecutar
 las pruebas, consulta la [guía de notificaciones del equipo 6](../NOTIFICACIONES.md).
+
+- **Logs técnicos y pruebas:** `SolicitudAdminService` registra con el estándar común (`SEGURIDAD.md` §6) las revisiones (`SOLICITUD_REVISADA`), decisiones y cambios de estado (`SOLICITUD_APROBADA`, `SOLICITUD_REAUTORIZADA`, `SOLICITUD_RECHAZADA`, `DEDUCCION_CANCELADA`, `DEDUCCION_APLICADA`), los rechazos de reglas de negocio y Oracle esperado (`OPERACION_RECHAZADA`, `ORACLE_RECHAZO`). `SolicitudAdminController` registra los accesos denegados (`ACCESO_ADMIN_DENEGADO`). Los fallos técnicos inesperados se propagan para que `GlobalExceptionHandler` los registre una sola vez con traza. Solo se registran identificadores necesarios y el administrador enmascarado, nunca comentarios, respuestas ni datos personales. Las operaciones autorizadas y no autorizadas se prueban en `SolicitudAdminControllerTest`.

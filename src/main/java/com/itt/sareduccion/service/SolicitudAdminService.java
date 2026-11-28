@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -18,15 +20,23 @@ import com.itt.sareduccion.model.MontoAdmin;
 import com.itt.sareduccion.model.RespuestaSolicitud;
 import com.itt.sareduccion.model.SolicitudAdmin;
 import com.itt.sareduccion.repository.AdministradorRepository;
+import com.itt.sareduccion.security.logging.SensitiveDataMasker;
 
 /**
  * Logica de negocio del panel administrativo. Toda operacion recibe el id del
  * administrador ya validado por la sesion (nunca del cliente) y delega en
  * {@code PKG_ADMINISTRADOR}. Los errores de Oracle se traducen a mensajes
  * genericos antes de salir del servicio.
+ *
+ * <p>Logs tecnicos (estandar de SEGURIDAD.md §6): cada revision, decision y
+ * cambio de estado se registra con un evento en mayusculas, los ids de la
+ * operacion y el administrador enmascarado. Nunca se registran comentarios,
+ * respuestas del formulario ni datos personales del solicitante.
  */
 @Service
 public class SolicitudAdminService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SolicitudAdminService.class);
 
     private static final int ESTATUS_PENDIENTE = 1;
     private static final int ESTATUS_CANCELADO = 4;
@@ -87,6 +97,8 @@ public class SolicitudAdminService {
             }
             resultado.add(solicitud);
         }
+        LOG.debug("SOLICITUDES_CONSULTADAS admin={} estatus={} convocatoria={} filtroSolicitante={} total={}",
+                admin(idAdministrador), estatus, convocatoria, filtro != null && !filtro.isEmpty(), resultado.size());
         return resultado;
     }
 
@@ -143,8 +155,10 @@ public class SolicitudAdminService {
             throw traducirError(exception, "No se pudo consultar el detalle de la solicitud");
         }
         if (datos == null) {
-            throw new ReglaNegocioException("Solicitud no encontrada");
+            throw rechazo("DETALLE", idSolicitud, idAdministrador, "Solicitud no encontrada");
         }
+        LOG.info("SOLICITUD_REVISADA idSolicitud={} admin={} respuestas={}", idSolicitud, admin(idAdministrador),
+                datos.getRespuestas() == null ? 0 : datos.getRespuestas().size());
         return new DetalleSolicitud(
                 datos.getSolicitud(),
                 datos.getRespuestas(),
@@ -173,12 +187,13 @@ public class SolicitudAdminService {
             throw traducirError(exception, "No se pudo consultar la solicitud");
         }
         if (solicitud == null) {
-            throw new ReglaNegocioException("Solicitud no encontrada");
+            throw rechazo("APROBAR", idSolicitud, idAdministrador, "Solicitud no encontrada");
         }
         Integer estatusActual = solicitud.getIdEstatusSolicitud();
         if (!Integer.valueOf(ESTATUS_PENDIENTE).equals(estatusActual)
                 && !Integer.valueOf(ESTATUS_CANCELADO).equals(estatusActual)) {
-            throw new ReglaNegocioException("Solo se pueden aprobar solicitudes pendientes o canceladas");
+            throw rechazo("APROBAR", idSolicitud, idAdministrador,
+                    "Solo se pueden aprobar solicitudes pendientes o canceladas");
         }
 
         String tipoMonto = solicitud.esEstudiante() ? "REINSCRIPCION" : "INSCRIPCION";
@@ -199,18 +214,23 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aprobar la solicitud");
         }
+        LOG.info("{} idSolicitud={} admin={} estatus={}->AUTORIZADO tipoMonto={} conComentario={}",
+                Integer.valueOf(ESTATUS_CANCELADO).equals(estatusActual) ? "SOLICITUD_REAUTORIZADA" : "SOLICITUD_APROBADA",
+                idSolicitud, admin(idAdministrador), nombreEstatus(estatusActual), tipoMonto, motivo != null);
         notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.APROBACION, motivo);
     }
 
     public void rechazar(String idAdministrador, long idSolicitud, String comentario) {
         if (comentario == null || comentario.trim().isEmpty()) {
-            throw new ReglaNegocioException("El comentario es obligatorio para rechazar o solicitar correccion");
+            throw rechazo("RECHAZAR", idSolicitud, idAdministrador,
+                    "El comentario es obligatorio para rechazar o solicitar correccion");
         }
         try {
             administradorRepository.rechazarSolicitud(idAdministrador, idSolicitud, comentario);
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo rechazar la solicitud");
         }
+        LOG.info("SOLICITUD_RECHAZADA idSolicitud={} admin={} estatus=RECHAZADO", idSolicitud, admin(idAdministrador));
         notificacionService.avisarCambio(idAdministrador, idSolicitud, NotificacionService.Evento.RECHAZO, comentario);
     }
 
@@ -219,6 +239,7 @@ public class SolicitudAdminService {
      * El comentario es opcional: si se captura, queda en el historial.
      */
     public void cancelarDeduccion(String idAdministrador, long idDeduccion, String comentario) {
+        final String operacion = "CANCELAR_DEDUCCION";
         String motivo = comentario == null || comentario.trim().isEmpty() ? null : comentario.trim();
         DeduccionAdmin deduccion;
         try {
@@ -227,10 +248,10 @@ public class SolicitudAdminService {
             throw traducirError(exception, "No se pudo consultar la deduccion");
         }
         if (deduccion == null) {
-            throw new ReglaNegocioException("Deduccion no encontrada");
+            throw rechazo(operacion, idDeduccion, idAdministrador, "Deduccion no encontrada");
         }
         if (!Integer.valueOf(ESTATUS_DEDUCCION_AUTORIZADO).equals(deduccion.getEstatusDeduccion())) {
-            throw new ReglaNegocioException("Solo se pueden cancelar deducciones autorizadas");
+            throw rechazo(operacion, idDeduccion, idAdministrador, "Solo se pueden cancelar deducciones autorizadas");
         }
 
         try {
@@ -238,6 +259,8 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo cancelar la deduccion");
         }
+        LOG.info("DEDUCCION_CANCELADA idDeduccion={} idSolicitud={} admin={} estatus=AUTORIZADO->CANCELADO conComentario={}",
+                idDeduccion, deduccion.getIdSolicitud(), admin(idAdministrador), motivo != null);
         notificacionService.avisarCambio(idAdministrador, deduccion.getIdSolicitud(), NotificacionService.Evento.CANCELACION, motivo);
     }
 
@@ -247,6 +270,7 @@ public class SolicitudAdminService {
     }
 
     public void aplicarDeduccion(String idAdministrador, long idDeduccion, String comentario) {
+        final String operacion = "APLICAR_DEDUCCION";
         DeduccionAdmin deduccion;
         try {
             deduccion = administradorRepository.buscarDeduccion(idAdministrador, idDeduccion);
@@ -254,10 +278,10 @@ public class SolicitudAdminService {
             throw traducirError(exception, "No se pudo consultar la deduccion");
         }
         if (deduccion == null) {
-            throw new ReglaNegocioException("Deduccion no encontrada");
+            throw rechazo(operacion, idDeduccion, idAdministrador, "Deduccion no encontrada");
         }
         if (!Integer.valueOf(ESTATUS_DEDUCCION_AUTORIZADO).equals(deduccion.getEstatusDeduccion())) {
-            throw new ReglaNegocioException("Solo se pueden aplicar deducciones autorizadas");
+            throw rechazo(operacion, idDeduccion, idAdministrador, "Solo se pueden aplicar deducciones autorizadas");
         }
 
         try {
@@ -265,6 +289,8 @@ public class SolicitudAdminService {
         } catch (DataAccessException exception) {
             throw traducirError(exception, "No se pudo aplicar la deduccion");
         }
+        LOG.info("DEDUCCION_APLICADA idDeduccion={} idSolicitud={} admin={} estatus=AUTORIZADO->APLICADO",
+                idDeduccion, deduccion.getIdSolicitud(), admin(idAdministrador));
         notificacionService.avisarCambio(idAdministrador, deduccion.getIdSolicitud(),
                 NotificacionService.Evento.APLICACION, comentario);
     }
@@ -320,6 +346,7 @@ public class SolicitudAdminService {
         }
         if (elegido == null || elegido.getIdMonto() == null) {
             String descripcion = "INSCRIPCION".equals(tipoMonto) ? "inscripcion" : "reinscripcion";
+            LOG.warn("MONTO_BASE_NO_CONFIGURADO tipoMonto={}", tipoMonto);
             throw new ReglaNegocioException("No existe un monto base de " + descripcion + " configurado");
         }
         return elegido;
@@ -340,17 +367,32 @@ public class SolicitudAdminService {
     private ReglaNegocioException traducirError(DataAccessException exception, String mensajeGenerico) {
         Integer codigo = codigoOracle(exception);
         if (codigo == null) {
+            LOG.error("ERROR_BD operacion=\"{}\" tipo={}", mensajeGenerico, exception.getClass().getSimpleName());
             throw exception;
         }
         int ora = Math.abs(codigo.intValue());
         if (ora == ORACLE_PLAZO_CERRADO) {
+            LOG.warn("PLAZO_CERRADO operacion=\"{}\" codigoOracle={}", mensajeGenerico, ora);
             return new ReglaNegocioException(
                     mensajeGenerico + ": se vencio el plazo de la convocatoria para esta operacion.");
         }
         if (esErrorDePaquete(ora) || esErrorDeTrigger(ora) || ora == ORACLE_NO_DATA_FOUND) {
+            LOG.warn("REGLA_ORACLE operacion=\"{}\" codigoOracle={}", mensajeGenerico, ora);
             return new ReglaNegocioException(mensajeGenerico);
         }
+        LOG.error("ERROR_ORACLE operacion=\"{}\" codigoOracle={}", mensajeGenerico, ora);
         throw exception;
+    }
+
+    /** Registra una operacion rechazada por regla de negocio y devuelve la excepcion a lanzar. */
+    private ReglaNegocioException rechazo(String operacion, long id, String idAdministrador, String mensaje) {
+        LOG.warn("OPERACION_RECHAZADA operacion={} id={} admin={} motivo=\"{}\"", operacion, id,
+                admin(idAdministrador), mensaje);
+        return new ReglaNegocioException(mensaje);
+    }
+
+    private static String admin(String idAdministrador) {
+        return SensitiveDataMasker.identifier(idAdministrador);
     }
 
     private boolean esErrorDePaquete(int ora) {
